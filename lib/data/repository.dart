@@ -176,14 +176,31 @@ class NoeticaRepository {
     await _emitEntries();
   }
 
+  /// Flip a task's completion state in-place via a targeted SQL UPDATE.
+  ///
+  /// Crucially this does **not** rewrite the `entry_axes` table — it would be
+  /// a no-op delete+reinsert at best, and on web (sqflite_common_ffi_web) a
+  /// transactional rewrite of join rows can race with the score recompute and
+  /// the user sees the pentagon stay flat after ticking a roadmap-imported
+  /// task. UPDATE keeps axes attached, full stop.
   Future<m.Entry> toggleTaskComplete(m.Entry entry) async {
-    final updated = entry.copyWith(
-      completedAt: entry.isCompleted ? null : DateTime.now(),
-      clearCompleted: entry.isCompleted,
-      updatedAt: DateTime.now(),
+    final now = DateTime.now();
+    final newCompletedAt = entry.isCompleted ? null : now;
+    await _db.raw.update(
+      'entries',
+      {
+        'completed_at': newCompletedAt?.millisecondsSinceEpoch,
+        'updated_at': now.millisecondsSinceEpoch,
+      },
+      where: 'id = ?',
+      whereArgs: [entry.id],
     );
-    await upsertEntry(updated);
-    return updated;
+    await _emitEntries();
+    return entry.copyWith(
+      completedAt: newCompletedAt,
+      clearCompleted: newCompletedAt == null,
+      updatedAt: now,
+    );
   }
 
   // ---------- scores ----------

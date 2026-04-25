@@ -6,6 +6,10 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 class NoeticaDb {
   NoeticaDb._(this._db);
 
+  /// Test-only constructor; allows wiring an in-memory DB directly.
+  @visibleForTesting
+  NoeticaDb.test(this._db);
+
   final Database _db;
   Database get raw => _db;
 
