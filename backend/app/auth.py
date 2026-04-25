@@ -38,6 +38,12 @@ JWT_TTL_SECONDS = 60 * 60 * 24 * 30  # 30 days
 DEFAULT_WEB_CLIENT_ID = (
     "566738030703-lmo4a5k7u2i5l0okkd6b6r50mgmlma30.apps.googleusercontent.com"
 )
+# Desktop installed-app client. Tokens minted by `googleapis_auth` on Windows
+# carry `aud = Desktop Client ID`, so we have to accept it alongside the Web
+# client. Like the Web ID, this is public.
+DEFAULT_DESKTOP_CLIENT_ID = (
+    "566738030703-gkifuci0i16bumgbsp6gb11k5elh8igi.apps.googleusercontent.com"
+)
 
 
 def _jwt_secret() -> str:
@@ -77,8 +83,32 @@ def _web_client_id() -> str:
     return os.getenv("GOOGLE_OAUTH_WEB_CLIENT_ID") or DEFAULT_WEB_CLIENT_ID
 
 
+def _accepted_audiences() -> list[str]:
+    """All Google OAuth client IDs whose ID tokens we accept.
+
+    - Web Client ID: tokens minted via Android `google_sign_in` with
+      `serverClientId=...`.
+    - Desktop Client ID: tokens minted via `googleapis_auth` on
+      Windows/macOS/Linux installed-app flow.
+
+    Extra audiences can be appended via `GOOGLE_OAUTH_EXTRA_AUDIENCES`
+    (comma-separated).
+    """
+    audiences = [_web_client_id()]
+    desktop = os.getenv("GOOGLE_OAUTH_DESKTOP_CLIENT_ID") or DEFAULT_DESKTOP_CLIENT_ID
+    if desktop and desktop not in audiences:
+        audiences.append(desktop)
+    extra = os.getenv("GOOGLE_OAUTH_EXTRA_AUDIENCES", "")
+    for entry in extra.split(","):
+        entry = entry.strip()
+        if entry and entry not in audiences:
+            audiences.append(entry)
+    return audiences
+
+
 JWT_SECRET = _jwt_secret()
 GOOGLE_OAUTH_WEB_CLIENT_ID = _web_client_id()
+GOOGLE_OAUTH_ACCEPTED_AUDIENCES = _accepted_audiences()
 
 
 class AuthConfigError(RuntimeError):
@@ -102,16 +132,28 @@ def verify_google_id_token(token: str) -> dict:
     """
     _ensure_config()
     try:
+        # Verify signature + expiry, but skip the audience check inside
+        # google-auth — we manually check against the full accepted list
+        # below to give a friendlier error and to support multiple clients.
         payload = google_id_token.verify_oauth2_token(
             token,
             google_requests.Request(),
-            audience=GOOGLE_OAUTH_WEB_CLIENT_ID,
+            audience=None,
         )
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Invalid Google ID token: {exc}",
         ) from exc
+    aud = payload.get("aud")
+    if aud not in GOOGLE_OAUTH_ACCEPTED_AUDIENCES:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=(
+                f"Invalid Google ID token: Token has wrong audience {aud}, "
+                f"expected one of {GOOGLE_OAUTH_ACCEPTED_AUDIENCES}"
+            ),
+        )
     if payload.get("iss") not in {
         "accounts.google.com",
         "https://accounts.google.com",
