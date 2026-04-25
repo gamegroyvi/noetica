@@ -9,7 +9,7 @@ import '../../providers.dart';
 import '../../services/notifications.dart';
 import '../../theme/app_theme.dart';
 import '../onboarding/onboarding_screen.dart';
-import '../onboarding/questionnaire_screen.dart';
+import '../onboarding/onboarding_chat_screen.dart';
 
 /// Single-screen settings: profile, notifications, axes, data, about.
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -192,7 +192,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final navigator = Navigator.of(context);
     await navigator.push(
       MaterialPageRoute(
-        builder: (_) => QuestionnaireScreen(
+        builder: (_) => OnboardingChatScreen(
           existing: profile,
           onDone: () => navigator.pop(),
         ),
