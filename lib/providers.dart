@@ -87,6 +87,26 @@ final levelStatsProvider = FutureProvider<LevelStats>((ref) async {
   return levelStatsFor(xp);
 });
 
+/// Per-axis lifetime XP, recomputed whenever entries change. Empty map
+/// when the user hasn't created any axes yet.
+final axisLifetimeXpProvider =
+    FutureProvider<Map<String, int>>((ref) async {
+  ref.watch(entriesProvider);
+  ref.watch(axesProvider);
+  final repo = await ref.watch(repositoryProvider.future);
+  return repo.axisLifetimeXp();
+});
+
+/// Per-axis level + progress, derived from [axisLifetimeXpProvider]
+/// using the same threshold curve as the global profile level. Lets the
+/// Древо show e.g. "Тело · L3 · 540/700" next to each branch without
+/// every consumer redoing the math.
+final axisLevelStatsProvider =
+    FutureProvider<Map<String, LevelStats>>((ref) async {
+  final perAxis = await ref.watch(axisLifetimeXpProvider.future);
+  return {for (final e in perAxis.entries) e.key: levelStatsFor(e.value)};
+});
+
 final streakProvider = FutureProvider<int>((ref) async {
   ref.watch(entriesProvider);
   final repo = await ref.watch(repositoryProvider.future);

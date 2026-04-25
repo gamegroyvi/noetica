@@ -552,6 +552,50 @@ class NoeticaRepository {
 
   // ---------- lifetime stats ----------
 
+  /// Lifetime XP per axis (no decay window). Each completed task's XP
+  /// is split across its axes via the same normalised-weight scheme as
+  /// [computeScores], so this is consistent with what the user sees on
+  /// the Древо. Powers per-axis level rings ("Тело L3 · 540 XP").
+  Future<Map<String, int>> axisLifetimeXp() async {
+    final axes = await listAxes();
+    if (axes.isEmpty) return const {};
+    final knownAxisIds = {for (final a in axes) a.id};
+    final rows = await _db.raw.rawQuery(
+      '''
+      SELECT ea.entry_id AS entry_id,
+             ea.axis_id AS axis_id,
+             ea.weight AS weight,
+             e.xp AS xp
+      FROM entries e
+      JOIN entry_axes ea ON ea.entry_id = e.id
+      WHERE e.kind = ?
+        AND e.completed_at IS NOT NULL
+        AND e.deleted_at IS NULL
+      ''',
+      [m.EntryKind.task.name],
+    );
+    final perEntry = <String, List<Map<String, Object?>>>{};
+    for (final r in rows) {
+      perEntry.putIfAbsent(r['entry_id']! as String, () => []).add(r);
+    }
+    final out = <String, double>{for (final a in axes) a.id: 0};
+    for (final entry in perEntry.values) {
+      final live =
+          entry.where((r) => knownAxisIds.contains(r['axis_id'])).toList();
+      if (live.isEmpty) continue;
+      final totalWeight =
+          live.fold<double>(0, (s, r) => s + ((r['weight'] as num?) ?? 1.0));
+      if (totalWeight <= 0) continue;
+      final xp = (live.first['xp'] as int?) ?? 0;
+      for (final r in live) {
+        final axisId = r['axis_id']! as String;
+        final w = ((r['weight'] as num?) ?? 1.0) / totalWeight;
+        out[axisId] = (out[axisId] ?? 0) + xp * w;
+      }
+    }
+    return out.map((k, v) => MapEntry(k, v.round()));
+  }
+
   /// Total XP across **all** completed tasks ever — no decay window.
   /// Powers the persistent profile level.
   Future<int> lifetimeXp() async {

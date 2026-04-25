@@ -21,6 +21,7 @@ class SelfScreen extends ConsumerWidget {
     final profile = ref.watch(profileProvider).valueOrNull;
     final streakAsync = ref.watch(streakProvider);
     final levelAsync = ref.watch(levelStatsProvider);
+    final axisLevelsAsync = ref.watch(axisLevelStatsProvider);
     final hasName = profile != null && profile.name.isNotEmpty;
 
     return Scaffold(
@@ -96,7 +97,11 @@ class SelfScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                for (final s in scores) _AxisTile(score: s),
+                for (final s in scores)
+                  _AxisTile(
+                    score: s,
+                    levelStats: axisLevelsAsync.valueOrNull?[s.axis.id],
+                  ),
                 const SizedBox(height: 20),
                 OutlinedButton.icon(
                   onPressed: () {
@@ -299,13 +304,15 @@ class _EmptyAxes extends StatelessWidget {
 }
 
 class _AxisTile extends StatelessWidget {
-  const _AxisTile({required this.score});
+  const _AxisTile({required this.score, this.levelStats});
   final AxisScore score;
+  final LevelStats? levelStats;
 
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
     final v = score.value.clamp(0.0, 100.0) / 100.0;
+    final ls = levelStats;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
@@ -331,10 +338,41 @@ class _AxisTile extends StatelessWidget {
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Text(
-                      score.axis.name,
-                      style: Theme.of(context).textTheme.bodyLarge,
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              score.axis.name,
+                              style: Theme.of(context).textTheme.bodyLarge,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (ls != null) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                border:
+                                    Border.all(color: palette.line),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                'L${ls.level}',
+                                style: TextStyle(
+                                  color: palette.muted,
+                                  fontSize: 10,
+                                  letterSpacing: 1.2,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
                     Text(
                       score.value.round().toString(),
@@ -360,6 +398,17 @@ class _AxisTile extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (ls != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    '${ls.totalXp} XP · до L${ls.level + 1}: '
+                    '${ls.xpAtNextLevel - ls.totalXp}',
+                    style: TextStyle(
+                      color: palette.muted,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
