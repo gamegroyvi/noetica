@@ -47,6 +47,45 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     await NotificationsService.instance.setEnabled(v);
   }
 
+  Future<void> _testNow() async {
+    await NotificationsService.instance.showImmediate(
+      title: 'Тест: сейчас',
+      body: 'Если ты это видишь — сейчас уведомления работают.',
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Отправлено. Должно прилететь сразу.')),
+    );
+  }
+
+  Future<void> _testIn30() async {
+    await NotificationsService.instance.scheduleTest(
+      delay: const Duration(seconds: 30),
+      title: 'Тест: +30 сек',
+      body: 'Запланировано на 30 секунд назад. Можно сворачивать приложение.',
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Запланировано на через 30 секунд. Можно сворачивать.'),
+      ),
+    );
+  }
+
+  Future<void> _testIn5Min() async {
+    await NotificationsService.instance.scheduleTest(
+      delay: const Duration(minutes: 5),
+      title: 'Тест: +5 мин',
+      body: 'Запланировано пять минут назад. Если пришло — планировщик жив.',
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Запланировано через 5 минут. Закрывай приложение и жди.'),
+      ),
+    );
+  }
+
   Future<void> _pickMorning() async {
     final picked = await showTimePicker(
       context: context,
@@ -301,6 +340,35 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               child: Text(
                 NotificationsService.instance.platformNote,
                 style: TextStyle(color: palette.muted, fontSize: 12),
+              ),
+            ),
+            // Debug-grade test buttons. Useful for verifying that the
+            // platform actually delivers a notification (especially after
+            // first install on Windows where the user must accept the
+            // toast registration). All three slots use the same code path
+            // as production scheduling.
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: _notifEnabled ? _testNow : null,
+                    icon: const Icon(Icons.send, size: 16),
+                    label: const Text('Тест: сейчас'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: _notifEnabled ? _testIn30 : null,
+                    icon: const Icon(Icons.schedule, size: 16),
+                    label: const Text('Тест: +30 сек'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: _notifEnabled ? _testIn5Min : null,
+                    icon: const Icon(Icons.schedule, size: 16),
+                    label: const Text('Тест: +5 мин'),
+                  ),
+                ],
               ),
             ),
           ],

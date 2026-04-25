@@ -26,13 +26,20 @@ class HomeShell extends ConsumerStatefulWidget {
 class _HomeShellState extends ConsumerState<HomeShell> {
   int _index = 0;
 
-  static const _pages = <Widget>[
+  static const _mobilePages = <Widget>[
     DashboardScreen(),
     TasksScreen(),
     SelfScreen(),
   ];
 
-  static const _destinations = <_Destination>[
+  static const _desktopPages = <Widget>[
+    DashboardScreen(),
+    TasksScreen(),
+    SelfScreen(),
+    NotesScreen(),
+  ];
+
+  static const _mobileDestinations = <_Destination>[
     _Destination(
       icon: Icons.dashboard_outlined,
       selectedIcon: Icons.dashboard,
@@ -50,15 +57,38 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     ),
   ];
 
+  static const _desktopDestinations = <_Destination>[
+    _Destination(
+      icon: Icons.dashboard_outlined,
+      selectedIcon: Icons.dashboard,
+      label: 'Сейчас',
+    ),
+    _Destination(
+      icon: Icons.checklist_outlined,
+      selectedIcon: Icons.checklist,
+      label: 'Задачи',
+    ),
+    _Destination(
+      icon: Icons.auto_graph_outlined,
+      selectedIcon: Icons.auto_graph,
+      label: 'Я',
+    ),
+    _Destination(
+      icon: Icons.bookmark_border_outlined,
+      selectedIcon: Icons.bookmark,
+      label: 'Журнал',
+    ),
+  ];
+
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
     final width = MediaQuery.of(context).size.width;
     final useRail = width >= _kRailMin;
 
-    final body = IndexedStack(index: _index, children: _pages);
-
     if (!useRail) {
+      final body =
+          IndexedStack(index: _index.clamp(0, _mobilePages.length - 1), children: _mobilePages);
       return Scaffold(
         body: body,
         floatingActionButton: FloatingActionButton(
@@ -70,10 +100,10 @@ class _HomeShellState extends ConsumerState<HomeShell> {
             border: Border(top: BorderSide(color: palette.line)),
           ),
           child: NavigationBar(
-            selectedIndex: _index,
+            selectedIndex: _index.clamp(0, _mobileDestinations.length - 1),
             onDestinationSelected: (i) => setState(() => _index = i),
             destinations: [
-              for (final d in _destinations)
+              for (final d in _mobileDestinations)
                 NavigationDestination(
                   icon: Icon(d.icon),
                   selectedIcon: Icon(d.selectedIcon),
@@ -86,24 +116,22 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     }
 
     final extended = width >= _kRailExtended;
+    final desktopIndex = _index.clamp(0, _desktopPages.length - 1);
+    final desktopBody =
+        IndexedStack(index: desktopIndex, children: _desktopPages);
     return Scaffold(
       body: Row(
         children: [
           _DesktopSidebar(
             extended: extended,
-            destinations: _destinations,
-            selectedIndex: _index,
+            destinations: _desktopDestinations,
+            selectedIndex: desktopIndex,
             onDestinationSelected: (i) => setState(() => _index = i),
             onAdd: () => showEntryEditor(context, ref),
-            onJournal: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => const NotesScreen(),
-              ),
-            ),
             onPomodoro: () => PomodoroSheet.show(context),
             palette: palette,
           ),
-          Expanded(child: body),
+          Expanded(child: desktopBody),
         ],
       ),
     );
@@ -131,7 +159,6 @@ class _DesktopSidebar extends StatelessWidget {
     required this.selectedIndex,
     required this.onDestinationSelected,
     required this.onAdd,
-    required this.onJournal,
     required this.onPomodoro,
     required this.palette,
   });
@@ -141,7 +168,6 @@ class _DesktopSidebar extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
   final VoidCallback onAdd;
-  final VoidCallback onJournal;
   final VoidCallback onPomodoro;
   final NoeticaPalette palette;
 
@@ -200,15 +226,6 @@ class _DesktopSidebar extends StatelessWidget {
                   vertical: 4,
                 ),
                 child: Divider(color: palette.line, height: 1),
-              ),
-              _SidebarTile(
-                icon: Icons.bookmark_border_outlined,
-                selectedIcon: Icons.bookmark,
-                label: 'Журнал',
-                selected: false,
-                extended: extended,
-                palette: palette,
-                onTap: onJournal,
               ),
               _SidebarTile(
                 icon: Icons.timer_outlined,

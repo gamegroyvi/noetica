@@ -49,21 +49,21 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: false
-  image_path: "assets/branding/icon_glyph.png"
-  adaptive_icon_background: "#000000"
-  adaptive_icon_foreground: "assets/branding/icon_glyph.png"
+  image_path: "assets/branding/tray_icon.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/branding/tray_icon.png"
   windows:
     generate: true
-    image_path: "assets/branding/icon_glyph.png"
+    image_path: "assets/branding/tray_icon.png"
     icon_size: 256
 
 flutter_native_splash:
-  color: "#000000"
+  color: "#FFFFFF"
   image: "assets/branding/splash_full.png"
   android: true
   ios: false
   web: false
   android_12:
-    color: "#000000"
-    image: "assets/branding/icon_glyph.png"
-    icon_background_color: "#000000"
+    color: "#FFFFFF"
+    image: "assets/branding/tray_icon.png"
+    icon_background_color: "#FFFFFF"

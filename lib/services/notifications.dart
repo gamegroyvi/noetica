@@ -203,6 +203,30 @@ class NotificationsService {
     }
   }
 
+  /// Schedule a one-shot test notification after `delay`. Used by the
+  /// Settings screen for debugging the OS-level scheduler on each
+  /// platform.
+  Future<void> scheduleTest({
+    required Duration delay,
+    required String title,
+    required String body,
+  }) async {
+    if (!_supported) return;
+    try {
+      final id = '${title}_${DateTime.now().microsecondsSinceEpoch}'
+              .hashCode &
+          0x7fffffff;
+      await _backend.schedule(
+        id: id,
+        when: DateTime.now().add(delay),
+        title: title,
+        body: body,
+      );
+    } catch (e) {
+      debugPrint('scheduleTest failed: $e');
+    }
+  }
+
   Future<void> cancelForEntry(String entryId) async {
     if (!_supported) return;
     for (final slot in _Slot.values) {

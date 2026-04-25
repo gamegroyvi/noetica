@@ -506,9 +506,9 @@ class _SettingsPanel extends StatelessWidget {
             label: 'Фокус, мин',
             value: focusMinutes,
             onChanged: (v) => onChange(focus: v),
-            min: 5,
+            min: 1,
             max: 180,
-            step: 5,
+            step: 1,
             palette: palette,
           ),
           _Stepper(
@@ -524,9 +524,9 @@ class _SettingsPanel extends StatelessWidget {
             label: 'Длинный отдых, мин',
             value: longBreakMinutes,
             onChanged: (v) => onChange(longBrk: v),
-            min: 5,
+            min: 1,
             max: 60,
-            step: 5,
+            step: 1,
             palette: palette,
           ),
           _Stepper(

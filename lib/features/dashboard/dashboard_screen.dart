@@ -24,6 +24,10 @@ class DashboardScreen extends ConsumerWidget {
     final entriesAsync = ref.watch(entriesProvider);
     final axesAsync = ref.watch(axesProvider);
     final scoresAsync = ref.watch(scoresProvider);
+    // Journal lives in the desktop sidebar as its own tab, so we hide the
+    // AppBar shortcut at desktop widths to avoid two ways into the same
+    // screen.
+    final isDesktop = MediaQuery.of(context).size.width >= 900;
 
     return Scaffold(
       appBar: AppBar(
@@ -34,17 +38,18 @@ class DashboardScreen extends ConsumerWidget {
         leadingWidth: 48,
         title: const Text('Сейчас'),
         actions: [
-          IconButton(
-            tooltip: 'Журнал',
-            icon: const Icon(Icons.bookmark_border_outlined),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const NotesScreen(),
-                ),
-              );
-            },
-          ),
+          if (!isDesktop)
+            IconButton(
+              tooltip: 'Журнал',
+              icon: const Icon(Icons.bookmark_border_outlined),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const NotesScreen(),
+                  ),
+                );
+              },
+            ),
           IconButton(
             tooltip: 'Pomodoro',
             icon: const Icon(Icons.timer_outlined),
