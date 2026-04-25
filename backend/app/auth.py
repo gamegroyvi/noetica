@@ -32,17 +32,25 @@ from . import db
 JWT_ALGO = "HS256"
 JWT_TTL_SECONDS = 60 * 60 * 24 * 30  # 30 days
 
-# Public Google OAuth Web client ID — used both by Flutter (`serverClientId`)
-# and the backend (`audience`). It's not a secret — it's literally the `aud`
-# claim of every ID token Google emits. Override via env if you fork.
+# Public Google OAuth Web client ID — used both by Flutter (`serverClientId`
+# on Android) and the backend (`audience`). It's not a secret — it's literally
+# the `aud` claim of every ID token Google emits. Override via env if you fork.
 DEFAULT_WEB_CLIENT_ID = (
-    "566738030703-lmo4a5k7u2i5l0okkd6b6r50mgmlma30.apps.googleusercontent.com"
+    "566738030703-24f45u0l2b6ou8h4etgapqbcm6doo5na.apps.googleusercontent.com"
 )
 # Desktop installed-app client. Tokens minted by `googleapis_auth` on Windows
 # carry `aud = Desktop Client ID`, so we have to accept it alongside the Web
 # client. Like the Web ID, this is public.
 DEFAULT_DESKTOP_CLIENT_ID = (
     "566738030703-gkifuci0i16bumgbsp6gb11k5elh8igi.apps.googleusercontent.com"
+)
+# Android client. `google_sign_in` doesn't expose this in the token by default
+# (the `aud` is the Web Client ID via `serverClientId`), but if anyone
+# reconfigures the package to omit `serverClientId`, tokens will carry the
+# Android Client ID. Accepting it costs nothing and prevents another round of
+# "wrong audience" errors.
+DEFAULT_ANDROID_CLIENT_ID = (
+    "566738030703-lmo4a5k7u2i5l0okkd6b6r50mgmlma30.apps.googleusercontent.com"
 )
 
 
@@ -98,6 +106,9 @@ def _accepted_audiences() -> list[str]:
     desktop = os.getenv("GOOGLE_OAUTH_DESKTOP_CLIENT_ID") or DEFAULT_DESKTOP_CLIENT_ID
     if desktop and desktop not in audiences:
         audiences.append(desktop)
+    android = os.getenv("GOOGLE_OAUTH_ANDROID_CLIENT_ID") or DEFAULT_ANDROID_CLIENT_ID
+    if android and android not in audiences:
+        audiences.append(android)
     extra = os.getenv("GOOGLE_OAUTH_EXTRA_AUDIENCES", "")
     for entry in extra.split(","):
         entry = entry.strip()
