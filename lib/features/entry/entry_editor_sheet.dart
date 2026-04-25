@@ -1,0 +1,390 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../data/models.dart';
+import '../../providers.dart';
+import '../../theme/app_theme.dart';
+import '../../utils/time_utils.dart';
+
+Future<void> showEntryEditor(
+  BuildContext context,
+  WidgetRef ref, {
+  Entry? existing,
+}) async {
+  await showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (ctx) => Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(ctx).viewInsets.bottom,
+      ),
+      child: _EntryEditor(existing: existing),
+    ),
+  );
+}
+
+class _EntryEditor extends ConsumerStatefulWidget {
+  const _EntryEditor({this.existing});
+  final Entry? existing;
+
+  @override
+  ConsumerState<_EntryEditor> createState() => _EntryEditorState();
+}
+
+class _EntryEditorState extends ConsumerState<_EntryEditor> {
+  late final TextEditingController _title;
+  late final TextEditingController _body;
+  late EntryKind _kind;
+  late Set<String> _selectedAxes;
+  DateTime? _due;
+  int _xp = 10;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final e = widget.existing;
+    _title = TextEditingController(text: e?.title ?? '');
+    _body = TextEditingController(text: e?.body ?? '');
+    _kind = e?.kind ?? EntryKind.note;
+    _selectedAxes = Set<String>.from(e?.axisIds ?? const <String>[]);
+    _due = e?.dueAt;
+    _xp = e?.xp ?? 10;
+  }
+
+  @override
+  void dispose() {
+    _title.dispose();
+    _body.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDue() async {
+    final now = DateTime.now();
+    final initial = _due ?? now.add(const Duration(hours: 1));
+    final date = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(now.year - 1),
+      lastDate: DateTime(now.year + 5),
+    );
+    if (date == null) return;
+    if (!mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(initial),
+    );
+    setState(() {
+      _due = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        time?.hour ?? 9,
+        time?.minute ?? 0,
+      );
+      // Auto-promote to task when a due date is set.
+      _kind = EntryKind.task;
+    });
+  }
+
+  Future<void> _save() async {
+    if (_title.text.trim().isEmpty) return;
+    setState(() => _saving = true);
+    final repo = await ref.read(repositoryProvider.future);
+    final existing = widget.existing;
+    if (existing == null) {
+      await repo.createEntry(
+        title: _title.text.trim(),
+        body: _body.text.trim(),
+        kind: _kind,
+        dueAt: _due,
+        xp: _xp,
+        axisIds: _selectedAxes.toList(),
+      );
+    } else {
+      await repo.upsertEntry(existing.copyWith(
+        title: _title.text.trim(),
+        body: _body.text.trim(),
+        kind: _kind,
+        dueAt: _due,
+        clearDue: _due == null,
+        xp: _xp,
+        axisIds: _selectedAxes.toList(),
+        updatedAt: DateTime.now(),
+      ));
+    }
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  Future<void> _delete() async {
+    final existing = widget.existing;
+    if (existing == null) return;
+    final repo = await ref.read(repositoryProvider.future);
+    await repo.deleteEntry(existing.id);
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    final axesAsync = ref.watch(axesProvider);
+    final isTask = _kind == EntryKind.task;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: palette.line,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Text(
+                widget.existing == null ? 'Новая запись' : 'Запись',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const Spacer(),
+              if (widget.existing != null)
+                IconButton(
+                  icon: Icon(Icons.delete_outline, color: palette.fg),
+                  onPressed: _delete,
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              _ToggleSegment(
+                label: 'Заметка',
+                selected: !isTask,
+                onTap: () => setState(() {
+                  _kind = EntryKind.note;
+                }),
+              ),
+              const SizedBox(width: 8),
+              _ToggleSegment(
+                label: 'Задача',
+                selected: isTask,
+                onTap: () => setState(() => _kind = EntryKind.task),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _title,
+            autofocus: widget.existing == null,
+            style: Theme.of(context).textTheme.titleMedium,
+            decoration: const InputDecoration(
+              hintText: 'Заголовок',
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _body,
+            minLines: 3,
+            maxLines: 8,
+            decoration: const InputDecoration(
+              hintText: 'Что у тебя на уме?',
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Оси',
+            style: Theme.of(context)
+                .textTheme
+                .labelLarge
+                ?.copyWith(color: palette.muted, letterSpacing: 1.4),
+          ),
+          const SizedBox(height: 8),
+          axesAsync.when(
+            loading: () => const SizedBox(
+                height: 32, child: Center(child: CircularProgressIndicator())),
+            error: (e, _) => Text('$e'),
+            data: (axes) {
+              if (axes.isEmpty) {
+                return Text(
+                  'Сначала добавь оси в онбординге.',
+                  style: TextStyle(color: palette.muted),
+                );
+              }
+              return Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final a in axes)
+                    _AxisToggleChip(
+                      axis: a,
+                      selected: _selectedAxes.contains(a.id),
+                      onTap: () => setState(() {
+                        if (_selectedAxes.contains(a.id)) {
+                          _selectedAxes.remove(a.id);
+                        } else {
+                          _selectedAxes.add(a.id);
+                        }
+                      }),
+                    ),
+                ],
+              );
+            },
+          ),
+          if (isTask) ...[
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _pickDue,
+                    icon: const Icon(Icons.calendar_today_outlined, size: 16),
+                    label: Text(
+                      _due == null ? 'Без дедлайна' : formatTimestamp(_due!),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+                if (_due != null) ...[
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 18),
+                    onPressed: () => setState(() => _due = null),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Text(
+                  'XP при выполнении',
+                  style: Theme.of(context)
+                      .textTheme
+                      .labelLarge
+                      ?.copyWith(color: palette.muted, letterSpacing: 1.4),
+                ),
+                const Spacer(),
+                Text('$_xp',
+                    style: Theme.of(context).textTheme.titleMedium),
+              ],
+            ),
+            Slider(
+              min: 1,
+              max: 100,
+              divisions: 99,
+              value: _xp.toDouble(),
+              activeColor: palette.fg,
+              inactiveColor: palette.line,
+              onChanged: (v) => setState(() => _xp = v.round()),
+            ),
+          ],
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: _saving ? null : _save,
+              child: Text(_saving ? '...' : 'Сохранить'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ToggleSegment extends StatelessWidget {
+  const _ToggleSegment({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected ? palette.fg : palette.bg,
+            border: Border.all(color: selected ? palette.fg : palette.line),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? palette.bg : palette.fg,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.4,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AxisToggleChip extends StatelessWidget {
+  const _AxisToggleChip({
+    required this.axis,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final LifeAxis axis;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? palette.fg : palette.bg,
+          border: Border.all(color: selected ? palette.fg : palette.line),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              axis.symbol,
+              style: TextStyle(
+                fontSize: 13,
+                color: selected ? palette.bg : palette.fg,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              axis.name,
+              style: TextStyle(
+                fontSize: 12,
+                color: selected ? palette.bg : palette.fg,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

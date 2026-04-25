@@ -1,0 +1,29 @@
+name: noetica
+description: "Noetica — second brain, growth tracker, memoir."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.5.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  flutter_riverpod: ^2.5.1
+  sqflite: ^2.3.3+1
+  sqflite_common_ffi: ^2.3.3
+  path_provider: ^2.1.4
+  path: ^1.9.0
+  uuid: ^4.5.1
+  intl: ^0.19.0
+  shared_preferences: ^2.3.2
+  google_fonts: ^6.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
