@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models.dart';
 import '../../providers.dart';
 import '../../theme/app_theme.dart';
+import '../onboarding/questionnaire_screen.dart';
 import 'pentagon_painter.dart';
 
 class SelfScreen extends ConsumerWidget {
@@ -13,12 +14,34 @@ class SelfScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final palette = context.palette;
     final scoresAsync = ref.watch(scoresProvider);
+    final profileAsync = ref.watch(profileProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Я'),
-        actions: const [
-          Padding(
+        title: Text(
+          profileAsync.valueOrNull?.name.isNotEmpty == true
+              ? profileAsync.value!.name
+              : 'Я',
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'Профиль',
+            icon: const Icon(Icons.person_outline),
+            onPressed: () {
+              final profile = profileAsync.valueOrNull;
+              if (profile == null) return;
+              final navigator = Navigator.of(context);
+              navigator.push(
+                MaterialPageRoute(
+                  builder: (_) => QuestionnaireScreen(
+                    existing: profile,
+                    onDone: () => navigator.pop(),
+                  ),
+                ),
+              );
+            },
+          ),
+          const Padding(
             padding: EdgeInsets.only(right: 16),
             child: Center(child: _Streak()),
           ),
