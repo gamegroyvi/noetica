@@ -7,6 +7,8 @@ import '../../theme/app_theme.dart';
 import '../../utils/time_utils.dart';
 import '../entry/entry_card.dart';
 import '../entry/entry_editor_sheet.dart';
+import '../notes/notes_screen.dart';
+import '../pomodoro/pomodoro_sheet.dart';
 import '../self/pentagon_painter.dart';
 import '../tasks/tasks_screen.dart';
 
@@ -23,7 +25,28 @@ class DashboardScreen extends ConsumerWidget {
     final scoresAsync = ref.watch(scoresProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Сейчас')),
+      appBar: AppBar(
+        title: const Text('Сейчас'),
+        actions: [
+          IconButton(
+            tooltip: 'Журнал',
+            icon: const Icon(Icons.bookmark_border_outlined),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const NotesScreen(),
+                ),
+              );
+            },
+          ),
+          IconButton(
+            tooltip: 'Pomodoro',
+            icon: const Icon(Icons.timer_outlined),
+            onPressed: () => PomodoroSheet.show(context),
+          ),
+          const SizedBox(width: 4),
+        ],
+      ),
       body: entriesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('$e')),

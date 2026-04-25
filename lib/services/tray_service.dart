@@ -57,9 +57,10 @@ class TrayService with TrayListener, WindowListener {
   }
 
   String _trayIconPath() {
-    if (Platform.isWindows) {
-      return 'windows/runner/resources/app_icon.ico';
-    }
+    // tray_manager resolves relative paths against the Flutter assets
+    // bundle (data/flutter_assets/<path> on Windows). Using the source-tree
+    // path `windows/runner/resources/app_icon.ico` does NOT work at
+    // runtime — that file is the EXE icon, not a Flutter asset.
     return 'assets/branding/icon_glyph.png';
   }
 
