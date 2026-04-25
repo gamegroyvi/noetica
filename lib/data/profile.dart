@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
@@ -107,6 +108,13 @@ class UserProfile {
 }
 
 class ProfileService {
+  /// Broadcast every save/clear so the sync layer can push immediately.
+  static final _changes = StreamController<UserProfile?>.broadcast();
+
+  /// Stream of profile updates (null = cleared). Sync layer listens to push
+  /// changes promptly without polling.
+  static Stream<UserProfile?> get changes => _changes.stream;
+
   Future<UserProfile?> load() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_kProfileKey);
@@ -121,10 +129,12 @@ class ProfileService {
   Future<void> save(UserProfile profile) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kProfileKey, jsonEncode(profile.toJson()));
+    if (!_changes.isClosed) _changes.add(profile);
   }
 
   Future<void> clear() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_kProfileKey);
+    if (!_changes.isClosed) _changes.add(null);
   }
 }

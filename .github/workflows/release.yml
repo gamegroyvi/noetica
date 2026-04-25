@@ -27,7 +27,20 @@ jobs:
       - run: flutter pub get
       - run: flutter analyze
       - run: flutter test
-      - run: flutter build apk --release
+
+      - name: Build APK (release)
+        env:
+          GOOGLE_OAUTH_WEB_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_WEB_CLIENT_ID }}
+          NOETICA_BACKEND_URL: ${{ secrets.NOETICA_BACKEND_URL }}
+        run: |
+          ARGS=()
+          if [ -n "$GOOGLE_OAUTH_WEB_CLIENT_ID" ]; then
+            ARGS+=("--dart-define=GOOGLE_OAUTH_WEB_CLIENT_ID=$GOOGLE_OAUTH_WEB_CLIENT_ID")
+          fi
+          if [ -n "$NOETICA_BACKEND_URL" ]; then
+            ARGS+=("--dart-define=NOETICA_BACKEND_URL=$NOETICA_BACKEND_URL")
+          fi
+          flutter build apk --release "${ARGS[@]}"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -55,7 +68,25 @@ jobs:
         run: flutter config --enable-windows-desktop
 
       - run: flutter pub get
-      - run: flutter build windows --release
+
+      - name: Build Windows (release)
+        shell: bash
+        env:
+          GOOGLE_OAUTH_DESKTOP_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_DESKTOP_CLIENT_ID }}
+          GOOGLE_OAUTH_DESKTOP_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_DESKTOP_CLIENT_SECRET }}
+          NOETICA_BACKEND_URL: ${{ secrets.NOETICA_BACKEND_URL }}
+        run: |
+          ARGS=()
+          if [ -n "$GOOGLE_OAUTH_DESKTOP_CLIENT_ID" ]; then
+            ARGS+=("--dart-define=GOOGLE_OAUTH_DESKTOP_CLIENT_ID=$GOOGLE_OAUTH_DESKTOP_CLIENT_ID")
+          fi
+          if [ -n "$GOOGLE_OAUTH_DESKTOP_CLIENT_SECRET" ]; then
+            ARGS+=("--dart-define=GOOGLE_OAUTH_DESKTOP_CLIENT_SECRET=$GOOGLE_OAUTH_DESKTOP_CLIENT_SECRET")
+          fi
+          if [ -n "$NOETICA_BACKEND_URL" ]; then
+            ARGS+=("--dart-define=NOETICA_BACKEND_URL=$NOETICA_BACKEND_URL")
+          fi
+          flutter build windows --release "${ARGS[@]}"
 
       - name: Compile Inno Setup installer
         uses: Minionguyjpro/Inno-Setup-Action@v1.2.6

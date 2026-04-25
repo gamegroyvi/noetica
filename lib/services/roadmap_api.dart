@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 
 import '../data/models.dart';
 import '../data/profile.dart';
+import 'auth_service.dart';
 
 /// Default backend URL — overridable at runtime via `--dart-define`:
 ///   flutter run --dart-define=NOETICA_BACKEND_URL=https://noetica-backend.fly.dev
@@ -69,15 +70,20 @@ class RoadmapApiException implements Exception {
 }
 
 class RoadmapApi {
-  RoadmapApi({String? baseUrl, http.Client? client})
-      : _baseUrl = (baseUrl ?? _resolveBaseUrl()).trim().replaceAll(
+  RoadmapApi({
+    String? baseUrl,
+    http.Client? client,
+    AuthService? authService,
+  })  : _baseUrl = (baseUrl ?? _resolveBaseUrl()).trim().replaceAll(
               RegExp(r'/+$'),
               '',
             ),
-        _client = client ?? http.Client();
+        _client = client ?? http.Client(),
+        _auth = authService;
 
   final String _baseUrl;
   final http.Client _client;
+  final AuthService? _auth;
 
   static String _resolveBaseUrl() {
     const fromDefine = String.fromEnvironment(
@@ -120,12 +126,22 @@ class RoadmapApi {
       'task_count': taskCount,
     };
 
+    final token = _auth?.current?.accessToken;
+    if (token == null || token.isEmpty) {
+      throw RoadmapApiException(
+        'Не выполнен вход в Google. Перезайдите и попробуйте снова.',
+        status: 401,
+      );
+    }
     http.Response response;
     try {
       response = await _client
           .post(
             uri,
-            headers: const {'Content-Type': 'application/json'},
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
             body: jsonEncode(payload),
           )
           .timeout(const Duration(seconds: 60));

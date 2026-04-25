@@ -162,10 +162,45 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
+  Future<void> _signOut() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Выйти из аккаунта?'),
+        content: const Text(
+          'Локальные данные останутся на устройстве. Чтобы они снова '
+          'синхронизировались, войдите тем же Google-аккаунтом.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Выйти'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await ref.read(authServiceProvider).signOut();
+      if (!mounted) return;
+      Navigator.of(context).popUntil((r) => r.isFirst);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Не удалось выйти: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
     final profile = ref.watch(profileProvider).valueOrNull;
+    final session = ref.watch(authSessionProvider).valueOrNull;
 
     return Scaffold(
       appBar: AppBar(
@@ -174,6 +209,32 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 8),
         children: [
+          const _SectionHeader(title: 'Аккаунт'),
+          if (session != null)
+            ListTile(
+              leading: const Icon(Icons.account_circle_outlined),
+              title: Text(session.user.name.isNotEmpty
+                  ? session.user.name
+                  : session.user.email),
+              subtitle: Text(
+                session.user.email,
+                style: TextStyle(color: palette.muted),
+              ),
+              trailing: TextButton(
+                onPressed: _signOut,
+                child: const Text('Выйти'),
+              ),
+            )
+          else
+            ListTile(
+              leading: const Icon(Icons.account_circle_outlined),
+              title: const Text('Не выполнен вход'),
+              subtitle: Text(
+                'Перезапустите приложение, чтобы войти.',
+                style: TextStyle(color: palette.muted),
+              ),
+            ),
+          const Divider(height: 1),
           const _SectionHeader(title: 'Профиль'),
           ListTile(
             title: Text(profile?.name.isNotEmpty == true
