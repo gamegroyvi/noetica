@@ -1,0 +1,188 @@
+import 'dart:convert';
+import 'dart:io' show Platform;
+
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+
+import '../data/models.dart';
+import '../data/profile.dart';
+
+/// Default backend URL — overridable at runtime via `--dart-define`:
+///   flutter run --dart-define=NOETICA_BACKEND_URL=https://noetica-backend.fly.dev
+const String _kDefaultBackendUrl =
+    'https://noetica-backend-nzlazosh.fly.dev';
+
+/// One generated roadmap task — a draft of an `Entry` we will create on import.
+@immutable
+class RoadmapDraft {
+  const RoadmapDraft({
+    required this.title,
+    required this.body,
+    required this.axisIds,
+    required this.xp,
+    this.dueAt,
+  });
+
+  final String title;
+  final String body;
+  final List<String> axisIds;
+  final int xp;
+  final DateTime? dueAt;
+
+  RoadmapDraft copyWith({
+    String? title,
+    String? body,
+    List<String>? axisIds,
+    int? xp,
+    DateTime? dueAt,
+    bool clearDue = false,
+  }) =>
+      RoadmapDraft(
+        title: title ?? this.title,
+        body: body ?? this.body,
+        axisIds: axisIds ?? this.axisIds,
+        xp: xp ?? this.xp,
+        dueAt: clearDue ? null : (dueAt ?? this.dueAt),
+      );
+}
+
+@immutable
+class RoadmapResult {
+  const RoadmapResult({
+    required this.model,
+    required this.summary,
+    required this.tasks,
+  });
+
+  final String model;
+  final String summary;
+  final List<RoadmapDraft> tasks;
+}
+
+class RoadmapApiException implements Exception {
+  RoadmapApiException(this.message, {this.status});
+  final String message;
+  final int? status;
+
+  @override
+  String toString() => 'RoadmapApiException(${status ?? '-'}): $message';
+}
+
+class RoadmapApi {
+  RoadmapApi({String? baseUrl, http.Client? client})
+      : _baseUrl = (baseUrl ?? _resolveBaseUrl()).trim().replaceAll(
+              RegExp(r'/+$'),
+              '',
+            ),
+        _client = client ?? http.Client();
+
+  final String _baseUrl;
+  final http.Client _client;
+
+  static String _resolveBaseUrl() {
+    const fromDefine = String.fromEnvironment(
+      'NOETICA_BACKEND_URL',
+      defaultValue: '',
+    );
+    if (fromDefine.isNotEmpty) return fromDefine;
+    if (kIsWeb) return _kDefaultBackendUrl;
+    try {
+      if (Platform.isAndroid) {
+        return _kDefaultBackendUrl;
+      }
+    } catch (_) {}
+    return _kDefaultBackendUrl;
+  }
+
+  String get baseUrl => _baseUrl;
+
+  Future<RoadmapResult> generate({
+    required String goal,
+    required UserProfile? profile,
+    required List<LifeAxis> axes,
+    int horizonDays = 30,
+    int taskCount = 6,
+  }) async {
+    final uri = Uri.parse('$_baseUrl/roadmap/generate');
+    final payload = {
+      'goal': goal,
+      'profile': {
+        'name': profile?.name ?? '',
+        'aspiration': profile?.aspiration ?? '',
+        'pain_point': profile?.painPoint ?? '',
+        'weekly_hours': profile?.weeklyHours ?? 5,
+      },
+      'axes': [
+        for (final a in axes)
+          {'id': a.id, 'name': a.name, 'symbol': a.symbol},
+      ],
+      'horizon_days': horizonDays,
+      'task_count': taskCount,
+    };
+
+    http.Response response;
+    try {
+      response = await _client
+          .post(
+            uri,
+            headers: const {'Content-Type': 'application/json'},
+            body: jsonEncode(payload),
+          )
+          .timeout(const Duration(seconds: 60));
+    } catch (e) {
+      throw RoadmapApiException('Не удалось связаться с сервером: $e');
+    }
+
+    if (response.statusCode >= 400) {
+      String message = response.body;
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map && decoded['detail'] is String) {
+          message = decoded['detail'] as String;
+        }
+      } catch (_) {}
+      throw RoadmapApiException(message, status: response.statusCode);
+    }
+
+    final Map<String, dynamic> json;
+    try {
+      json = jsonDecode(response.body) as Map<String, dynamic>;
+    } catch (e) {
+      throw RoadmapApiException('Сервер вернул некорректный JSON: $e');
+    }
+
+    final now = DateTime.now();
+    final tasks = <RoadmapDraft>[];
+    final raw = (json['tasks'] as List?) ?? const [];
+    for (final item in raw) {
+      if (item is! Map) continue;
+      final title = (item['title'] as String?)?.trim() ?? '';
+      if (title.isEmpty) continue;
+      final body = (item['body'] as String?)?.trim() ?? '';
+      final xp = (item['xp'] as num?)?.toInt() ?? 20;
+      final axisIds = ((item['axis_ids'] as List?) ?? const [])
+          .whereType<String>()
+          .toList();
+      final dueDays = (item['due_in_days'] as num?)?.toInt();
+      final due = dueDays == null
+          ? null
+          : DateTime(now.year, now.month, now.day)
+              .add(Duration(days: dueDays.clamp(0, 365)));
+      tasks.add(
+        RoadmapDraft(
+          title: title,
+          body: body,
+          axisIds: axisIds,
+          xp: xp.clamp(5, 100),
+          dueAt: due,
+        ),
+      );
+    }
+
+    return RoadmapResult(
+      model: (json['model'] as String?) ?? 'unknown',
+      summary: (json['summary'] as String?)?.trim() ?? '',
+      tasks: tasks,
+    );
+  }
+}

@@ -4,6 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models.dart';
 import '../../providers.dart';
 import '../../theme/app_theme.dart';
+import '../onboarding/questionnaire_screen.dart';
+import '../roadmap/roadmap_screen.dart';
+import 'axes_editor_screen.dart';
 import 'pentagon_painter.dart';
 
 class SelfScreen extends ConsumerWidget {
@@ -13,12 +16,41 @@ class SelfScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final palette = context.palette;
     final scoresAsync = ref.watch(scoresProvider);
+    final profile = ref.watch(profileProvider).valueOrNull;
+    final hasName = profile != null && profile.name.isNotEmpty;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Я'),
-        actions: const [
-          Padding(
+        title: Text(hasName ? profile.name : 'Я'),
+        actions: [
+          IconButton(
+            tooltip: 'Оси',
+            icon: const Icon(Icons.tune),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const AxesEditorScreen(),
+                ),
+              );
+            },
+          ),
+          IconButton(
+            tooltip: 'Профиль',
+            icon: const Icon(Icons.person_outline),
+            onPressed: () {
+              if (profile == null) return;
+              final navigator = Navigator.of(context);
+              navigator.push(
+                MaterialPageRoute(
+                  builder: (_) => QuestionnaireScreen(
+                    existing: profile,
+                    onDone: () => navigator.pop(),
+                  ),
+                ),
+              );
+            },
+          ),
+          const Padding(
             padding: EdgeInsets.only(right: 16),
             child: Center(child: _Streak()),
           ),
@@ -65,7 +97,22 @@ class SelfScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 12),
               for (final s in scores) _AxisTile(score: s),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const RoadmapScreen(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.auto_awesome),
+                label: const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: Text('Сгенерировать план'),
+                ),
+              ),
+              const SizedBox(height: 16),
               Text(
                 'Очки начисляются за выполнение задач, привязанных к осям. Со временем затухают — пентаграмма отражает тебя за последний месяц.',
                 style: Theme.of(context)

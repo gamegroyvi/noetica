@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../data/models.dart';
+import '../../data/profile.dart';
 import '../../providers.dart';
 import '../../theme/app_theme.dart';
 
@@ -21,7 +22,14 @@ const _presets = <Map<String, String>>[
 ];
 
 class OnboardingScreen extends ConsumerStatefulWidget {
-  const OnboardingScreen({super.key});
+  const OnboardingScreen({
+    super.key,
+    this.seedPriorities = const <String>[],
+  });
+
+  /// Priority preset IDs from the questionnaire. When provided, the axis
+  /// drafts are seeded from these instead of the static default preset.
+  final List<String> seedPriorities;
 
   @override
   ConsumerState<OnboardingScreen> createState() => _OnboardingScreenState();
@@ -34,9 +42,33 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   @override
   void initState() {
     super.initState();
-    _drafts = _presets
-        .map((p) => _AxisDraft(name: p['name']!, symbol: p['symbol']!))
+    _drafts = _initialDrafts(widget.seedPriorities);
+  }
+
+  static List<_AxisDraft> _initialDrafts(List<String> seedIds) {
+    if (seedIds.isEmpty) {
+      return _presets
+          .map((p) => _AxisDraft(name: p['name']!, symbol: p['symbol']!))
+          .toList();
+    }
+    final byId = {for (final p in priorityPresets) p.id: p};
+    final seeded = <_AxisDraft>[];
+    for (final id in seedIds) {
+      final preset = byId[id];
+      if (preset == null) continue;
+      seeded.add(_AxisDraft(
+        name: preset.axisName,
+        symbol: preset.axisSymbol,
+      ));
+    }
+    final padding = _presets
+        .where((p) => !seeded.any((d) => d.name == p['name']))
         .toList();
+    while (seeded.length < 3 && padding.isNotEmpty) {
+      final p = padding.removeAt(0);
+      seeded.add(_AxisDraft(name: p['name']!, symbol: p['symbol']!));
+    }
+    return seeded;
   }
 
   void _addAxis() {
@@ -101,12 +133,16 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               ),
               const SizedBox(height: 24),
               Text(
-                'Опиши свои оси роста',
+                widget.seedPriorities.isEmpty
+                    ? 'Опиши свои оси роста'
+                    : 'Подтверди оси роста',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 8),
               Text(
-                'От 3 до 8 направлений, по которым ты хочешь расти. К ним будут привязываться задачи и заметки. Их можно изменить позже.',
+                widget.seedPriorities.isEmpty
+                    ? 'От 3 до 8 направлений, по которым ты хочешь расти. К ним будут привязываться задачи и заметки. Их можно изменить позже.'
+                    : 'На основе твоих приоритетов. Переименуй, убери лишние или добавь свои. От 3 до 8.',
                 style: Theme.of(context)
                     .textTheme
                     .bodyMedium
