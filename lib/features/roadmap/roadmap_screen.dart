@@ -103,6 +103,7 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
           dueAt: t.dueAt,
           xp: t.xp,
           axisIds: t.axisIds,
+          axisWeights: t.axisWeights,
         );
         imported++;
       }

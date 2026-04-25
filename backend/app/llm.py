@@ -145,10 +145,21 @@ def _user_prompt(
         '  "tasks": [\n'
         '    {"title": "str", "body": "str (optional)", '
         '"steps": ["str", ...optional], '
-        '"axis_ids": ["axis-id"], "xp": 10-60, '
+        '"axis_ids": ["axis-id"], '
+        '"axis_weights": {"axis-id": 0.0..1.0, ...}, '
+        '"xp": 10-60, '
         '"due_in_days": 0-' + str(horizon_days) + "}\n"
         "  ]\n"
         "}"
+        "\n\nIMPORTANT about axis_weights: include this object whenever a "
+        "task contributes UNEQUALLY to its axes. Keys must match `axis_ids` "
+        "exactly. Values are non-negative numbers; their ratio is what "
+        "matters (the client normalises). Example: a 'design and run a "
+        "5-km race' task linked to 'Body' (0.7) and 'Discipline' (0.3) "
+        "tells the client to give 70% of the XP to Body, 30% to "
+        "Discipline. If you OMIT axis_weights, the client splits XP "
+        "evenly across all linked axes — only do that if the task really "
+        "is balanced."
     )
 
     sections = [
@@ -487,12 +498,30 @@ def _normalize_tasks(
             if isinstance(s, (str, int, float)) and str(s).strip()
         ][:8]
 
+        # Optional per-axis XP split. Drop keys that aren't in `filtered`,
+        # coerce to float, drop non-positives. Keep raw ratios — the
+        # client normalises so absolute scale is irrelevant.
+        raw_weights = item.get("axis_weights") or {}
+        weights: dict[str, float] = {}
+        if isinstance(raw_weights, dict):
+            allowed = set(filtered)
+            for k, v in raw_weights.items():
+                if not isinstance(k, str) or k not in allowed:
+                    continue
+                try:
+                    fv = float(v)
+                except (TypeError, ValueError):
+                    continue
+                if fv > 0:
+                    weights[k] = fv
+
         out.append(
             RoadmapTask(
                 title=title[:120],
                 body=body[:400],
                 steps=steps,
                 axis_ids=filtered,
+                axis_weights=weights,
                 xp=xp,
                 due_in_days=due_in_days,
             )

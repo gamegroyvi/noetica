@@ -185,13 +185,22 @@ class NoeticaRepository {
       whereArgs: ids,
     );
     final byEntry = <String, List<String>>{};
+    final weightsByEntry = <String, Map<String, double>>{};
     for (final l in links) {
-      byEntry
-          .putIfAbsent(l['entry_id']! as String, () => [])
-          .add(l['axis_id']! as String);
+      final eid = l['entry_id']! as String;
+      final aid = l['axis_id']! as String;
+      byEntry.putIfAbsent(eid, () => []).add(aid);
+      final w = l['weight'];
+      if (w is num && w != 1.0) {
+        weightsByEntry.putIfAbsent(eid, () => {})[aid] = w.toDouble();
+      }
     }
     return rows
-        .map((r) => m.Entry.fromMap(r, axisIds: byEntry[r['id']] ?? const []))
+        .map((r) => m.Entry.fromMap(
+              r,
+              axisIds: byEntry[r['id']] ?? const [],
+              axisWeights: weightsByEntry[r['id']] ?? const {},
+            ))
         .toList();
   }
 
@@ -205,9 +214,17 @@ class NoeticaRepository {
       await txn
           .delete('entry_axes', where: 'entry_id = ?', whereArgs: [entry.id]);
       for (final aid in entry.axisIds) {
+        // If explicit weights were supplied, persist them; otherwise leave
+        // the column at its DEFAULT 1.0 (interpreted as "even split" at
+        // score time).
+        final weight = entry.axisWeights[aid];
         await txn.insert(
           'entry_axes',
-          {'entry_id': entry.id, 'axis_id': aid},
+          {
+            'entry_id': entry.id,
+            'axis_id': aid,
+            if (weight != null) 'weight': weight,
+          },
           conflictAlgorithm: ConflictAlgorithm.ignore,
         );
       }
@@ -225,6 +242,7 @@ class NoeticaRepository {
     DateTime? dueAt,
     int xp = 10,
     List<String> axisIds = const [],
+    Map<String, double> axisWeights = const {},
   }) {
     final now = DateTime.now();
     final entry = m.Entry(
@@ -237,6 +255,7 @@ class NoeticaRepository {
       dueAt: dueAt,
       xp: xp,
       axisIds: axisIds,
+      axisWeights: axisWeights,
     );
     return upsertEntry(entry);
   }
@@ -465,7 +484,14 @@ class NoeticaRepository {
   // ---------- scores ----------
 
   /// Compute a 0..100 axis score based on completed tasks within
-  /// [_xpDecayWindow]. Linear decay: contribution = xp * (1 - age/window).
+  /// [_xpDecayWindow].
+  ///
+  /// Each task's XP is split across its attached axes via *normalised*
+  /// weights — i.e. the per-axis contribution is `xp * decayFactor *
+  /// weight / sumOfWeightsForThisTask`. With the default `weight = 1.0`
+  /// this is exactly an even 1/N split, which is the deterministic
+  /// "fair share" the user asked for. LLM-generated tasks ship explicit
+  /// weights; manual tasks fall through to the even split.
   Future<List<m.AxisScore>> computeScores() async {
     final axes = await listAxes();
     if (axes.isEmpty) return const [];
@@ -473,7 +499,11 @@ class NoeticaRepository {
     final cutoff = now.subtract(_xpDecayWindow).millisecondsSinceEpoch;
     final rows = await _db.raw.rawQuery(
       '''
-      SELECT ea.axis_id AS axis_id, e.completed_at AS completed_at, e.xp AS xp
+      SELECT ea.entry_id AS entry_id,
+             ea.axis_id AS axis_id,
+             ea.weight AS weight,
+             e.completed_at AS completed_at,
+             e.xp AS xp
       FROM entries e
       JOIN entry_axes ea ON ea.entry_id = e.id
       WHERE e.kind = ?
@@ -483,16 +513,35 @@ class NoeticaRepository {
       ''',
       [m.EntryKind.task.name, cutoff],
     );
-    final raw = <String, double>{for (final a in axes) a.id: 0.0};
+    final knownAxisIds = {for (final a in axes) a.id};
+
+    // Group rows by entry so we can normalise weights per task.
+    final perEntry = <String, List<Map<String, Object?>>>{};
     for (final r in rows) {
-      final axisId = r['axis_id']! as String;
-      if (!raw.containsKey(axisId)) continue;
-      final completedAt = r['completed_at']! as int;
-      final xp = (r['xp'] as int?) ?? 0;
+      final eid = r['entry_id']! as String;
+      perEntry.putIfAbsent(eid, () => []).add(r);
+    }
+
+    final raw = <String, double>{for (final a in axes) a.id: 0.0};
+    for (final entry in perEntry.values) {
+      // Filter to known axes only — drops orphan link rows from deleted
+      // axes that haven't been hard-deleted yet.
+      final live =
+          entry.where((r) => knownAxisIds.contains(r['axis_id'])).toList();
+      if (live.isEmpty) continue;
+      final totalWeight =
+          live.fold<double>(0, (s, r) => s + ((r['weight'] as num?) ?? 1.0));
+      if (totalWeight <= 0) continue;
+      final completedAt = live.first['completed_at']! as int;
+      final xp = (live.first['xp'] as int?) ?? 0;
       final ageMs = now.millisecondsSinceEpoch - completedAt;
-      final factor = 1.0 - (ageMs / _xpDecayWindow.inMilliseconds);
-      if (factor <= 0) continue;
-      raw[axisId] = (raw[axisId] ?? 0) + xp * factor;
+      final decay = 1.0 - (ageMs / _xpDecayWindow.inMilliseconds);
+      if (decay <= 0) continue;
+      for (final r in live) {
+        final axisId = r['axis_id']! as String;
+        final w = ((r['weight'] as num?) ?? 1.0) / totalWeight;
+        raw[axisId] = (raw[axisId] ?? 0) + xp * decay * w;
+      }
     }
     return axes.map((axis) {
       final r = raw[axis.id] ?? 0.0;

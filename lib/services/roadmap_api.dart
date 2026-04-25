@@ -22,11 +22,14 @@ class RoadmapDraft {
     required this.axisIds,
     required this.xp,
     this.dueAt,
+    this.axisWeights = const {},
   });
 
   final String title;
   final String body;
   final List<String> axisIds;
+  /// Optional explicit weights; keys subset of [axisIds]. Empty ⇒ even split.
+  final Map<String, double> axisWeights;
   final int xp;
   final DateTime? dueAt;
 
@@ -34,6 +37,7 @@ class RoadmapDraft {
     String? title,
     String? body,
     List<String>? axisIds,
+    Map<String, double>? axisWeights,
     int? xp,
     DateTime? dueAt,
     bool clearDue = false,
@@ -42,6 +46,7 @@ class RoadmapDraft {
         title: title ?? this.title,
         body: body ?? this.body,
         axisIds: axisIds ?? this.axisIds,
+        axisWeights: axisWeights ?? this.axisWeights,
         xp: xp ?? this.xp,
         dueAt: clearDue ? null : (dueAt ?? this.dueAt),
       );
@@ -205,6 +210,28 @@ class RoadmapApi {
       final axisIds = ((item['axis_ids'] as List?) ?? const [])
           .whereType<String>()
           .toList();
+      // Optional axis_weights: { axisId: number } where the model tells
+      // us how much of the task's XP belongs to each axis. Server has
+      // already filtered to known axisIds; we just coerce + drop zeros.
+      final rawWeights = item['axis_weights'];
+      final axisWeights = <String, double>{};
+      if (rawWeights is Map) {
+        final allowed = axisIds.toSet();
+        for (final e in rawWeights.entries) {
+          final k = e.key;
+          if (k is! String || !allowed.contains(k)) continue;
+          final v = e.value;
+          double? parsed;
+          if (v is num) {
+            parsed = v.toDouble();
+          } else if (v is String) {
+            parsed = double.tryParse(v);
+          }
+          if (parsed != null && parsed > 0) {
+            axisWeights[k] = parsed;
+          }
+        }
+      }
       final dueDays = (item['due_in_days'] as num?)?.toInt();
       final due = dueDays == null
           ? null
@@ -215,6 +242,7 @@ class RoadmapApi {
           title: title,
           body: body,
           axisIds: axisIds,
+          axisWeights: axisWeights,
           xp: xp.clamp(5, 100),
           dueAt: due,
         ),

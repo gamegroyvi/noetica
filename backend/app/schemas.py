@@ -69,6 +69,14 @@ class RoadmapTask(BaseModel):
     # checkboxes inside the task body.
     steps: list[str] = Field(default_factory=list)
     axis_ids: list[str] = Field(default_factory=list)
+    # Optional explicit XP split across the task's axes. Keys are a
+    # subset of `axis_ids`; values are non-negative weights. The client
+    # normalises them to sum to 1.0 at score time, so absolute scale
+    # doesn't matter — only ratios. If empty, the client falls back to
+    # an even 1/N split which is the deterministic default the user
+    # explicitly asked for ("a 40 XP task split evenly between 2 axes
+    # = 20 each").
+    axis_weights: dict[str, float] = Field(default_factory=dict)
     xp: int = Field(ge=5, le=100)
     due_in_days: int | None = Field(default=None, ge=0, le=365)
 

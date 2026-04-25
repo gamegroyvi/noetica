@@ -50,6 +50,7 @@ void main() {
             CREATE TABLE entry_axes (
               entry_id TEXT NOT NULL REFERENCES entries(id) ON DELETE CASCADE,
               axis_id TEXT NOT NULL REFERENCES axes(id) ON DELETE CASCADE,
+              weight REAL NOT NULL DEFAULT 1.0,
               PRIMARY KEY (entry_id, axis_id)
             )
           ''');

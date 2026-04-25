@@ -14,7 +14,10 @@ class NoeticaDb {
   Database get raw => _db;
 
   /// v3 adds `task_reflections` for the post-completion reflection sheet.
-  static const int currentSchemaVersion = 3;
+  /// v4 adds `entry_axes.weight` so XP can be split deterministically
+  /// across the axes a task touches (LLM-generated tasks ship explicit
+  /// weights; manually-tagged tasks fall back to an even 1/N split).
+  static const int currentSchemaVersion = 4;
 
   static Future<NoeticaDb> open() async {
     final path = await _databasePath();
@@ -75,6 +78,7 @@ class NoeticaDb {
       CREATE TABLE entry_axes (
         entry_id TEXT NOT NULL REFERENCES entries(id) ON DELETE CASCADE,
         axis_id TEXT NOT NULL REFERENCES axes(id) ON DELETE CASCADE,
+        weight REAL NOT NULL DEFAULT 1.0,
         PRIMARY KEY (entry_id, axis_id)
       )
     ''');
@@ -129,6 +133,14 @@ class NoeticaDb {
     }
     if (oldVersion < 3) {
       await _createReflectionsTable(db);
+    }
+    if (oldVersion < 4) {
+      // SQLite ALTER TABLE ADD COLUMN with a literal default is allowed.
+      // Existing rows get weight = 1.0; the score routine normalises so
+      // that's interpreted as an even 1/N split, matching legacy
+      // behaviour on the displayed pentagon.
+      await db.execute(
+          'ALTER TABLE entry_axes ADD COLUMN weight REAL NOT NULL DEFAULT 1.0');
     }
   }
 

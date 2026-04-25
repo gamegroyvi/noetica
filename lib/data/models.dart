@@ -94,6 +94,7 @@ class Entry {
     this.completedAt,
     this.deletedAt,
     this.axisIds = const [],
+    this.axisWeights = const {},
   });
 
   final String id;
@@ -111,6 +112,12 @@ class Entry {
 
   final List<String> axisIds;
 
+  /// Optional per-axis split of this task's XP. Keys are subset of
+  /// [axisIds]; values normalised to sum to 1.0 at score time. Empty
+  /// map ⇒ fall back to even 1/N split, which matches every legacy
+  /// task (including v3-and-earlier rows after migration).
+  final Map<String, double> axisWeights;
+
   bool get isTask => kind == EntryKind.task;
   bool get isCompleted => completedAt != null;
   bool get isDeleted => deletedAt != null;
@@ -125,6 +132,7 @@ class Entry {
     DateTime? deletedAt,
     int? xp,
     List<String>? axisIds,
+    Map<String, double>? axisWeights,
     bool clearDue = false,
     bool clearCompleted = false,
     bool clearDeleted = false,
@@ -142,6 +150,7 @@ class Entry {
         deletedAt: clearDeleted ? null : (deletedAt ?? this.deletedAt),
         xp: xp ?? this.xp,
         axisIds: axisIds ?? this.axisIds,
+        axisWeights: axisWeights ?? this.axisWeights,
       );
 
   Map<String, Object?> toMap() => {
@@ -160,6 +169,7 @@ class Entry {
   factory Entry.fromMap(
     Map<String, Object?> m, {
     List<String> axisIds = const [],
+    Map<String, double> axisWeights = const {},
   }) =>
       Entry(
         id: m['id']! as String,
@@ -182,6 +192,7 @@ class Entry {
             : DateTime.fromMillisecondsSinceEpoch(m['deleted_at']! as int),
         xp: (m['xp'] as int?) ?? 10,
         axisIds: axisIds,
+        axisWeights: axisWeights,
       );
 }
 
