@@ -44,6 +44,19 @@ class NotificationsService {
       _supported = false;
       return;
     }
+    // flutter_local_notifications only ships meaningful schedulers on
+    // Android/iOS/macOS. On Windows/Linux/Fuchsia the platform channel
+    // exists but scheduling silently no-ops, which leaves the user
+    // confused why "morning reminder" never fires. Treat those as
+    // unsupported up-front and surface that in Settings.
+    final platform = defaultTargetPlatform;
+    final platformSupported = platform == TargetPlatform.android ||
+        platform == TargetPlatform.iOS ||
+        platform == TargetPlatform.macOS;
+    if (!platformSupported) {
+      _supported = false;
+      return;
+    }
     try {
       tzdata.initializeTimeZones();
       try {

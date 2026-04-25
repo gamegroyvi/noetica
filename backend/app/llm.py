@@ -30,6 +30,14 @@ class LlmUpstreamError(RuntimeError):
         self.status = status
 
 
+_LEVEL_LABELS = {
+    "novice": "novice (just starting, needs basics & gentle pace)",
+    "learning": "learning (some exposure, ready for guided practice)",
+    "confident": "confident (mid-level, ready for real projects & deeper concepts)",
+    "expert": "expert (senior, needs leverage / depth / architecture, NOT tutorials)",
+}
+
+
 def _system_prompt(task_count: int, horizon_days: int) -> str:
     return (
         "You are Noetica, a mentor that turns a personal growth goal into a "
@@ -42,8 +50,28 @@ def _system_prompt(task_count: int, horizon_days: int) -> str:
         "Each task.xp must be 10..60 and reflect difficulty / effort. "
         "Link each task to 1-2 axis_ids from the provided axes (use the axis "
         "'id' field, never invent new ids). Keep titles short and imperative "
-        "(<=80 chars). Use 'body' for one-line context only when it adds "
-        "information. Spread due_in_days so tasks are not all on day 0."
+        "(<=80 chars). Use 'body' for a one-paragraph context. Spread "
+        "due_in_days so tasks are not all on day 0.\n\n"
+        "CALIBRATE DIFFICULTY TO THE USER'S LEVEL.\n"
+        "  - novice: assume zero prior knowledge. Tasks like 'install X', "
+        "'pass intro tutorial', 'do 5 exercises from chapter 1'. Avoid "
+        "jargon.\n"
+        "  - learning: short guided exercises, small projects scoped to "
+        "1-2 hours each.\n"
+        "  - confident: real projects with concrete deliverables (e.g. "
+        "'ship a CRUD app with Riverpod state management').\n"
+        "  - expert: NO tutorials, NO 'learn the basics'. Architecture, "
+        "performance, mentorship, OSS contributions, design docs, public "
+        "talks, optimisation. If a task sounds like it belongs in a "
+        "bootcamp, you have failed.\n\n"
+        "USE STEPS WHEN HELPFUL. If a task is bigger than ~30 minutes or "
+        "spans multiple sub-actions, fill `steps` with 2-5 concrete "
+        "sub-steps the user will tick off. Examples:\n"
+        '  - {"title": "Освоить state management в Flutter", '
+        '"steps": ["Прочитать главу про Riverpod", "Сделать пример '
+        'TodoApp с Riverpod", "Добавить тесты на провайдеры"]}\n'
+        "Skip `steps` (or leave empty) for trivial one-liners like "
+        '"Сходить на пробежку 3км".'
     )
 
 
@@ -66,12 +94,18 @@ def _user_prompt(
     if profile.pain_point:
         profile_lines.append(f"Pain point: {profile.pain_point}")
     profile_lines.append(f"Weekly hours available: {profile.weekly_hours}")
+    if profile.interest_levels:
+        profile_lines.append("Self-assessed levels:")
+        for interest, lvl in profile.interest_levels.items():
+            label = _LEVEL_LABELS.get(lvl, lvl)
+            profile_lines.append(f"  - {interest}: {label}")
 
     schema = (
         '{\n'
         '  "summary": "one-sentence framing of the plan",\n'
         '  "tasks": [\n'
         '    {"title": "str", "body": "str (optional)", '
+        '"steps": ["str", ...optional], '
         '"axis_ids": ["axis-id"], "xp": 10-60, '
         '"due_in_days": 0-' + str(horizon_days) + "}\n"
         "  ]\n"
@@ -218,10 +252,31 @@ def _axes_system_prompt(count: int) -> str:
     return (
         "You are Noetica, a personal growth designer. "
         "Given a user's free-form interests and aspirations, design "
-        f"{count} unique personal growth AXES tailored to THEIR life — do not "
-        "fall back to generic categories like 'Body', 'Mind', 'Family' unless "
-        "the user explicitly mentioned them. Each axis is a vertex of their "
-        "personal pentagon and will track XP from completed tasks. "
+        f"EXACTLY {count} personal growth AXES tailored to THEIR life. "
+        "Each axis is a vertex of their personal pentagon and will track XP "
+        "from completed tasks. "
+        "\n\n"
+        "CRITICAL RULES:\n"
+        "1. **No overlap.** Axes must cover DIFFERENT life domains. Do NOT "
+        "create two axes that describe the same skill, profession, or "
+        "activity from different angles. Examples of FORBIDDEN duplicates:\n"
+        "   - 'Programming' + 'Software Testing' (same domain — merge into "
+        "'Engineering' or 'Crafts')\n"
+        "   - 'Running' + 'Marathon Training' (merge into 'Body')\n"
+        "   - 'Coding' + 'Open Source' (merge — open source IS coding)\n"
+        "   If the user listed two related interests, MERGE them under a "
+        "single broader axis and mention both in the description.\n"
+        "2. **Cover the whole life, not just the goal.** Even if the user "
+        "only mentions one ambition, the pentagon needs balance — pick "
+        "axes from at least 3 different domains: craft/profession, body, "
+        "mind/learning, social/family, finance, creativity, recovery/play. "
+        "A user who only said 'become a Flutter QA engineer' still has a "
+        "body, relationships, and rest needs.\n"
+        "3. **No generic fallback.** Do NOT default to 'Body / Mind / "
+        "Family / Work / Soul' unless the user literally listed those. "
+        "Names must reflect THEIR phrasing.\n"
+        "4. **Distinct symbols.** Each symbol used at most once.\n"
+        "\n"
         "Return STRICT JSON in the SAME language as the user's interests "
         "(Russian if Russian, English if English, etc.). Do not wrap in markdown fences. "
         "Each axis must have: a 1-2 word name (<=24 chars), a single-character "
@@ -243,8 +298,16 @@ def _axes_user_prompt(
         profile_lines.append(f"Pain point: {profile.pain_point}")
     profile_lines.append(f"Weekly hours available: {profile.weekly_hours}")
     if interests:
-        interests_block = "INTERESTS / DESIRED GROWTH AREAS (free-form):\n" + "\n".join(
-            f"  - {s}" for s in interests
+        lines = []
+        for s in interests:
+            lvl = profile.interest_levels.get(s)
+            if lvl:
+                lines.append(f"  - {s} [{lvl}]")
+            else:
+                lines.append(f"  - {s}")
+        interests_block = (
+            "INTERESTS / DESIRED GROWTH AREAS (free-form, with self-assessed level):\n"
+            + "\n".join(lines)
         )
     else:
         interests_block = (
@@ -348,10 +411,20 @@ def _normalize_tasks(
             raw_axes = []
         filtered = [aid for aid in raw_axes if isinstance(aid, str) and aid in axis_ids]
 
+        raw_steps = item.get("steps") or []
+        if not isinstance(raw_steps, list):
+            raw_steps = []
+        steps = [
+            str(s).strip()[:200]
+            for s in raw_steps
+            if isinstance(s, (str, int, float)) and str(s).strip()
+        ][:8]
+
         out.append(
             RoadmapTask(
                 title=title[:120],
                 body=body[:400],
+                steps=steps,
                 axis_ids=filtered,
                 xp=xp,
                 due_in_days=due_in_days,

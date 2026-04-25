@@ -18,6 +18,11 @@ class ProfileInput(BaseModel):
     aspiration: str = ""
     pain_point: str = ""
     weekly_hours: int = Field(default=5, ge=0, le=168)
+    # Self-assessed level per interest. Keys are interest strings (matching
+    # `AxesRequest.interests`); values are one of "novice"/"learning"/
+    # "confident"/"expert". The LLM uses this to calibrate task difficulty
+    # so a senior dev doesn't get "install Flutter" tasks.
+    interest_levels: dict[str, str] = Field(default_factory=dict)
 
 
 class RoadmapRequest(BaseModel):
@@ -40,6 +45,12 @@ class RoadmapRequest(BaseModel):
 class RoadmapTask(BaseModel):
     title: str = Field(min_length=1, max_length=120)
     body: str = ""
+    # Optional ordered checklist of concrete sub-steps the LLM may include
+    # when a task warrants more guidance than a single sentence (e.g.
+    # "Read State Management chapter" → ["watch lecture", "do exercise",
+    # "build mini-app"]). The Flutter UI may render these as bullet
+    # checkboxes inside the task body.
+    steps: list[str] = Field(default_factory=list)
     axis_ids: list[str] = Field(default_factory=list)
     xp: int = Field(ge=5, le=100)
     due_in_days: int | None = Field(default=None, ge=0, le=365)

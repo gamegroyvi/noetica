@@ -29,11 +29,29 @@ const List<String> suggestedInterests = <String>[
   'Ремесла',
 ];
 
+/// Self-assessed proficiency on an interest. Used by the LLM to pick task
+/// difficulty (e.g. an "expert" Flutter dev gets architecture tasks, a
+/// "novice" gets tutorial-style tasks).
+const List<String> kInterestLevels = <String>[
+  'novice',
+  'learning',
+  'confident',
+  'expert',
+];
+
+const Map<String, String> kInterestLevelLabels = <String, String>{
+  'novice': 'Новичок',
+  'learning': 'Учусь',
+  'confident': 'Уверенно',
+  'expert': 'Эксперт',
+};
+
 class UserProfile {
   const UserProfile({
     required this.name,
     required this.aspiration,
     required this.interests,
+    required this.interestLevels,
     required this.painPoint,
     required this.weeklyHours,
     required this.updatedAt,
@@ -47,6 +65,10 @@ class UserProfile {
   /// Free-form list of interests / desired growth areas the user typed in
   /// the questionnaire. Backend uses these to design personalised axes.
   final List<String> interests;
+
+  /// Self-assessed level per interest. Keys must match `interests`; values
+  /// are one of `kInterestLevels`. If a key is missing, treat as 'novice'.
+  final Map<String, String> interestLevels;
   final String painPoint;
   final int weeklyHours;
   final DateTime updatedAt;
@@ -56,6 +78,7 @@ class UserProfile {
         if (birthdate != null) 'birthdate': birthdate!.toIso8601String(),
         'aspiration': aspiration,
         'interests': interests,
+        'interestLevels': interestLevels,
         'painPoint': painPoint,
         'weeklyHours': weeklyHours,
         'updatedAt': updatedAt.toIso8601String(),
@@ -71,6 +94,12 @@ class UserProfile {
       ...rawInterests.whereType<String>(),
       if (rawInterests.isEmpty) ...rawPriorities.whereType<String>(),
     ];
+    final rawLevels = (json['interestLevels'] as Map?) ?? const {};
+    final levels = <String, String>{
+      for (final e in rawLevels.entries)
+        if (e.key is String && e.value is String && kInterestLevels.contains(e.value))
+          e.key as String: e.value as String,
+    };
     return UserProfile(
       name: (json['name'] as String?) ?? '',
       birthdate: (json['birthdate'] as String?) != null
@@ -78,6 +107,7 @@ class UserProfile {
           : null,
       aspiration: (json['aspiration'] as String?) ?? '',
       interests: mergedInterests,
+      interestLevels: levels,
       painPoint: (json['painPoint'] as String?) ?? '',
       weeklyHours: (json['weeklyHours'] as num?)?.toInt() ?? 5,
       updatedAt: DateTime.tryParse((json['updatedAt'] as String?) ?? '') ??
@@ -91,6 +121,7 @@ class UserProfile {
     bool clearBirthdate = false,
     String? aspiration,
     List<String>? interests,
+    Map<String, String>? interestLevels,
     String? painPoint,
     int? weeklyHours,
     DateTime? updatedAt,
@@ -100,6 +131,7 @@ class UserProfile {
       birthdate: clearBirthdate ? null : (birthdate ?? this.birthdate),
       aspiration: aspiration ?? this.aspiration,
       interests: interests ?? this.interests,
+      interestLevels: interestLevels ?? this.interestLevels,
       painPoint: painPoint ?? this.painPoint,
       weeklyHours: weeklyHours ?? this.weeklyHours,
       updatedAt: updatedAt ?? this.updatedAt,

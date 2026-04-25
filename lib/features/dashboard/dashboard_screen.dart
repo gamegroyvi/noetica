@@ -23,18 +23,7 @@ class DashboardScreen extends ConsumerWidget {
     final scoresAsync = ref.watch(scoresProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Сейчас'),
-        actions: [
-          IconButton(
-            tooltip: 'Все задачи',
-            icon: const Icon(Icons.checklist_outlined),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const TasksScreen()),
-            ),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Сейчас')),
       body: entriesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('$e')),

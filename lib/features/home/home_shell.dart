@@ -6,6 +6,7 @@ import '../dashboard/dashboard_screen.dart';
 import '../entry/entry_editor_sheet.dart';
 import '../notes/notes_screen.dart';
 import '../self/self_screen.dart';
+import '../tasks/tasks_screen.dart';
 
 class HomeShell extends ConsumerStatefulWidget {
   const HomeShell({super.key});
@@ -22,6 +23,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     final palette = context.palette;
     const pages = [
       DashboardScreen(),
+      TasksScreen(),
       SelfScreen(),
       NotesScreen(),
     ];
@@ -45,14 +47,19 @@ class _HomeShellState extends ConsumerState<HomeShell> {
               label: 'Сейчас',
             ),
             NavigationDestination(
+              icon: Icon(Icons.checklist_outlined),
+              selectedIcon: Icon(Icons.checklist),
+              label: 'Задачи',
+            ),
+            NavigationDestination(
               icon: Icon(Icons.auto_graph_outlined),
               selectedIcon: Icon(Icons.auto_graph),
               label: 'Я',
             ),
             NavigationDestination(
-              icon: Icon(Icons.notes_outlined),
-              selectedIcon: Icon(Icons.notes),
-              label: 'Заметки',
+              icon: Icon(Icons.bookmark_border_outlined),
+              selectedIcon: Icon(Icons.bookmark),
+              label: 'Журнал',
             ),
           ],
         ),

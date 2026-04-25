@@ -117,6 +117,7 @@ class RoadmapApi {
         'aspiration': profile?.aspiration ?? '',
         'pain_point': profile?.painPoint ?? '',
         'weekly_hours': profile?.weeklyHours ?? 5,
+        'interest_levels': profile?.interestLevels ?? const <String, String>{},
       },
       'axes': [
         for (final a in axes)
@@ -174,7 +175,20 @@ class RoadmapApi {
       if (item is! Map) continue;
       final title = (item['title'] as String?)?.trim() ?? '';
       if (title.isEmpty) continue;
-      final body = (item['body'] as String?)?.trim() ?? '';
+      var body = (item['body'] as String?)?.trim() ?? '';
+      final rawSteps = (item['steps'] as List?) ?? const [];
+      final steps = rawSteps
+          .whereType<String>()
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+      // Persist steps as a markdown checklist appended to the body. The
+      // app's note/task editor renders plain text, so this is the
+      // simplest way to surface the substeps without schema changes.
+      if (steps.isNotEmpty) {
+        final checklist = steps.map((s) => '- [ ] $s').join('\n');
+        body = body.isEmpty ? checklist : '$body\n\n$checklist';
+      }
       final xp = (item['xp'] as num?)?.toInt() ?? 20;
       final axisIds = ((item['axis_ids'] as List?) ?? const [])
           .whereType<String>()

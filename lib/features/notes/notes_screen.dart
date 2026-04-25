@@ -59,7 +59,7 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Заметки'),
+        title: const Text('Журнал'),
       ),
       body: Column(
         children: [
