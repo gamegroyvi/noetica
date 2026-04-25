@@ -77,6 +77,7 @@ class AxesApi {
         'aspiration': profile?.aspiration ?? '',
         'pain_point': profile?.painPoint ?? '',
         'weekly_hours': profile?.weeklyHours ?? 5,
+        'interest_levels': profile?.interestLevels ?? const <String, String>{},
       },
       'interests': interests,
       'count': count,

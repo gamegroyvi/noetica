@@ -5,6 +5,7 @@ import '../../data/models.dart';
 import '../../providers.dart';
 import '../../services/levels.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/brand_glyph.dart';
 import '../roadmap/roadmap_screen.dart';
 import '../settings/settings_screen.dart';
 import 'axes_editor_screen.dart';
@@ -24,6 +25,11 @@ class SelfScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        leading: const Padding(
+          padding: EdgeInsets.only(left: 16, top: 12, bottom: 12),
+          child: BrandGlyph(size: 24),
+        ),
+        leadingWidth: 48,
         title: Text(hasName ? profile.name : 'Я'),
         actions: [
           IconButton(

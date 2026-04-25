@@ -59,40 +59,49 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Заметки'),
+        title: const Text('Журнал'),
       ),
       body: Column(
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: Container(
+            child: DecoratedBox(
               decoration: BoxDecoration(
                 border: Border.all(color: palette.line),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(10),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Row(
                 children: [
-                  Icon(Icons.add, size: 18, color: palette.muted),
+                  const SizedBox(width: 12),
+                  Icon(Icons.edit_note, size: 20, color: palette.muted),
                   const SizedBox(width: 8),
                   Expanded(
                     child: TextField(
                       controller: _quickCtrl,
                       textInputAction: TextInputAction.done,
                       onSubmitted: (_) => _quickAdd(),
-                      decoration: const InputDecoration(
+                      // Strip ALL borders from the inner field — the
+                      // outer DecoratedBox draws the only visible frame.
+                      decoration: InputDecoration(
                         hintText: 'Быстрая заметка…',
+                        hintStyle: TextStyle(color: palette.muted),
                         border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        disabledBorder: InputBorder.none,
+                        errorBorder: InputBorder.none,
+                        focusedErrorBorder: InputBorder.none,
+                        filled: false,
                         isCollapsed: true,
                         contentPadding:
-                            EdgeInsets.symmetric(vertical: 14),
+                            const EdgeInsets.symmetric(vertical: 14),
                       ),
                     ),
                   ),
                   IconButton(
                     icon: Icon(
                       Icons.arrow_forward,
-                      color: palette.fg,
+                      color: _quickBusy ? palette.muted : palette.fg,
                       size: 20,
                     ),
                     onPressed: _quickBusy ? null : _quickAdd,
@@ -159,12 +168,29 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                   );
                 }
 
-                return ListView.separated(
+                // Notes are reverse-chronological (newest first), so for
+                // index `i > 0` the visual gap between notes[i-1] (above,
+                // newer) and notes[i] (below, older) is the time between
+                // their createdAt's. We render a small "+ 4 ч" label
+                // between them like a chat timeline.
+                return ListView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
-                  itemCount: notes.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
-                  itemBuilder: (_, i) =>
-                      EntryCard(entry: notes[i], axesById: axesById),
+                  itemCount: notes.length * 2 - 1,
+                  itemBuilder: (_, i) {
+                    if (i.isOdd) {
+                      final newer = notes[i ~/ 2];
+                      final older = notes[i ~/ 2 + 1];
+                      return GapDivider(
+                        from: older.createdAt,
+                        to: newer.createdAt,
+                      );
+                    }
+                    final note = notes[i ~/ 2];
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: EntryCard(entry: note, axesById: axesById),
+                    );
+                  },
                 );
               },
             ),

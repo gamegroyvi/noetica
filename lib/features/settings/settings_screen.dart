@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -268,12 +267,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               child: LinearProgressIndicator(),
             )
-          else if (kIsWeb)
+          else if (!NotificationsService.instance.supported)
             ListTile(
               leading: const Icon(Icons.info_outline),
-              title: const Text('Уведомления доступны только в Android-сборке'),
+              title: const Text('Уведомления здесь не поддерживаются'),
               subtitle: Text(
-                'В web-версии напоминаний нет — установи APK на телефон.',
+                NotificationsService.instance.platformNote,
                 style: TextStyle(color: palette.muted),
               ),
             )
@@ -296,6 +295,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               trailing: const Icon(Icons.chevron_right),
               enabled: _notifEnabled,
               onTap: _notifEnabled ? _pickMorning : null,
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+              child: Text(
+                NotificationsService.instance.platformNote,
+                style: TextStyle(color: palette.muted, fontSize: 12),
+              ),
             ),
           ],
           const Divider(height: 1),

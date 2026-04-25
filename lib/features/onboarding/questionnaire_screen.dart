@@ -28,7 +28,7 @@ class QuestionnaireScreen extends ConsumerStatefulWidget {
 }
 
 class _QuestionnaireScreenState extends ConsumerState<QuestionnaireScreen> {
-  static const _stepCount = 5;
+  static const _stepCount = 6;
 
   int _step = 0;
 
@@ -42,10 +42,15 @@ class _QuestionnaireScreenState extends ConsumerState<QuestionnaireScreen> {
   final List<String> _interests = [];
   final _interestCtrl = TextEditingController();
 
-  // Step 3: pain point (free text, optional)
+  // Step 3: skill level per interest (novice/learning/confident/expert).
+  // Stored separately from `_interests` so we can default new entries to
+  // 'novice' on the fly.
+  final Map<String, String> _interestLevels = {};
+
+  // Step 4: pain point (free text, optional)
   final _painCtrl = TextEditingController();
 
-  // Step 4: weekly hours commitment
+  // Step 5: weekly hours commitment
   int _weeklyHours = 5;
 
   bool _saving = false;
@@ -58,6 +63,7 @@ class _QuestionnaireScreenState extends ConsumerState<QuestionnaireScreen> {
       _nameCtrl.text = e.name;
       _aspirationCtrl.text = e.aspiration;
       _interests.addAll(e.interests);
+      _interestLevels.addAll(e.interestLevels);
       _painCtrl.text = e.painPoint;
       _weeklyHours = e.weeklyHours;
     }
@@ -80,9 +86,11 @@ class _QuestionnaireScreenState extends ConsumerState<QuestionnaireScreen> {
         (e) => e.toLowerCase() == v.toLowerCase(),
       );
       if (idx >= 0) {
-        _interests.removeAt(idx);
+        final removed = _interests.removeAt(idx);
+        _interestLevels.remove(removed);
       } else if (_interests.length < 12) {
         _interests.add(v);
+        _interestLevels.putIfAbsent(v, () => 'novice');
       }
     });
   }
@@ -103,8 +111,13 @@ class _QuestionnaireScreenState extends ConsumerState<QuestionnaireScreen> {
       case 2:
         return _interests.length >= 3 && _interests.length <= 12;
       case 3:
-        return true; // pain point optional
+        // Levels default to 'novice' as soon as an interest is added, so
+        // the step is always passable. We just need to render the screen
+        // so the user can correct defaults.
+        return _interests.isNotEmpty;
       case 4:
+        return true; // pain point optional
+      case 5:
         return _weeklyHours > 0;
       default:
         return false;
@@ -132,11 +145,16 @@ class _QuestionnaireScreenState extends ConsumerState<QuestionnaireScreen> {
     HapticFeedback.selectionClick();
     try {
       final svc = ref.read(profileServiceProvider);
+      final cleanLevels = <String, String>{
+        for (final i in _interests)
+          i: _interestLevels[i] ?? 'novice',
+      };
       final profile = (widget.existing ??
               UserProfile(
                 name: '',
                 aspiration: '',
                 interests: const [],
+                interestLevels: const {},
                 painPoint: '',
                 weeklyHours: 5,
                 updatedAt: DateTime.now(),
@@ -145,6 +163,7 @@ class _QuestionnaireScreenState extends ConsumerState<QuestionnaireScreen> {
         name: _nameCtrl.text.trim(),
         aspiration: _aspirationCtrl.text.trim(),
         interests: List<String>.from(_interests),
+        interestLevels: cleanLevels,
         painPoint: _painCtrl.text.trim(),
         weeklyHours: _weeklyHours,
         updatedAt: DateTime.now(),
@@ -380,6 +399,31 @@ class _QuestionnaireScreenState extends ConsumerState<QuestionnaireScreen> {
         );
       case 3:
         return _StepShell(
+          eyebrow: 'УРОВЕНЬ',
+          title: 'Насколько ты уже в этом?',
+          hint: 'Это нужно, чтобы план не был ни «копай Hello world», ни «пиши свой компилятор». Можно жать «Дальше» — по умолчанию «Новичок».',
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final interest in _interests)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 14),
+                    child: _InterestLevelRow(
+                      interest: interest,
+                      level: _interestLevels[interest] ?? 'novice',
+                      palette: palette,
+                      onLevelChanged: (lvl) {
+                        setState(() => _interestLevels[interest] = lvl);
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      case 4:
+        return _StepShell(
           eyebrow: 'ПРОСАДКА',
           title: 'Где сейчас тяжело?',
           hint: 'Пропусти, если нечего сказать. Эта запись хранится локально и помогает строить план роста.',
@@ -393,7 +437,7 @@ class _QuestionnaireScreenState extends ConsumerState<QuestionnaireScreen> {
             ),
           ),
         );
-      case 4:
+      case 5:
         return _StepShell(
           eyebrow: 'РИТМ',
           title: 'Сколько часов в неделю готов вкладывать?',
@@ -602,6 +646,98 @@ class _InterestChip extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _InterestLevelRow extends StatelessWidget {
+  const _InterestLevelRow({
+    required this.interest,
+    required this.level,
+    required this.palette,
+    required this.onLevelChanged,
+  });
+
+  final String interest;
+  final String level;
+  final NoeticaPalette palette;
+  final ValueChanged<String> onLevelChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          interest,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: palette.fg,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            for (final lvl in kInterestLevels)
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  child: _LevelPill(
+                    label: kInterestLevelLabels[lvl] ?? lvl,
+                    selected: level == lvl,
+                    palette: palette,
+                    onTap: () => onLevelChanged(lvl),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _LevelPill extends StatelessWidget {
+  const _LevelPill({
+    required this.label,
+    required this.selected,
+    required this.palette,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final NoeticaPalette palette;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? palette.fg : palette.bg,
+      shape: RoundedRectangleBorder(
+        side: BorderSide(color: selected ? palette.fg : palette.line),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+          child: Center(
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 11,
+                color: selected ? palette.bg : palette.fg,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.5,
+              ),
             ),
           ),
         ),
