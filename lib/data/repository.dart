@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 
+import '../services/notifications.dart';
 import 'db.dart';
 import 'models.dart' as m;
 
@@ -145,6 +146,7 @@ class NoeticaRepository {
       }
     });
     await _emitEntries();
+    unawaited(NotificationsService.instance.reschedule(entry));
     return entry;
   }
 
@@ -174,6 +176,7 @@ class NoeticaRepository {
   Future<void> deleteEntry(String id) async {
     await _db.raw.delete('entries', where: 'id = ?', whereArgs: [id]);
     await _emitEntries();
+    unawaited(NotificationsService.instance.cancelForEntry(id));
   }
 
   /// Flip a task's completion state in-place via a targeted SQL UPDATE.
@@ -196,11 +199,13 @@ class NoeticaRepository {
       whereArgs: [entry.id],
     );
     await _emitEntries();
-    return entry.copyWith(
+    final updated = entry.copyWith(
       completedAt: newCompletedAt,
       clearCompleted: newCompletedAt == null,
       updatedAt: now,
     );
+    unawaited(NotificationsService.instance.reschedule(updated));
+    return updated;
   }
 
   // ---------- scores ----------
@@ -238,5 +243,62 @@ class NoeticaRepository {
       final v = (r / _maxAxisXpInWindow * 100).clamp(0.0, 100.0);
       return m.AxisScore(axis: axis, value: v, rawXp: r);
     }).toList();
+  }
+
+  // ---------- lifetime stats ----------
+
+  /// Total XP across **all** completed tasks ever — no decay window.
+  /// Powers the persistent profile level.
+  Future<int> lifetimeXp() async {
+    final rows = await _db.raw.rawQuery(
+      '''
+      SELECT COALESCE(SUM(xp), 0) AS total
+      FROM entries
+      WHERE kind = ?
+        AND completed_at IS NOT NULL
+      ''',
+      [m.EntryKind.task.name],
+    );
+    if (rows.isEmpty) return 0;
+    final total = rows.first['total'];
+    if (total is int) return total;
+    if (total is num) return total.toInt();
+    return 0;
+  }
+
+  /// Daily streak: number of consecutive local-time days, ending today,
+  /// with at least one completed task. 0 if today has no completed task.
+  Future<int> streakDays() async {
+    final rows = await _db.raw.rawQuery(
+      '''
+      SELECT completed_at FROM entries
+      WHERE kind = ? AND completed_at IS NOT NULL
+      ORDER BY completed_at DESC
+      ''',
+      [m.EntryKind.task.name],
+    );
+    if (rows.isEmpty) return 0;
+    final daysWithCompletion = <DateTime>{};
+    for (final r in rows) {
+      final ts = r['completed_at'] as int?;
+      if (ts == null) continue;
+      final dt = DateTime.fromMillisecondsSinceEpoch(ts);
+      daysWithCompletion.add(DateTime(dt.year, dt.month, dt.day));
+    }
+    final today = DateTime.now();
+    var cursor = DateTime(today.year, today.month, today.day);
+    if (!daysWithCompletion.contains(cursor)) {
+      // Allow grace if user hasn't started today yet — we count yesterday's
+      // streak still as alive (will break at end-of-day anyway).
+      final y = cursor.subtract(const Duration(days: 1));
+      if (!daysWithCompletion.contains(y)) return 0;
+      cursor = y;
+    }
+    var streak = 0;
+    while (daysWithCompletion.contains(cursor)) {
+      streak += 1;
+      cursor = cursor.subtract(const Duration(days: 1));
+    }
+    return streak;
   }
 }

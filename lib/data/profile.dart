@@ -4,80 +4,35 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 const _kProfileKey = 'noetica.profile.v1';
 
-/// Predefined growth domains the user can choose between in the questionnaire.
-/// Each maps to a default `LifeAxis` preset (name + symbol) used when we
-/// generate the initial axis drafts on the next step. The IDs are stable
-/// strings so we can persist the user's choices reliably.
-class PriorityPreset {
-  const PriorityPreset({
-    required this.id,
-    required this.label,
-    required this.axisName,
-    required this.axisSymbol,
-  });
-
-  final String id;
-  final String label;
-  final String axisName;
-  final String axisSymbol;
-}
-
-const priorityPresets = <PriorityPreset>[
-  PriorityPreset(
-    id: 'health',
-    label: 'Здоровье',
-    axisName: 'Тело',
-    axisSymbol: '◐',
-  ),
-  PriorityPreset(
-    id: 'career',
-    label: 'Карьера',
-    axisName: 'Дело',
-    axisSymbol: '■',
-  ),
-  PriorityPreset(
-    id: 'knowledge',
-    label: 'Знание',
-    axisName: 'Ум',
-    axisSymbol: '◇',
-  ),
-  PriorityPreset(
-    id: 'relationships',
-    label: 'Отношения',
-    axisName: 'Связи',
-    axisSymbol: '◯',
-  ),
-  PriorityPreset(
-    id: 'soul',
-    label: 'Внутренний покой',
-    axisName: 'Душа',
-    axisSymbol: '✦',
-  ),
-  PriorityPreset(
-    id: 'creativity',
-    label: 'Творчество',
-    axisName: 'Творчество',
-    axisSymbol: '✎',
-  ),
-  PriorityPreset(
-    id: 'finance',
-    label: 'Финансы',
-    axisName: 'Финансы',
-    axisSymbol: '₽',
-  ),
-  PriorityPreset(
-    id: 'family',
-    label: 'Семья',
-    axisName: 'Семья',
-    axisSymbol: '⌂',
-  ),
+/// Suggested interest chips shown in the questionnaire. They are *only*
+/// label hints — the user can add custom phrases freely, and the AI is
+/// what actually decides the axis names. We deliberately keep this list
+/// short and broad so it never feels like a hard menu.
+const List<String> suggestedInterests = <String>[
+  'Спорт',
+  'Чтение',
+  'Изучение языков',
+  'Программирование',
+  'Музыка',
+  'Рисование',
+  'Медитация',
+  'Дружба',
+  'Семья',
+  'Финансы',
+  'Карьера',
+  'Предпринимательство',
+  'Питание',
+  'Сон',
+  'Путешествия',
+  'Письмо',
+  'Ремесла',
 ];
 
 class UserProfile {
   const UserProfile({
     required this.name,
     required this.aspiration,
-    required this.priorities,
+    required this.interests,
     required this.painPoint,
     required this.weeklyHours,
     required this.updatedAt,
@@ -88,8 +43,9 @@ class UserProfile {
   final DateTime? birthdate;
   final String aspiration;
 
-  /// Selected priority preset IDs (1..N from [priorityPresets]).
-  final List<String> priorities;
+  /// Free-form list of interests / desired growth areas the user typed in
+  /// the questionnaire. Backend uses these to design personalised axes.
+  final List<String> interests;
   final String painPoint;
   final int weeklyHours;
   final DateTime updatedAt;
@@ -98,22 +54,29 @@ class UserProfile {
         'name': name,
         if (birthdate != null) 'birthdate': birthdate!.toIso8601String(),
         'aspiration': aspiration,
-        'priorities': priorities,
+        'interests': interests,
         'painPoint': painPoint,
         'weeklyHours': weeklyHours,
         'updatedAt': updatedAt.toIso8601String(),
       };
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
+    // Backward-compat: older saves used 'priorities' (preset IDs); fall
+    // back to those if 'interests' is missing so existing users don't
+    // lose what they typed.
+    final rawInterests = (json['interests'] as List?) ?? const [];
+    final rawPriorities = (json['priorities'] as List?) ?? const [];
+    final mergedInterests = <String>[
+      ...rawInterests.whereType<String>(),
+      if (rawInterests.isEmpty) ...rawPriorities.whereType<String>(),
+    ];
     return UserProfile(
       name: (json['name'] as String?) ?? '',
       birthdate: (json['birthdate'] as String?) != null
           ? DateTime.tryParse(json['birthdate'] as String)
           : null,
       aspiration: (json['aspiration'] as String?) ?? '',
-      priorities: ((json['priorities'] as List?) ?? const [])
-          .whereType<String>()
-          .toList(),
+      interests: mergedInterests,
       painPoint: (json['painPoint'] as String?) ?? '',
       weeklyHours: (json['weeklyHours'] as num?)?.toInt() ?? 5,
       updatedAt: DateTime.tryParse((json['updatedAt'] as String?) ?? '') ??
@@ -126,7 +89,7 @@ class UserProfile {
     DateTime? birthdate,
     bool clearBirthdate = false,
     String? aspiration,
-    List<String>? priorities,
+    List<String>? interests,
     String? painPoint,
     int? weeklyHours,
     DateTime? updatedAt,
@@ -135,7 +98,7 @@ class UserProfile {
       name: name ?? this.name,
       birthdate: clearBirthdate ? null : (birthdate ?? this.birthdate),
       aspiration: aspiration ?? this.aspiration,
-      priorities: priorities ?? this.priorities,
+      interests: interests ?? this.interests,
       painPoint: painPoint ?? this.painPoint,
       weeklyHours: weeklyHours ?? this.weeklyHours,
       updatedAt: updatedAt ?? this.updatedAt,

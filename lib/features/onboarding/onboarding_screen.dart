@@ -3,17 +3,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../data/models.dart';
-import '../../data/profile.dart';
 import '../../providers.dart';
 import '../../theme/app_theme.dart';
 
 class _AxisDraft {
-  _AxisDraft({required this.name, required this.symbol});
+  _AxisDraft({required this.name, required this.symbol, this.description = ''});
   String name;
   String symbol;
+  String description;
 }
 
-const _presets = <Map<String, String>>[
+const _fallbackPresets = <Map<String, String>>[
   {'name': 'Тело', 'symbol': '◐'},
   {'name': 'Ум', 'symbol': '◇'},
   {'name': 'Дело', 'symbol': '■'},
@@ -24,51 +24,82 @@ const _presets = <Map<String, String>>[
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({
     super.key,
-    this.seedPriorities = const <String>[],
+    this.seedInterests = const <String>[],
   });
 
-  /// Priority preset IDs from the questionnaire. When provided, the axis
-  /// drafts are seeded from these instead of the static default preset.
-  final List<String> seedPriorities;
+  /// Free-form interest phrases from the questionnaire. When non-empty we
+  /// ask the backend to design 3..7 personalised axes from them. When
+  /// empty (legacy / first run without a profile) we fall back to a
+  /// minimal generic preset that the user can edit by hand.
+  final List<String> seedInterests;
 
   @override
   ConsumerState<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
 class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
-  late final List<_AxisDraft> _drafts;
+  final List<_AxisDraft> _drafts = [];
   bool _saving = false;
+  bool _generating = false;
+  String? _generationError;
+  String _model = '';
 
   @override
   void initState() {
     super.initState();
-    _drafts = _initialDrafts(widget.seedPriorities);
+    if (widget.seedInterests.isEmpty) {
+      _drafts.addAll(_fallbackPresets
+          .map((p) => _AxisDraft(name: p['name']!, symbol: p['symbol']!)));
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _generateAxes());
+    }
   }
 
-  static List<_AxisDraft> _initialDrafts(List<String> seedIds) {
-    if (seedIds.isEmpty) {
-      return _presets
-          .map((p) => _AxisDraft(name: p['name']!, symbol: p['symbol']!))
-          .toList();
+  Future<void> _generateAxes() async {
+    setState(() {
+      _generating = true;
+      _generationError = null;
+    });
+    try {
+      final profile = ref.read(profileProvider).value;
+      final result = await ref.read(axesApiProvider).generate(
+            profile: profile,
+            interests: widget.seedInterests,
+            count: 5,
+          );
+      if (!mounted) return;
+      setState(() {
+        _drafts
+          ..clear()
+          ..addAll(result.axes.map((a) => _AxisDraft(
+                name: a.name,
+                symbol: a.symbol,
+                description: a.description,
+              )));
+        if (_drafts.length < 3) {
+          for (final p in _fallbackPresets) {
+            if (_drafts.length >= 3) break;
+            if (_drafts.any(
+                (d) => d.name.toLowerCase() == p['name']!.toLowerCase())) {
+              continue;
+            }
+            _drafts.add(_AxisDraft(name: p['name']!, symbol: p['symbol']!));
+          }
+        }
+        _model = result.model;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _generationError = e.toString();
+        if (_drafts.isEmpty) {
+          _drafts.addAll(_fallbackPresets
+              .map((p) => _AxisDraft(name: p['name']!, symbol: p['symbol']!)));
+        }
+      });
+    } finally {
+      if (mounted) setState(() => _generating = false);
     }
-    final byId = {for (final p in priorityPresets) p.id: p};
-    final seeded = <_AxisDraft>[];
-    for (final id in seedIds) {
-      final preset = byId[id];
-      if (preset == null) continue;
-      seeded.add(_AxisDraft(
-        name: preset.axisName,
-        symbol: preset.axisSymbol,
-      ));
-    }
-    final padding = _presets
-        .where((p) => !seeded.any((d) => d.name == p['name']))
-        .toList();
-    while (seeded.length < 3 && padding.isNotEmpty) {
-      final p = padding.removeAt(0);
-      seeded.add(_AxisDraft(name: p['name']!, symbol: p['symbol']!));
-    }
-    return seeded;
   }
 
   void _addAxis() {
@@ -82,8 +113,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   Future<void> _finish() async {
-    final clean =
-        _drafts.where((d) => d.name.trim().isNotEmpty).toList();
+    final clean = _drafts.where((d) => d.name.trim().isNotEmpty).toList();
     if (clean.length < 3 || clean.length > 8) return;
     setState(() => _saving = true);
     try {
@@ -133,34 +163,66 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               ),
               const SizedBox(height: 24),
               Text(
-                widget.seedPriorities.isEmpty
+                widget.seedInterests.isEmpty
                     ? 'Опиши свои оси роста'
-                    : 'Подтверди оси роста',
+                    : (_generating ? 'AI придумывает оси…' : 'Твои личные оси'),
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 8),
               Text(
-                widget.seedPriorities.isEmpty
+                widget.seedInterests.isEmpty
                     ? 'От 3 до 8 направлений, по которым ты хочешь расти. К ним будут привязываться задачи и заметки. Их можно изменить позже.'
-                    : 'На основе твоих приоритетов. Переименуй, убери лишние или добавь свои. От 3 до 8.',
+                    : (_generationError != null
+                        ? 'Не удалось связаться с AI: $_generationError. Ниже — запасные оси, отредактируй как хочешь.'
+                        : (_generating
+                            ? 'Из ${widget.seedInterests.length} твоих направлений AI рисует персональную пентаграмму…'
+                            : 'Сгенерировано на ${_model.isEmpty ? "AI" : _model}. Переименуй, убери лишние, добавь свои. От 3 до 8.')),
                 style: Theme.of(context)
                     .textTheme
                     .bodyMedium
                     ?.copyWith(color: palette.muted),
               ),
-              const SizedBox(height: 24),
-              Expanded(
-                child: ListView.separated(
-                  itemCount: _drafts.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (_, i) => _AxisRow(
-                    index: i,
-                    draft: _drafts[i],
-                    onChanged: () => setState(() {}),
-                    onRemove:
-                        _drafts.length > 3 ? () => _removeAxis(i) : null,
+              if (widget.seedInterests.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: _generating ? null : _generateAxes,
+                    icon: const Icon(Icons.refresh, size: 16),
+                    label: Text(_generating
+                        ? 'Генерирую…'
+                        : 'Перегенерировать оси'),
                   ),
                 ),
+              ],
+              const SizedBox(height: 16),
+              Expanded(
+                child: _generating && _drafts.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircularProgressIndicator(color: palette.fg),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Это занимает 5–25 секунд',
+                              style: TextStyle(color: palette.muted),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.separated(
+                        itemCount: _drafts.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        itemBuilder: (_, i) => _AxisRow(
+                          index: i,
+                          draft: _drafts[i],
+                          onChanged: () => setState(() {}),
+                          onRemove: _drafts.length > 3
+                              ? () => _removeAxis(i)
+                              : null,
+                        ),
+                      ),
               ),
               const SizedBox(height: 12),
               if (_drafts.length < 8)
@@ -176,7 +238,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
-                  onPressed: _saving ? null : _finish,
+                  onPressed: (_saving || _generating) ? null : _finish,
                   child: Text(_saving ? '...' : 'Создать пентаграмму'),
                 ),
               ),
@@ -211,47 +273,60 @@ class _AxisRow extends StatelessWidget {
         border: Border.all(color: palette.line),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 48,
-            child: TextFormField(
-              initialValue: draft.symbol,
-              maxLength: 2,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 20),
-              decoration: const InputDecoration(
-                counterText: '',
-                contentPadding: EdgeInsets.symmetric(vertical: 8),
-                isDense: true,
+          Row(
+            children: [
+              SizedBox(
+                width: 48,
+                child: TextFormField(
+                  initialValue: draft.symbol,
+                  maxLength: 2,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 20),
+                  decoration: const InputDecoration(
+                    counterText: '',
+                    contentPadding: EdgeInsets.symmetric(vertical: 8),
+                    isDense: true,
+                  ),
+                  onChanged: (v) {
+                    draft.symbol = v;
+                    onChanged();
+                  },
+                ),
               ),
-              onChanged: (v) {
-                draft.symbol = v;
-                onChanged();
-              },
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: TextFormField(
-              initialValue: draft.name,
-              decoration: InputDecoration(
-                hintText: 'Название оси (#${index + 1})',
-                isDense: true,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextFormField(
+                  initialValue: draft.name,
+                  decoration: InputDecoration(
+                    hintText: 'Название оси (#${index + 1})',
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 14),
+                  ),
+                  onChanged: (v) {
+                    draft.name = v;
+                    onChanged();
+                  },
+                ),
               ),
-              onChanged: (v) {
-                draft.name = v;
-                onChanged();
-              },
-            ),
+              if (onRemove != null)
+                IconButton(
+                  icon: const Icon(Icons.close, size: 20),
+                  onPressed: onRemove,
+                  tooltip: 'Удалить',
+                ),
+            ],
           ),
-          if (onRemove != null)
-            IconButton(
-              icon: const Icon(Icons.close, size: 20),
-              onPressed: onRemove,
-              tooltip: 'Удалить',
+          if (draft.description.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 6, left: 60),
+              child: Text(
+                draft.description,
+                style: TextStyle(color: palette.muted, fontSize: 12),
+              ),
             ),
         ],
       ),
