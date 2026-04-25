@@ -26,20 +26,19 @@ class HomeShell extends ConsumerStatefulWidget {
 class _HomeShellState extends ConsumerState<HomeShell> {
   int _index = 0;
 
-  static const _mobilePages = <Widget>[
-    DashboardScreen(),
-    TasksScreen(),
-    SelfScreen(),
-  ];
+  // Page index 3 = Journal. On mobile we never select it from the bottom
+  // bar (only 3 tabs there); on desktop the sidebar has a secondary tile
+  // that selects index 3.
+  static const _journalIndex = 3;
 
-  static const _desktopPages = <Widget>[
+  static const _pages = <Widget>[
     DashboardScreen(),
     TasksScreen(),
     SelfScreen(),
     NotesScreen(),
   ];
 
-  static const _mobileDestinations = <_Destination>[
+  static const _destinations = <_Destination>[
     _Destination(
       icon: Icons.dashboard_outlined,
       selectedIcon: Icons.dashboard,
@@ -54,29 +53,6 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       icon: Icons.auto_graph_outlined,
       selectedIcon: Icons.auto_graph,
       label: 'Я',
-    ),
-  ];
-
-  static const _desktopDestinations = <_Destination>[
-    _Destination(
-      icon: Icons.dashboard_outlined,
-      selectedIcon: Icons.dashboard,
-      label: 'Сейчас',
-    ),
-    _Destination(
-      icon: Icons.checklist_outlined,
-      selectedIcon: Icons.checklist,
-      label: 'Задачи',
-    ),
-    _Destination(
-      icon: Icons.auto_graph_outlined,
-      selectedIcon: Icons.auto_graph,
-      label: 'Я',
-    ),
-    _Destination(
-      icon: Icons.bookmark_border_outlined,
-      selectedIcon: Icons.bookmark,
-      label: 'Журнал',
     ),
   ];
 
@@ -86,9 +62,14 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     final width = MediaQuery.of(context).size.width;
     final useRail = width >= _kRailMin;
 
+    final body = IndexedStack(index: _index, children: _pages);
+
     if (!useRail) {
-      final body =
-          IndexedStack(index: _index.clamp(0, _mobilePages.length - 1), children: _mobilePages);
+      // On mobile the bottom bar shows only the first 3 destinations;
+      // Journal stays accessible via the AppBar bookmark icon. We clamp
+      // the bar's selectedIndex so it doesn't break when index = 3 (would
+      // happen if user navigated to journal then resized to mobile).
+      final mobileSelected = _index < _destinations.length ? _index : 0;
       return Scaffold(
         body: body,
         floatingActionButton: FloatingActionButton(
@@ -100,10 +81,10 @@ class _HomeShellState extends ConsumerState<HomeShell> {
             border: Border(top: BorderSide(color: palette.line)),
           ),
           child: NavigationBar(
-            selectedIndex: _index.clamp(0, _mobileDestinations.length - 1),
+            selectedIndex: mobileSelected,
             onDestinationSelected: (i) => setState(() => _index = i),
             destinations: [
-              for (final d in _mobileDestinations)
+              for (final d in _destinations)
                 NavigationDestination(
                   icon: Icon(d.icon),
                   selectedIcon: Icon(d.selectedIcon),
@@ -116,22 +97,21 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     }
 
     final extended = width >= _kRailExtended;
-    final desktopIndex = _index.clamp(0, _desktopPages.length - 1);
-    final desktopBody =
-        IndexedStack(index: desktopIndex, children: _desktopPages);
     return Scaffold(
       body: Row(
         children: [
           _DesktopSidebar(
             extended: extended,
-            destinations: _desktopDestinations,
-            selectedIndex: desktopIndex,
+            destinations: _destinations,
+            selectedIndex: _index,
             onDestinationSelected: (i) => setState(() => _index = i),
             onAdd: () => showEntryEditor(context, ref),
+            journalSelected: _index == _journalIndex,
+            onJournal: () => setState(() => _index = _journalIndex),
             onPomodoro: () => PomodoroSheet.show(context),
             palette: palette,
           ),
-          Expanded(child: desktopBody),
+          Expanded(child: body),
         ],
       ),
     );
@@ -159,6 +139,8 @@ class _DesktopSidebar extends StatelessWidget {
     required this.selectedIndex,
     required this.onDestinationSelected,
     required this.onAdd,
+    required this.journalSelected,
+    required this.onJournal,
     required this.onPomodoro,
     required this.palette,
   });
@@ -168,6 +150,8 @@ class _DesktopSidebar extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
   final VoidCallback onAdd;
+  final bool journalSelected;
+  final VoidCallback onJournal;
   final VoidCallback onPomodoro;
   final NoeticaPalette palette;
 
@@ -214,7 +198,7 @@ class _DesktopSidebar extends StatelessWidget {
                   icon: destinations[i].icon,
                   selectedIcon: destinations[i].selectedIcon,
                   label: destinations[i].label,
-                  selected: selectedIndex == i,
+                  selected: selectedIndex == i && !journalSelected,
                   extended: extended,
                   palette: palette,
                   onTap: () => onDestinationSelected(i),
@@ -226,6 +210,15 @@ class _DesktopSidebar extends StatelessWidget {
                   vertical: 4,
                 ),
                 child: Divider(color: palette.line, height: 1),
+              ),
+              _SidebarTile(
+                icon: Icons.bookmark_border_outlined,
+                selectedIcon: Icons.bookmark,
+                label: 'Журнал',
+                selected: journalSelected,
+                extended: extended,
+                palette: palette,
+                onTap: onJournal,
               ),
               _SidebarTile(
                 icon: Icons.timer_outlined,
