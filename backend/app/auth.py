@@ -1,0 +1,186 @@
+"""Google Sign-In + our own JWT session tokens.
+
+Flow:
+1. Flutter calls `GoogleSignIn.signIn()`, gets a Google ID token.
+2. Flutter POSTs that token to `/auth/google`.
+3. We verify the token against Google's certs (audience = our Web Client ID),
+   upsert the user by `sub`, mint our own JWT, return it.
+4. Every other endpoint reads `Authorization: Bearer <jwt>`, decodes it,
+   loads the user.
+
+JWTs are HS256 signed with `JWT_SECRET`; we don't bother with refresh tokens
+yet — the lifetime is 30 days, and re-auth via Google is one tap.
+"""
+
+from __future__ import annotations
+
+import os
+import time
+import uuid
+from typing import Annotated
+
+import jwt
+from fastapi import Depends, Header, HTTPException, status
+from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token as google_id_token
+
+from . import db
+
+
+JWT_SECRET = os.getenv("JWT_SECRET", "")
+JWT_ALGO = "HS256"
+JWT_TTL_SECONDS = 60 * 60 * 24 * 30  # 30 days
+
+GOOGLE_OAUTH_WEB_CLIENT_ID = os.getenv("GOOGLE_OAUTH_WEB_CLIENT_ID", "")
+
+
+class AuthConfigError(RuntimeError):
+    pass
+
+
+def _ensure_config() -> None:
+    if not JWT_SECRET:
+        raise AuthConfigError("JWT_SECRET is not configured.")
+    if not GOOGLE_OAUTH_WEB_CLIENT_ID:
+        raise AuthConfigError("GOOGLE_OAUTH_WEB_CLIENT_ID is not configured.")
+
+
+def verify_google_id_token(token: str) -> dict:
+    """Verify a Google ID token and return its payload.
+
+    Raises HTTPException(401) on any verification failure. We accept tokens
+    issued for our Web Client ID *or* the Android Client ID — Flutter's
+    google_sign_in returns one or the other depending on whether
+    `serverClientId` is configured.
+    """
+    _ensure_config()
+    try:
+        payload = google_id_token.verify_oauth2_token(
+            token,
+            google_requests.Request(),
+            audience=GOOGLE_OAUTH_WEB_CLIENT_ID,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Invalid Google ID token: {exc}",
+        ) from exc
+    if payload.get("iss") not in {
+        "accounts.google.com",
+        "https://accounts.google.com",
+    }:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token issuer is not Google.",
+        )
+    if not payload.get("sub"):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has no subject.",
+        )
+    return payload
+
+
+def issue_jwt(user_id: str) -> str:
+    _ensure_config()
+    now = int(time.time())
+    return jwt.encode(
+        {
+            "sub": user_id,
+            "iat": now,
+            "exp": now + JWT_TTL_SECONDS,
+        },
+        JWT_SECRET,
+        algorithm=JWT_ALGO,
+    )
+
+
+def decode_jwt(token: str) -> dict:
+    _ensure_config()
+    try:
+        return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGO])
+    except jwt.ExpiredSignatureError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token expired.",
+        ) from exc
+    except jwt.InvalidTokenError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Invalid token: {exc}",
+        ) from exc
+
+
+async def upsert_user_from_google(payload: dict) -> dict:
+    """Upsert a user row keyed by `google_sub`, return the resulting row."""
+    google_sub = payload["sub"]
+    email = payload.get("email", "")
+    name = payload.get("name", "")
+    picture = payload.get("picture", "")
+    now_ms = int(time.time() * 1000)
+    async with db.connect() as conn:
+        cur = await conn.execute(
+            "SELECT id FROM users WHERE google_sub = ?",
+            (google_sub,),
+        )
+        row = await cur.fetchone()
+        if row is None:
+            user_id = str(uuid.uuid4())
+            await conn.execute(
+                """
+                INSERT INTO users (id, google_sub, email, name, picture_url,
+                                   created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (user_id, google_sub, email, name, picture, now_ms, now_ms),
+            )
+        else:
+            user_id = row["id"]
+            await conn.execute(
+                """
+                UPDATE users
+                SET email = ?, name = ?, picture_url = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (email, name, picture, now_ms, user_id),
+            )
+        await conn.commit()
+        cur = await conn.execute(
+            "SELECT id, email, name, picture_url FROM users WHERE id = ?",
+            (user_id,),
+        )
+        return dict(await cur.fetchone())
+
+
+async def current_user(
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict:
+    """FastAPI dependency: 401 unless the request carries a valid Bearer JWT."""
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing Bearer token.",
+        )
+    token = authorization.split(" ", 1)[1].strip()
+    payload = decode_jwt(token)
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has no subject.",
+        )
+    async with db.connect() as conn:
+        cur = await conn.execute(
+            "SELECT id, email, name, picture_url FROM users WHERE id = ?",
+            (user_id,),
+        )
+        row = await cur.fetchone()
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User no longer exists.",
+        )
+    return dict(row)
+
+
+CurrentUser = Annotated[dict, Depends(current_user)]
