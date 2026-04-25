@@ -174,31 +174,13 @@ class _EntryEditorState extends ConsumerState<_EntryEditor> {
                 ),
             ],
           ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              _ToggleSegment(
-                label: 'Заметка',
-                selected: !isTask,
-                onTap: () => setState(() {
-                  _kind = EntryKind.note;
-                }),
-              ),
-              const SizedBox(width: 8),
-              _ToggleSegment(
-                label: 'Задача',
-                selected: isTask,
-                onTap: () => setState(() => _kind = EntryKind.task),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           TextField(
             controller: _title,
             autofocus: widget.existing == null,
             style: Theme.of(context).textTheme.titleMedium,
-            decoration: const InputDecoration(
-              hintText: 'Заголовок',
+            decoration: InputDecoration(
+              hintText: isTask ? 'Что нужно сделать?' : 'Заголовок',
             ),
           ),
           const SizedBox(height: 12),
@@ -250,54 +232,147 @@ class _EntryEditorState extends ConsumerState<_EntryEditor> {
               );
             },
           ),
-          if (isTask) ...[
-            const SizedBox(height: 16),
-            Row(
+          const SizedBox(height: 16),
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: palette.line),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
               children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _pickDue,
-                    icon: const Icon(Icons.calendar_today_outlined, size: 16),
-                    label: Text(
-                      _due == null ? 'Без дедлайна' : formatTimestamp(_due!),
-                      overflow: TextOverflow.ellipsis,
+                InkWell(
+                  onTap: () => setState(() {
+                    if (isTask) {
+                      _kind = EntryKind.note;
+                      _due = null;
+                    } else {
+                      _kind = EntryKind.task;
+                    }
+                  }),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+                    child: Row(
+                      children: [
+                        Icon(
+                          isTask
+                              ? Icons.check_circle_outline
+                              : Icons.notes_outlined,
+                          size: 18,
+                          color: palette.fg,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Сделать задачей',
+                                style: Theme.of(context).textTheme.bodyLarge,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                isTask
+                                    ? 'Дедлайн и XP при выполнении'
+                                    : 'По умолчанию рассматривается как заметка',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(color: palette.muted),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Switch(
+                          value: isTask,
+                          activeColor: palette.bg,
+                          activeTrackColor: palette.fg,
+                          inactiveThumbColor: palette.muted,
+                          inactiveTrackColor: palette.surface,
+                          onChanged: (v) => setState(() {
+                            _kind = v ? EntryKind.task : EntryKind.note;
+                            if (!v) _due = null;
+                          }),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-                if (_due != null) ...[
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(Icons.close, size: 18),
-                    onPressed: () => setState(() => _due = null),
-                  ),
-                ],
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Text(
-                  'XP при выполнении',
-                  style: Theme.of(context)
-                      .textTheme
-                      .labelLarge
-                      ?.copyWith(color: palette.muted, letterSpacing: 1.4),
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  alignment: Alignment.topCenter,
+                  child: !isTask
+                      ? const SizedBox.shrink()
+                      : Padding(
+                          padding:
+                              const EdgeInsets.fromLTRB(14, 0, 14, 14),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Divider(color: palette.line, height: 16),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: OutlinedButton.icon(
+                                      onPressed: _pickDue,
+                                      icon: const Icon(
+                                          Icons.calendar_today_outlined,
+                                          size: 16),
+                                      label: Text(
+                                        _due == null
+                                            ? 'Без дедлайна'
+                                            : formatTimestamp(_due!),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ),
+                                  if (_due != null) ...[
+                                    const SizedBox(width: 8),
+                                    IconButton(
+                                      icon: const Icon(Icons.close, size: 18),
+                                      onPressed: () =>
+                                          setState(() => _due = null),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              const SizedBox(height: 14),
+                              Row(
+                                children: [
+                                  Text(
+                                    'XP при выполнении',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelLarge
+                                        ?.copyWith(
+                                            color: palette.muted,
+                                            letterSpacing: 1.4),
+                                  ),
+                                  const Spacer(),
+                                  Text('$_xp',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium),
+                                ],
+                              ),
+                              Slider(
+                                min: 1,
+                                max: 100,
+                                divisions: 99,
+                                value: _xp.toDouble(),
+                                activeColor: palette.fg,
+                                inactiveColor: palette.line,
+                                onChanged: (v) =>
+                                    setState(() => _xp = v.round()),
+                              ),
+                            ],
+                          ),
+                        ),
                 ),
-                const Spacer(),
-                Text('$_xp',
-                    style: Theme.of(context).textTheme.titleMedium),
               ],
             ),
-            Slider(
-              min: 1,
-              max: 100,
-              divisions: 99,
-              value: _xp.toDouble(),
-              activeColor: palette.fg,
-              inactiveColor: palette.line,
-              onChanged: (v) => setState(() => _xp = v.round()),
-            ),
-          ],
+          ),
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
@@ -307,45 +382,6 @@ class _EntryEditorState extends ConsumerState<_EntryEditor> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _ToggleSegment extends StatelessWidget {
-  const _ToggleSegment({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = context.palette;
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: selected ? palette.fg : palette.bg,
-            border: Border.all(color: selected ? palette.fg : palette.line),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              color: selected ? palette.bg : palette.fg,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.4,
-            ),
-          ),
-        ),
       ),
     );
   }
