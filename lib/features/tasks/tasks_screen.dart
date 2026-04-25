@@ -5,6 +5,7 @@ import '../../data/models.dart';
 import '../../providers.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/time_utils.dart';
+import '../../widgets/brand_glyph.dart';
 import '../entry/entry_editor_sheet.dart';
 
 class TasksScreen extends ConsumerWidget {
@@ -17,7 +18,14 @@ class TasksScreen extends ConsumerWidget {
     final axesAsync = ref.watch(axesProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Задачи')),
+      appBar: AppBar(
+        leading: const Padding(
+          padding: EdgeInsets.only(left: 16, top: 12, bottom: 12),
+          child: BrandGlyph(size: 24),
+        ),
+        leadingWidth: 48,
+        title: const Text('Задачи'),
+      ),
       body: entriesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('$e')),

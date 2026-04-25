@@ -5,6 +5,7 @@ import '../../data/models.dart';
 import '../../providers.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/time_utils.dart';
+import '../../widgets/brand_glyph.dart';
 import '../entry/entry_card.dart';
 import '../entry/entry_editor_sheet.dart';
 import '../notes/notes_screen.dart';
@@ -26,6 +27,11 @@ class DashboardScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        leading: const Padding(
+          padding: EdgeInsets.only(left: 16, top: 12, bottom: 12),
+          child: BrandGlyph(size: 24),
+        ),
+        leadingWidth: 48,
         title: const Text('Сейчас'),
         actions: [
           IconButton(
