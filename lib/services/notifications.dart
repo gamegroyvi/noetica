@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
+import 'package:local_notifier/local_notifier.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
@@ -13,6 +15,11 @@ const _kNotifEnabledKey = 'noetica.notif.enabled.v1';
 const _kNotifMorningHourKey = 'noetica.notif.morning_hour.v1';
 const _kNotifMorningMinuteKey = 'noetica.notif.morning_minute.v1';
 
+/// On desktop platforms `local_notifier` shows toasts immediately, so we
+/// roll our own Timer-based scheduler. We persist all upcoming firing times
+/// here so that a crash / restart re-arms the timers.
+const _kNotifDesktopScheduleKey = 'noetica.notif.desktop_schedule.v1';
+
 const _kAndroidChannelId = 'noetica_deadlines';
 const _kAndroidChannelName = 'Дедлайны и напоминания';
 const _kAndroidChannelDescription =
@@ -22,10 +29,16 @@ const _kAndroidChannelDescription =
 /// rescheduling/cancelling is straightforward.
 enum _Slot { dayBefore, morningOf, lateAfter }
 
-/// Lightweight wrapper that hides flutter_local_notifications on platforms
-/// where it can't run (web, tests). On Android/iOS we schedule real local
-/// alarms; everywhere else this becomes a no-op so the rest of the app
-/// stays oblivious.
+/// Lightweight wrapper around platform-specific notification stacks.
+///
+/// On Android/iOS/macOS we use `flutter_local_notifications` with the OS
+/// alarm scheduler.
+///
+/// On Windows/Linux we use `local_notifier` for the actual toast and a
+/// process-local Timer queue (persisted to SharedPreferences) for the
+/// scheduling — those platforms have no in-OS scheduled notification API
+/// that's exposed by Flutter, so reminders fire while the app process is
+/// running (we keep it alive via tray icon, see `services/tray_service.dart`).
 class NotificationsService {
   NotificationsService._();
   static final NotificationsService instance = NotificationsService._();
@@ -34,8 +47,23 @@ class NotificationsService {
       FlutterLocalNotificationsPlugin();
   bool _initialised = false;
   bool _supported = false;
+  _Backend _backend = _NoopBackend();
 
+  /// `true` if reminders can be scheduled on this platform. UI uses this to
+  /// hide / disable the toggle.
   bool get supported => _supported;
+
+  /// Human-readable platform notes shown in Settings under the toggle.
+  String get platformNote {
+    switch (_backend.kind) {
+      case _BackendKind.mobile:
+        return 'OS-level scheduled reminders. Работают даже если приложение закрыто.';
+      case _BackendKind.desktop:
+        return 'Тосты Windows + иконка в трее. Чтобы напоминания приходили, не закрывай приложение полностью — сворачивай в трей (крестик это и делает).';
+      case _BackendKind.none:
+        return 'Эта платформа не поддерживается.';
+    }
+  }
 
   Future<void> init() async {
     if (_initialised) return;
@@ -44,19 +72,7 @@ class NotificationsService {
       _supported = false;
       return;
     }
-    // flutter_local_notifications only ships meaningful schedulers on
-    // Android/iOS/macOS. On Windows/Linux/Fuchsia the platform channel
-    // exists but scheduling silently no-ops, which leaves the user
-    // confused why "morning reminder" never fires. Treat those as
-    // unsupported up-front and surface that in Settings.
     final platform = defaultTargetPlatform;
-    final platformSupported = platform == TargetPlatform.android ||
-        platform == TargetPlatform.iOS ||
-        platform == TargetPlatform.macOS;
-    if (!platformSupported) {
-      _supported = false;
-      return;
-    }
     try {
       tzdata.initializeTimeZones();
       try {
@@ -65,36 +81,69 @@ class NotificationsService {
       } catch (_) {
         // Fall back to UTC; scheduling still works, just less accurate.
       }
-      const initSettings = InitializationSettings(
-        android: AndroidInitializationSettings('@mipmap/ic_launcher'),
-        iOS: DarwinInitializationSettings(
-          requestAlertPermission: true,
-          requestBadgePermission: false,
-          requestSoundPermission: true,
-        ),
-      );
-      await _plugin.initialize(initSettings);
-      final androidImpl = _plugin.resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>();
-      if (androidImpl != null) {
-        await androidImpl.createNotificationChannel(
-          const AndroidNotificationChannel(
-            _kAndroidChannelId,
-            _kAndroidChannelName,
-            description: _kAndroidChannelDescription,
-            importance: Importance.high,
+    } catch (_) {}
+
+    if (platform == TargetPlatform.android ||
+        platform == TargetPlatform.iOS ||
+        platform == TargetPlatform.macOS) {
+      try {
+        const initSettings = InitializationSettings(
+          android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+          iOS: DarwinInitializationSettings(
+            requestAlertPermission: true,
+            requestBadgePermission: false,
+            requestSoundPermission: true,
           ),
         );
-        // Android 13+ runtime permission.
-        try {
-          await androidImpl.requestNotificationsPermission();
-        } catch (_) {}
+        await _plugin.initialize(initSettings);
+        final androidImpl = _plugin.resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+        if (androidImpl != null) {
+          await androidImpl.createNotificationChannel(
+            const AndroidNotificationChannel(
+              _kAndroidChannelId,
+              _kAndroidChannelName,
+              description: _kAndroidChannelDescription,
+              importance: Importance.high,
+            ),
+          );
+          // Android 13+ runtime permission.
+          try {
+            await androidImpl.requestNotificationsPermission();
+          } catch (_) {}
+        }
+        _backend = _MobileBackend(_plugin);
+        _supported = true;
+        return;
+      } catch (e) {
+        debugPrint('Mobile notifications init failed: $e');
+        _supported = false;
+        _backend = _NoopBackend();
+        return;
       }
-      _supported = true;
-    } catch (e) {
-      debugPrint('Notifications init failed: $e');
-      _supported = false;
     }
+
+    if (platform == TargetPlatform.windows ||
+        platform == TargetPlatform.linux) {
+      try {
+        await localNotifier.setup(
+          appName: 'Noetica',
+          shortcutPolicy: ShortcutPolicy.requireCreate,
+        );
+        final desktop = _DesktopBackend();
+        await desktop.restoreSchedule();
+        _backend = desktop;
+        _supported = true;
+        return;
+      } catch (e) {
+        debugPrint('Desktop notifier init failed: $e');
+        _supported = false;
+        _backend = _NoopBackend();
+        return;
+      }
+    }
+
+    _supported = false;
   }
 
   Future<bool> isEnabled() async {
@@ -126,15 +175,13 @@ class NotificationsService {
 
   Future<void> cancelAll() async {
     if (!_supported) return;
-    try {
-      await _plugin.cancelAll();
-    } catch (_) {}
+    await _backend.cancelAll();
   }
 
   Future<void> cancelForEntry(String entryId) async {
     if (!_supported) return;
     for (final slot in _Slot.values) {
-      await _plugin.cancel(_idFor(entryId, slot));
+      await _backend.cancel(_idFor(entryId, slot));
     }
   }
 
@@ -153,25 +200,21 @@ class NotificationsService {
     if (due == null) return;
 
     final morning = await morningTime();
-    final tzDue = tz.TZDateTime.from(due, tz.local);
-    final dayBeforeDate = tzDue.subtract(const Duration(days: 1));
-    final dayBefore = tz.TZDateTime(
-      tz.local,
-      dayBeforeDate.year,
-      dayBeforeDate.month,
-      dayBeforeDate.day,
+    final dayBefore = DateTime(
+      due.year,
+      due.month,
+      due.day,
       18,
       0,
-    );
-    final morningOf = tz.TZDateTime(
-      tz.local,
-      tzDue.year,
-      tzDue.month,
-      tzDue.day,
+    ).subtract(const Duration(days: 1));
+    final morningOf = DateTime(
+      due.year,
+      due.month,
+      due.day,
       morning.hour,
       morning.minute,
     );
-    final lateAfter = tzDue.add(const Duration(hours: 1));
+    final lateAfter = due.add(const Duration(hours: 1));
 
     await _scheduleIfFuture(
       entry,
@@ -199,31 +242,18 @@ class NotificationsService {
   Future<void> _scheduleIfFuture(
     Entry entry,
     _Slot slot,
-    tz.TZDateTime when, {
+    DateTime when, {
     required String title,
     required String body,
   }) async {
-    final now = tz.TZDateTime.now(tz.local);
+    final now = DateTime.now();
     if (!when.isAfter(now)) return;
     try {
-      await _plugin.zonedSchedule(
-        _idFor(entry.id, slot),
-        title,
-        body,
-        when,
-        const NotificationDetails(
-          android: AndroidNotificationDetails(
-            _kAndroidChannelId,
-            _kAndroidChannelName,
-            channelDescription: _kAndroidChannelDescription,
-            importance: Importance.high,
-            priority: Priority.high,
-          ),
-          iOS: DarwinNotificationDetails(),
-        ),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
+      await _backend.schedule(
+        id: _idFor(entry.id, slot),
+        when: when,
+        title: title,
+        body: body,
         payload: entry.id,
       );
     } catch (e) {
@@ -238,4 +268,224 @@ class NotificationsService {
     // Keep it positive and within Android's 32-bit int range.
     return raw & 0x7fffffff;
   }
+}
+
+enum _BackendKind { none, mobile, desktop }
+
+abstract class _Backend {
+  _BackendKind get kind;
+
+  Future<void> schedule({
+    required int id,
+    required DateTime when,
+    required String title,
+    required String body,
+    String? payload,
+  });
+
+  Future<void> cancel(int id);
+
+  Future<void> cancelAll();
+}
+
+class _NoopBackend implements _Backend {
+  @override
+  _BackendKind get kind => _BackendKind.none;
+
+  @override
+  Future<void> schedule({
+    required int id,
+    required DateTime when,
+    required String title,
+    required String body,
+    String? payload,
+  }) async {}
+
+  @override
+  Future<void> cancel(int id) async {}
+
+  @override
+  Future<void> cancelAll() async {}
+}
+
+class _MobileBackend implements _Backend {
+  _MobileBackend(this._plugin);
+
+  final FlutterLocalNotificationsPlugin _plugin;
+
+  @override
+  _BackendKind get kind => _BackendKind.mobile;
+
+  @override
+  Future<void> schedule({
+    required int id,
+    required DateTime when,
+    required String title,
+    required String body,
+    String? payload,
+  }) async {
+    final tzWhen = tz.TZDateTime.from(when, tz.local);
+    await _plugin.zonedSchedule(
+      id,
+      title,
+      body,
+      tzWhen,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          _kAndroidChannelId,
+          _kAndroidChannelName,
+          channelDescription: _kAndroidChannelDescription,
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      payload: payload,
+    );
+  }
+
+  @override
+  Future<void> cancel(int id) async {
+    await _plugin.cancel(id);
+  }
+
+  @override
+  Future<void> cancelAll() async {
+    await _plugin.cancelAll();
+  }
+}
+
+/// Process-local scheduler used on Windows/Linux. Each pending notification
+/// has a Timer + a persisted entry in SharedPreferences. On init the
+/// service rebuilds Timers for everything that's still in the future.
+class _DesktopBackend implements _Backend {
+  final Map<int, Timer> _timers = {};
+  final Map<int, _PendingDesktop> _pending = {};
+
+  @override
+  _BackendKind get kind => _BackendKind.desktop;
+
+  Future<void> restoreSchedule() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_kNotifDesktopScheduleKey);
+    if (raw == null || raw.isEmpty) return;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return;
+      final now = DateTime.now();
+      for (final entry in decoded.entries) {
+        final id = int.tryParse(entry.key);
+        if (id == null) continue;
+        final value = entry.value;
+        if (value is! Map) continue;
+        final whenStr = value['when'];
+        final when = whenStr is String ? DateTime.tryParse(whenStr) : null;
+        if (when == null) continue;
+        final title = (value['title'] as String?) ?? 'Noetica';
+        final body = (value['body'] as String?) ?? '';
+        final payload = value['payload'] as String?;
+        if (when.isAfter(now)) {
+          _arm(id, when, title, body, payload);
+        }
+        // Past-due entries are dropped silently — we don't fire historic
+        // toasts on every startup.
+      }
+    } catch (e) {
+      debugPrint('Desktop schedule restore failed: $e');
+    }
+  }
+
+  Future<void> _persist() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (_pending.isEmpty) {
+      await prefs.remove(_kNotifDesktopScheduleKey);
+      return;
+    }
+    final out = <String, dynamic>{
+      for (final e in _pending.entries)
+        e.key.toString(): {
+          'when': e.value.when.toIso8601String(),
+          'title': e.value.title,
+          'body': e.value.body,
+          if (e.value.payload != null) 'payload': e.value.payload,
+        },
+    };
+    await prefs.setString(_kNotifDesktopScheduleKey, jsonEncode(out));
+  }
+
+  void _arm(
+    int id,
+    DateTime when,
+    String title,
+    String body,
+    String? payload,
+  ) {
+    final delay = when.difference(DateTime.now());
+    final timer = Timer(delay.isNegative ? Duration.zero : delay, () async {
+      _timers.remove(id);
+      _pending.remove(id);
+      unawaited(_persist());
+      try {
+        final notification = LocalNotification(title: title, body: body);
+        await notification.show();
+      } catch (e) {
+        debugPrint('Desktop toast failed: $e');
+      }
+    });
+    _timers[id] = timer;
+    _pending[id] = _PendingDesktop(
+      when: when,
+      title: title,
+      body: body,
+      payload: payload,
+    );
+  }
+
+  @override
+  Future<void> schedule({
+    required int id,
+    required DateTime when,
+    required String title,
+    required String body,
+    String? payload,
+  }) async {
+    _timers.remove(id)?.cancel();
+    _arm(id, when, title, body, payload);
+    await _persist();
+  }
+
+  @override
+  Future<void> cancel(int id) async {
+    _timers.remove(id)?.cancel();
+    if (_pending.remove(id) != null) {
+      await _persist();
+    }
+  }
+
+  @override
+  Future<void> cancelAll() async {
+    for (final t in _timers.values) {
+      t.cancel();
+    }
+    _timers.clear();
+    _pending.clear();
+    await _persist();
+  }
+}
+
+class _PendingDesktop {
+  _PendingDesktop({
+    required this.when,
+    required this.title,
+    required this.body,
+    this.payload,
+  });
+
+  final DateTime when;
+  final String title;
+  final String body;
+  final String? payload;
 }

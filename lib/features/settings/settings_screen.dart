@@ -270,9 +270,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           else if (!NotificationsService.instance.supported)
             ListTile(
               leading: const Icon(Icons.info_outline),
-              title: const Text('Уведомления доступны только на телефоне'),
+              title: const Text('Уведомления здесь не поддерживаются'),
               subtitle: Text(
-                'Локальные напоминания работают на Android и iOS. На Windows и в браузере используй приложение для просмотра задач — пуш-уведомлений тут нет.',
+                NotificationsService.instance.platformNote,
                 style: TextStyle(color: palette.muted),
               ),
             )
@@ -295,6 +295,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               trailing: const Icon(Icons.chevron_right),
               enabled: _notifEnabled,
               onTap: _notifEnabled ? _pickMorning : null,
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+              child: Text(
+                NotificationsService.instance.platformNote,
+                style: TextStyle(color: palette.muted, fontSize: 12),
+              ),
             ),
           ],
           const Divider(height: 1),
