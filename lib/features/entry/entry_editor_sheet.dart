@@ -95,30 +95,40 @@ class _EntryEditorState extends ConsumerState<_EntryEditor> {
   Future<void> _save() async {
     if (_title.text.trim().isEmpty) return;
     setState(() => _saving = true);
-    final repo = await ref.read(repositoryProvider.future);
-    final existing = widget.existing;
-    if (existing == null) {
-      await repo.createEntry(
-        title: _title.text.trim(),
-        body: _body.text.trim(),
-        kind: _kind,
-        dueAt: _due,
-        xp: _xp,
-        axisIds: _selectedAxes.toList(),
-      );
-    } else {
-      await repo.upsertEntry(existing.copyWith(
-        title: _title.text.trim(),
-        body: _body.text.trim(),
-        kind: _kind,
-        dueAt: _due,
-        clearDue: _due == null,
-        xp: _xp,
-        axisIds: _selectedAxes.toList(),
-        updatedAt: DateTime.now(),
-      ));
+    try {
+      final repo = await ref.read(repositoryProvider.future);
+      final existing = widget.existing;
+      if (existing == null) {
+        await repo.createEntry(
+          title: _title.text.trim(),
+          body: _body.text.trim(),
+          kind: _kind,
+          dueAt: _due,
+          xp: _xp,
+          axisIds: _selectedAxes.toList(),
+        );
+      } else {
+        await repo.upsertEntry(existing.copyWith(
+          title: _title.text.trim(),
+          body: _body.text.trim(),
+          kind: _kind,
+          dueAt: _due,
+          clearDue: _due == null,
+          xp: _xp,
+          axisIds: _selectedAxes.toList(),
+          updatedAt: DateTime.now(),
+        ));
+      }
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Не удалось сохранить запись: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
-    if (mounted) Navigator.of(context).pop();
   }
 
   Future<void> _delete() async {

@@ -54,21 +54,32 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         _drafts.where((d) => d.name.trim().isNotEmpty).toList();
     if (clean.length < 3 || clean.length > 8) return;
     setState(() => _saving = true);
-    final repo = await ref.read(repositoryProvider.future);
-    const uuid = Uuid();
-    final axes = <LifeAxis>[];
-    for (var i = 0; i < clean.length; i++) {
-      axes.add(LifeAxis(
-        id: uuid.v4(),
-        name: clean[i].name.trim(),
-        symbol: clean[i].symbol.trim().isEmpty ? '·' : clean[i].symbol.trim(),
-        position: i,
-        createdAt: DateTime.now(),
-      ));
+    try {
+      final repo = await ref.read(repositoryProvider.future);
+      const uuid = Uuid();
+      final axes = <LifeAxis>[];
+      for (var i = 0; i < clean.length; i++) {
+        axes.add(LifeAxis(
+          id: uuid.v4(),
+          name: clean[i].name.trim(),
+          symbol:
+              clean[i].symbol.trim().isEmpty ? '·' : clean[i].symbol.trim(),
+          position: i,
+          createdAt: DateTime.now(),
+        ));
+      }
+      await repo.replaceAxes(axes);
+      await markOnboarded();
+      ref.invalidate(onboardedProvider);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Не удалось сохранить оси: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
-    await repo.replaceAxes(axes);
-    await markOnboarded();
-    ref.invalidate(onboardedProvider);
   }
 
   @override
