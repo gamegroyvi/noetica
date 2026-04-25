@@ -5,6 +5,8 @@ import 'data/db.dart';
 import 'data/models.dart';
 import 'data/profile.dart';
 import 'data/repository.dart';
+import 'services/axes_api.dart';
+import 'services/levels.dart';
 import 'services/roadmap_api.dart';
 
 const _kOnboardedKey = 'noetica.onboarded.v1';
@@ -63,3 +65,22 @@ final profileProvider = FutureProvider<UserProfile?>((ref) async {
 });
 
 final roadmapApiProvider = Provider<RoadmapApi>((_) => RoadmapApi());
+
+final axesApiProvider = Provider<AxesApi>((_) => AxesApi());
+
+final lifetimeXpProvider = FutureProvider<int>((ref) async {
+  ref.watch(entriesProvider);
+  final repo = await ref.watch(repositoryProvider.future);
+  return repo.lifetimeXp();
+});
+
+final levelStatsProvider = FutureProvider<LevelStats>((ref) async {
+  final xp = await ref.watch(lifetimeXpProvider.future);
+  return levelStatsFor(xp);
+});
+
+final streakProvider = FutureProvider<int>((ref) async {
+  ref.watch(entriesProvider);
+  final repo = await ref.watch(repositoryProvider.future);
+  return repo.streakDays();
+});

@@ -42,12 +42,12 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Backend (Python) artifacts and local dev files
 backend/.env
 backend/.venv/
-backend/__pycache__/
 backend/**/__pycache__/
+backend/**/*.egg-info/
+
+# Local working notes (test plans, reports, etc.)
 /test-plan*.md
 /test-report*.md
-/test-plan*.md
-/test-report*.md
-/backend/*.egg-info/

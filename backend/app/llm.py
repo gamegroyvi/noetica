@@ -13,7 +13,7 @@ from typing import Any
 
 import httpx
 
-from .schemas import AxisInput, ProfileInput, RoadmapTask
+from .schemas import AxisDraft, AxisInput, ProfileInput, RoadmapTask
 
 DEFAULT_BASE_URL = "https://api.openai.com/v1"
 DEFAULT_MODEL = "gpt-4o-mini"
@@ -158,14 +158,147 @@ class LlmClient:
                 502, f"Malformed LLM response: {exc}: {data!r}"
             ) from exc
 
-        parsed = _parse_roadmap_json(content)
+        parsed = _parse_json(content)
         axis_ids = {a.id for a in axes}
         tasks = _normalize_tasks(parsed.get("tasks", []), axis_ids, horizon_days)
         summary = str(parsed.get("summary", "")).strip()
         return tasks, summary
 
+    async def generate_axes(
+        self,
+        profile: ProfileInput,
+        interests: list[str],
+        count: int,
+    ) -> list[AxisDraft]:
+        """Have the LLM design 3..8 personalised growth axes.
 
-def _parse_roadmap_json(content: str) -> dict[str, Any]:
+        We do NOT pre-bake any «TeloUmDelo» pseudo-defaults — the model gets
+        the user's free-form intents and produces names + symbols + a one-line
+        description per axis. The Flutter UI lets the user edit them after.
+        """
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": self.referer,
+            "X-Title": self.title,
+        }
+        payload: dict[str, Any] = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": _axes_system_prompt(count)},
+                {
+                    "role": "user",
+                    "content": _axes_user_prompt(profile, interests, count),
+                },
+            ],
+            "response_format": {"type": "json_object"},
+            "temperature": 0.7,
+            "max_tokens": 700,
+        }
+        url = f"{self.base_url}/chat/completions"
+        async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+            response = await client.post(url, json=payload, headers=headers)
+        if response.status_code >= 400:
+            raise LlmUpstreamError(
+                response.status_code,
+                f"LLM upstream error ({response.status_code}): {response.text[:500]}",
+            )
+        data = response.json()
+        try:
+            content = data["choices"][0]["message"]["content"]
+        except (KeyError, IndexError, TypeError) as exc:
+            raise LlmUpstreamError(
+                502, f"Malformed LLM response: {exc}: {data!r}"
+            ) from exc
+        parsed = _parse_json(content)
+        return _normalize_axes(parsed.get("axes", []), count)
+
+
+def _axes_system_prompt(count: int) -> str:
+    return (
+        "You are Noetica, a personal growth designer. "
+        "Given a user's free-form interests and aspirations, design "
+        f"{count} unique personal growth AXES tailored to THEIR life — do not "
+        "fall back to generic categories like 'Body', 'Mind', 'Family' unless "
+        "the user explicitly mentioned them. Each axis is a vertex of their "
+        "personal pentagon and will track XP from completed tasks. "
+        "Return STRICT JSON in the SAME language as the user's interests "
+        "(Russian if Russian, English if English, etc.). Do not wrap in markdown fences. "
+        "Each axis must have: a 1-2 word name (<=24 chars), a single-character "
+        "unicode symbol/emoji (geometric shapes preferred for B/W minimalism: "
+        "● ○ ◆ ◇ ▲ △ ■ □ ● ◐ ◑ ▹ ☆ ✪ ✣), and a short 'description' "
+        "(<=140 chars) in 2nd person describing what counts as growth on this axis."
+    )
+
+
+def _axes_user_prompt(
+    profile: ProfileInput, interests: list[str], count: int
+) -> str:
+    profile_lines: list[str] = []
+    if profile.name:
+        profile_lines.append(f"Name: {profile.name}")
+    if profile.aspiration:
+        profile_lines.append(f"Year aspiration: {profile.aspiration}")
+    if profile.pain_point:
+        profile_lines.append(f"Pain point: {profile.pain_point}")
+    profile_lines.append(f"Weekly hours available: {profile.weekly_hours}")
+    if interests:
+        interests_block = "INTERESTS / DESIRED GROWTH AREAS (free-form):\n" + "\n".join(
+            f"  - {s}" for s in interests
+        )
+    else:
+        interests_block = (
+            "INTERESTS: (none provided — design from the aspiration alone)"
+        )
+    schema = (
+        '{\n'
+        '  "axes": [\n'
+        '    {"name": "", "symbol": "", "description": ""}\n'
+        f"  ]\n"  # exactly {count} items
+        "}"
+    )
+    return (
+        "PROFILE:\n" + "\n".join(profile_lines) + "\n\n"
+        f"{interests_block}\n\n"
+        f"Design exactly {count} personalised growth axes. "
+        "Names should reflect the user's real interests, not abstract life "
+        "buckets. Symbols must be unique across the set.\n\n"
+        f"Return JSON exactly in this shape (no extra keys, no fences):\n{schema}"
+    )
+
+
+def _normalize_axes(raw_axes: list[Any], count: int) -> list[AxisDraft]:
+    out: list[AxisDraft] = []
+    seen_symbols: set[str] = set()
+    seen_names: set[str] = set()
+    for item in raw_axes:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name") or "").strip()
+        symbol = str(item.get("symbol") or "").strip()
+        description = str(item.get("description") or "").strip()
+        if not name or not symbol:
+            continue
+        # First grapheme cluster only; symbol field is bounded to 4 chars.
+        symbol = symbol[:4]
+        name_key = name.lower()
+        if name_key in seen_names or symbol in seen_symbols:
+            continue
+        seen_names.add(name_key)
+        seen_symbols.add(symbol)
+        out.append(
+            AxisDraft(
+                name=name[:40],
+                symbol=symbol,
+                description=description[:200],
+            )
+        )
+        if len(out) >= count:
+            break
+    return out
+
+
+def _parse_json(content: str) -> dict[str, Any]:
     text = content.strip()
     if text.startswith("```"):
         # Strip ```json ... ``` fences in case the model ignored the instruction.

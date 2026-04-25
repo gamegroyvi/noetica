@@ -51,6 +51,28 @@ class RoadmapResponse(BaseModel):
     summary: str = ""
 
 
+class AxesRequest(BaseModel):
+    profile: ProfileInput = ProfileInput()
+    interests: list[str] = Field(default_factory=list)
+    count: int = Field(default=5, ge=3, le=8)
+
+    @field_validator("interests")
+    @classmethod
+    def _trim_interests(cls, value: list[str]) -> list[str]:
+        return [s.strip() for s in value if isinstance(s, str) and s.strip()][:12]
+
+
+class AxisDraft(BaseModel):
+    name: str = Field(min_length=1, max_length=40)
+    symbol: str = Field(min_length=1, max_length=4)
+    description: str = Field(default="", max_length=200)
+
+
+class AxesResponse(BaseModel):
+    model: str
+    axes: list[AxisDraft]
+
+
 class ErrorResponse(BaseModel):
     detail: str
     kind: Literal["upstream_error", "validation_error", "config_error"] = (

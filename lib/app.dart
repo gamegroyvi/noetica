@@ -61,7 +61,7 @@ class NoeticaApp extends ConsumerWidget {
     if (!onboarded) {
       return OnboardingScreen(
         key: const ValueKey('onboarding'),
-        seedPriorities: profile.priorities,
+        seedInterests: profile.interests,
       );
     }
     return const HomeShell(key: ValueKey('home'));

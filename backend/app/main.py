@@ -14,7 +14,12 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from .llm import LlmClient, LlmConfigError, LlmUpstreamError
-from .schemas import RoadmapRequest, RoadmapResponse
+from .schemas import (
+    AxesRequest,
+    AxesResponse,
+    RoadmapRequest,
+    RoadmapResponse,
+)
 
 load_dotenv()
 
@@ -90,3 +95,38 @@ async def generate_roadmap(request: RoadmapRequest) -> RoadmapResponse:
         tasks=tasks,
         summary=summary,
     )
+
+
+@app.post("/onboarding/axes", response_model=AxesResponse)
+async def generate_axes(request: AxesRequest) -> AxesResponse:
+    try:
+        client = LlmClient()
+    except LlmConfigError as exc:
+        logger.error("LLM config error: %s", exc)
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    try:
+        axes = await client.generate_axes(
+            profile=request.profile,
+            interests=request.interests,
+            count=request.count,
+        )
+    except LlmUpstreamError as exc:
+        logger.warning("LLM upstream error: %s", exc)
+        raise HTTPException(
+            status_code=502, detail=f"LLM upstream error: {exc}"
+        ) from exc
+
+    if len(axes) < 3:
+        raise HTTPException(
+            status_code=502,
+            detail="LLM returned fewer than 3 usable axes.",
+        )
+
+    logger.info(
+        "Generated axes: model=%s axes=%d interests=%d",
+        client.model,
+        len(axes),
+        len(request.interests),
+    )
+    return AxesResponse(model=client.model, axes=axes)

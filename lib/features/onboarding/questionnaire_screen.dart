@@ -38,8 +38,9 @@ class _QuestionnaireScreenState extends ConsumerState<QuestionnaireScreen> {
   // Step 1: aspiration ("Кем хочешь стать через год")
   final _aspirationCtrl = TextEditingController();
 
-  // Step 2: priorities (multi-select, 1..3)
-  final Set<String> _priorities = {};
+  // Step 2: interests (free-form chips, 3..12)
+  final List<String> _interests = [];
+  final _interestCtrl = TextEditingController();
 
   // Step 3: pain point (free text, optional)
   final _painCtrl = TextEditingController();
@@ -56,7 +57,7 @@ class _QuestionnaireScreenState extends ConsumerState<QuestionnaireScreen> {
     if (e != null) {
       _nameCtrl.text = e.name;
       _aspirationCtrl.text = e.aspiration;
-      _priorities.addAll(e.priorities);
+      _interests.addAll(e.interests);
       _painCtrl.text = e.painPoint;
       _weeklyHours = e.weeklyHours;
     }
@@ -67,7 +68,30 @@ class _QuestionnaireScreenState extends ConsumerState<QuestionnaireScreen> {
     _nameCtrl.dispose();
     _aspirationCtrl.dispose();
     _painCtrl.dispose();
+    _interestCtrl.dispose();
     super.dispose();
+  }
+
+  void _toggleInterest(String value) {
+    final v = value.trim();
+    if (v.isEmpty) return;
+    setState(() {
+      final idx = _interests.indexWhere(
+        (e) => e.toLowerCase() == v.toLowerCase(),
+      );
+      if (idx >= 0) {
+        _interests.removeAt(idx);
+      } else if (_interests.length < 12) {
+        _interests.add(v);
+      }
+    });
+  }
+
+  void _commitTypedInterest() {
+    final v = _interestCtrl.text.trim();
+    if (v.isEmpty) return;
+    _toggleInterest(v);
+    _interestCtrl.clear();
   }
 
   bool get _canAdvance {
@@ -77,7 +101,7 @@ class _QuestionnaireScreenState extends ConsumerState<QuestionnaireScreen> {
       case 1:
         return _aspirationCtrl.text.trim().isNotEmpty;
       case 2:
-        return _priorities.isNotEmpty && _priorities.length <= 3;
+        return _interests.length >= 3 && _interests.length <= 12;
       case 3:
         return true; // pain point optional
       case 4:
@@ -112,7 +136,7 @@ class _QuestionnaireScreenState extends ConsumerState<QuestionnaireScreen> {
               UserProfile(
                 name: '',
                 aspiration: '',
-                priorities: const [],
+                interests: const [],
                 painPoint: '',
                 weeklyHours: 5,
                 updatedAt: DateTime.now(),
@@ -120,7 +144,7 @@ class _QuestionnaireScreenState extends ConsumerState<QuestionnaireScreen> {
           .copyWith(
         name: _nameCtrl.text.trim(),
         aspiration: _aspirationCtrl.text.trim(),
-        priorities: _priorities.toList(),
+        interests: List<String>.from(_interests),
         painPoint: _painCtrl.text.trim(),
         weeklyHours: _weeklyHours,
         updatedAt: DateTime.now(),
@@ -270,27 +294,86 @@ class _QuestionnaireScreenState extends ConsumerState<QuestionnaireScreen> {
         );
       case 2:
         return _StepShell(
-          eyebrow: 'ПРИОРИТЕТЫ',
-          title: 'Что сейчас в приоритете?',
-          hint: 'Выбери до трёх. По ним предложим оси для пентаграммы — потом отредактируешь.',
+          eyebrow: 'РОСТ',
+          title: 'В чём хочешь развиваться?',
+          hint: 'От 3 до 12 коротких фраз. На их основе AI придумает твои личные оси — никаких фиксированных шаблонов.',
           child: SingleChildScrollView(
-            child: Wrap(
-              spacing: 10,
-              runSpacing: 10,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                for (final p in priorityPresets)
-                  _PriorityChip(
-                    preset: p,
-                    selected: _priorities.contains(p.id),
-                    onTap: () => setState(() {
-                      if (_priorities.contains(p.id)) {
-                        _priorities.remove(p.id);
-                      } else if (_priorities.length < 3) {
-                        _priorities.add(p.id);
-                      }
-                    }),
-                    palette: palette,
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _interestCtrl,
+                        textInputAction: TextInputAction.done,
+                        onSubmitted: (_) => _commitTypedInterest(),
+                        decoration: const InputDecoration(
+                          hintText: 'Своё направление…',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    OutlinedButton(
+                      onPressed: _interests.length < 12
+                          ? _commitTypedInterest
+                          : null,
+                      child: const Text('+ Добавить'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                if (_interests.isNotEmpty) ...[
+                  Text(
+                    'Твоё (${_interests.length})',
+                    style: TextStyle(
+                      color: palette.muted,
+                      fontSize: 11,
+                      letterSpacing: 2.0,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final v in _interests)
+                        _InterestChip(
+                          label: v,
+                          selected: true,
+                          onTap: () => _toggleInterest(v),
+                          palette: palette,
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                ],
+                Text(
+                  'ПОДСКАЗКИ',
+                  style: TextStyle(
+                    color: palette.muted,
+                    fontSize: 11,
+                    letterSpacing: 2.0,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final s in suggestedInterests)
+                      _InterestChip(
+                        label: s,
+                        selected: _interests.any(
+                          (e) => e.toLowerCase() == s.toLowerCase(),
+                        ),
+                        onTap: () => _toggleInterest(s),
+                        palette: palette,
+                      ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -467,15 +550,15 @@ class _ProgressDots extends StatelessWidget {
   }
 }
 
-class _PriorityChip extends StatelessWidget {
-  const _PriorityChip({
-    required this.preset,
+class _InterestChip extends StatelessWidget {
+  const _InterestChip({
+    required this.label,
     required this.selected,
     required this.onTap,
     required this.palette,
   });
 
-  final PriorityPreset preset;
+  final String label;
   final bool selected;
   final VoidCallback onTap;
   final NoeticaPalette palette;
@@ -501,16 +584,17 @@ class _PriorityChip extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  preset.axisSymbol,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: selected ? palette.bg : palette.fg,
+                if (selected)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: Icon(
+                      Icons.close,
+                      size: 14,
+                      color: palette.bg,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
                 Text(
-                  preset.label,
+                  label,
                   style: TextStyle(
                     fontSize: 13,
                     color: selected ? palette.bg : palette.fg,
