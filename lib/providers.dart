@@ -3,7 +3,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'data/db.dart';
 import 'data/models.dart';
+import 'data/profile.dart';
 import 'data/repository.dart';
+import 'services/roadmap_api.dart';
 
 const _kOnboardedKey = 'noetica.onboarded.v1';
 
@@ -53,3 +55,11 @@ Future<void> markOnboarded() async {
   final prefs = await SharedPreferences.getInstance();
   await prefs.setBool(_kOnboardedKey, true);
 }
+
+final profileServiceProvider = Provider<ProfileService>((_) => ProfileService());
+
+final profileProvider = FutureProvider<UserProfile?>((ref) async {
+  return ref.watch(profileServiceProvider).load();
+});
+
+final roadmapApiProvider = Provider<RoadmapApi>((_) => RoadmapApi());
