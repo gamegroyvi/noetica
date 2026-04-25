@@ -180,7 +180,7 @@ class _Streak extends ConsumerWidget {
     cursor = DateTime(cursor.year, cursor.month, cursor.day);
     while (days.contains(cursor)) {
       streak++;
-      cursor = cursor.subtract(const Duration(days: 1));
+      cursor = DateTime(cursor.year, cursor.month, cursor.day - 1);
     }
     return streak;
   }
