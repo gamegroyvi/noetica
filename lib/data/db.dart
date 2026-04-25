@@ -11,13 +11,7 @@ class NoeticaDb {
 
   static Future<NoeticaDb> open() async {
     final path = await _databasePath();
-    final factory =
-        (defaultTargetPlatform == TargetPlatform.linux ||
-                defaultTargetPlatform == TargetPlatform.windows ||
-                defaultTargetPlatform == TargetPlatform.macOS)
-            ? databaseFactoryFfi
-            : databaseFactory;
-    final db = await factory.openDatabase(
+    final db = await databaseFactory.openDatabase(
       path,
       options: OpenDatabaseOptions(
         version: 1,
@@ -31,6 +25,7 @@ class NoeticaDb {
   }
 
   static Future<String> _databasePath() async {
+    if (kIsWeb) return 'noetica.db';
     final dir = await getApplicationDocumentsDirectory();
     return p.join(dir.path, 'noetica.db');
   }
