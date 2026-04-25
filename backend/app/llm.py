@@ -190,10 +190,10 @@ def _normalize_tasks(
     for item in raw_tasks:
         if not isinstance(item, dict):
             continue
-        title = str(item.get("title", "")).strip()
+        title = str(item.get("title") or "").strip()
         if not title:
             continue
-        body = str(item.get("body", "")).strip()
+        body = str(item.get("body") or "").strip()
         xp_raw = item.get("xp", 20)
         try:
             xp = int(xp_raw)
