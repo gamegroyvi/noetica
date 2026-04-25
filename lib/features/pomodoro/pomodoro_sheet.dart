@@ -2,8 +2,10 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../services/notifications.dart';
 import '../../theme/app_theme.dart';
 
 /// Persisted across app restarts so the timer resumes if the user closes
@@ -187,18 +189,34 @@ class _PomodoroSheetState extends State<PomodoroSheet> {
       _persistRunning();
     }
 
+    final transitionTitle = wasFocus
+        ? (_phase == _Phase.longBreak
+            ? 'Сессия завершена — длинный отдых $_longBreakMinutes мин'
+            : 'Сессия завершена — отдых $_breakMinutes мин')
+        : (_autoNext
+            ? 'Отдых закончился — давай ещё фокус'
+            : 'Отдых закончился. Запусти следующий фокус когда готов.');
+
+    // Audible / OS-level cue. SystemSound.alert plays on Android/iOS;
+    // on desktop we fire a real toast through NotificationsService —
+    // Windows toasts come with a default ding, which is exactly what the
+    // user expects when the timer hits zero.
+    if (_soundOn) {
+      // Best-effort short tone on mobile.
+      SystemSound.play(SystemSoundType.alert);
+      HapticFeedback.mediumImpact();
+      // Real toast (desktop fires a Windows toast with sound, mobile shows
+      // a high-importance notification).
+      NotificationsService.instance.showImmediate(
+        title: wasFocus ? 'Фокус завершён' : 'Отдых завершён',
+        body: transitionTitle,
+      );
+    }
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            wasFocus
-                ? (_phase == _Phase.longBreak
-                    ? 'Сессия завершена — длинный отдых $_longBreakMinutes мин'
-                    : 'Сессия завершена — отдых $_breakMinutes мин')
-                : (_autoNext
-                    ? 'Отдых закончился — давай ещё фокус'
-                    : 'Отдых закончился. Запусти следующий фокус когда готов.'),
-          ),
+          content: Text(transitionTitle),
           duration: const Duration(seconds: 4),
         ),
       );
@@ -233,9 +251,14 @@ class _PomodoroSheetState extends State<PomodoroSheet> {
   }
 
   String _fmt(Duration d) {
+    if (d.isNegative) d = Duration.zero;
+    final h = d.inHours;
     final m = d.inMinutes.remainder(60);
     final s = d.inSeconds.remainder(60);
-    return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+    final mm = m.toString().padLeft(2, '0');
+    final ss = s.toString().padLeft(2, '0');
+    if (h > 0) return '$h:$mm:$ss';
+    return '$mm:$ss';
   }
 
   double get _progress {
@@ -484,7 +507,7 @@ class _SettingsPanel extends StatelessWidget {
             value: focusMinutes,
             onChanged: (v) => onChange(focus: v),
             min: 5,
-            max: 90,
+            max: 180,
             step: 5,
             palette: palette,
           ),

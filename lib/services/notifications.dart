@@ -178,6 +178,31 @@ class NotificationsService {
     await _backend.cancelAll();
   }
 
+  /// Fire a notification immediately (no scheduling). Used by features like
+  /// Pomodoro to ring the user when a phase ends. Independent of the
+  /// "enabled" flag because the user explicitly asked for the sound — if
+  /// notifications are turned off in the OS, this just silently no-ops.
+  Future<void> showImmediate({
+    required String title,
+    required String body,
+  }) async {
+    if (!_supported) return;
+    try {
+      // Schedule for "right now" — both backends handle a near-zero delta.
+      final id = '${title}_${DateTime.now().microsecondsSinceEpoch}'
+              .hashCode &
+          0x7fffffff;
+      await _backend.schedule(
+        id: id,
+        when: DateTime.now().add(const Duration(milliseconds: 100)),
+        title: title,
+        body: body,
+      );
+    } catch (e) {
+      debugPrint('showImmediate failed: $e');
+    }
+  }
+
   Future<void> cancelForEntry(String entryId) async {
     if (!_supported) return;
     for (final slot in _Slot.values) {
