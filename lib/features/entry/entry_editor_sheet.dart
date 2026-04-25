@@ -78,6 +78,7 @@ class _EntryEditorState extends ConsumerState<_EntryEditor> {
       context: context,
       initialTime: TimeOfDay.fromDateTime(initial),
     );
+    if (!mounted) return;
     setState(() {
       _due = DateTime(
         date.year,
