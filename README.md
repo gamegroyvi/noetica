@@ -1,16 +1,36 @@
 # noetica
 
-A new Flutter project.
+Second brain · growth tracker · memoir.
 
-## Getting Started
+A Flutter app for the people who want a single tool for thinking,
+remembering, and growing.
 
-This project is a starting point for a Flutter application.
+## Vision
 
-A few resources to get you started if this is your first Flutter project:
+Noetica is built around three layers tied to a single time axis:
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+- **Now** — tasks and reminders (what I'm doing).
+- **Self** — a user-defined growth pentagon (who I'm becoming).
+- **Past** — a memoir-style timeline with explicit time gaps between
+  entries (who I was).
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Every note or task is anchored to a timestamp and one or more growth
+axes. Completing a task awards XP that decays over a 30-day window, so
+the pentagon reflects "you right now", not the sum of your life.
+
+## Stack
+
+- Flutter 3.24, Dart 3.5
+- Riverpod for state management
+- sqflite (mobile) / sqflite_common_ffi (desktop) for local storage
+- google_fonts (Inter) for typography
+- Strict black-and-white theme, no gradients
+
+## Run
+
+```sh
+flutter pub get
+flutter run            # picks the first available device
+flutter test           # widget tests
+flutter analyze        # static analysis
+```
