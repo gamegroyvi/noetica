@@ -17,7 +17,9 @@ class LifeAxis {
     required this.symbol,
     required this.position,
     required this.createdAt,
-  });
+    DateTime? updatedAt,
+    this.deletedAt,
+  }) : updatedAt = updatedAt ?? createdAt;
 
   final String id;
   final String name;
@@ -28,13 +30,27 @@ class LifeAxis {
   /// 0..n - controls vertex order on the pentagon.
   final int position;
   final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime? deletedAt;
 
-  LifeAxis copyWith({String? name, String? symbol, int? position}) => LifeAxis(
+  bool get isDeleted => deletedAt != null;
+
+  LifeAxis copyWith({
+    String? name,
+    String? symbol,
+    int? position,
+    DateTime? updatedAt,
+    DateTime? deletedAt,
+    bool clearDeleted = false,
+  }) =>
+      LifeAxis(
         id: id,
         name: name ?? this.name,
         symbol: symbol ?? this.symbol,
         position: position ?? this.position,
         createdAt: createdAt,
+        updatedAt: updatedAt ?? DateTime.now(),
+        deletedAt: clearDeleted ? null : (deletedAt ?? this.deletedAt),
       );
 
   Map<String, Object?> toMap() => {
@@ -43,6 +59,8 @@ class LifeAxis {
         'symbol': symbol,
         'position': position,
         'created_at': createdAt.millisecondsSinceEpoch,
+        'updated_at': updatedAt.millisecondsSinceEpoch,
+        'deleted_at': deletedAt?.millisecondsSinceEpoch,
       };
 
   factory LifeAxis.fromMap(Map<String, Object?> m) => LifeAxis(
@@ -51,6 +69,12 @@ class LifeAxis {
         symbol: m['symbol']! as String,
         position: (m['position'] as int?) ?? 0,
         createdAt: DateTime.fromMillisecondsSinceEpoch(m['created_at']! as int),
+        updatedAt: m['updated_at'] == null
+            ? DateTime.fromMillisecondsSinceEpoch(m['created_at']! as int)
+            : DateTime.fromMillisecondsSinceEpoch(m['updated_at']! as int),
+        deletedAt: m['deleted_at'] == null
+            ? null
+            : DateTime.fromMillisecondsSinceEpoch(m['deleted_at']! as int),
       );
 }
 
@@ -68,6 +92,7 @@ class Entry {
     required this.xp,
     this.dueAt,
     this.completedAt,
+    this.deletedAt,
     this.axisIds = const [],
   });
 
@@ -79,6 +104,7 @@ class Entry {
   final DateTime updatedAt;
   final DateTime? dueAt;
   final DateTime? completedAt;
+  final DateTime? deletedAt;
 
   /// XP awarded to each linked axis on completion. 1..100.
   final int xp;
@@ -87,6 +113,7 @@ class Entry {
 
   bool get isTask => kind == EntryKind.task;
   bool get isCompleted => completedAt != null;
+  bool get isDeleted => deletedAt != null;
 
   Entry copyWith({
     String? title,
@@ -95,10 +122,12 @@ class Entry {
     DateTime? updatedAt,
     DateTime? dueAt,
     DateTime? completedAt,
+    DateTime? deletedAt,
     int? xp,
     List<String>? axisIds,
     bool clearDue = false,
     bool clearCompleted = false,
+    bool clearDeleted = false,
   }) =>
       Entry(
         id: id,
@@ -110,6 +139,7 @@ class Entry {
         dueAt: clearDue ? null : (dueAt ?? this.dueAt),
         completedAt:
             clearCompleted ? null : (completedAt ?? this.completedAt),
+        deletedAt: clearDeleted ? null : (deletedAt ?? this.deletedAt),
         xp: xp ?? this.xp,
         axisIds: axisIds ?? this.axisIds,
       );
@@ -123,6 +153,7 @@ class Entry {
         'updated_at': updatedAt.millisecondsSinceEpoch,
         'due_at': dueAt?.millisecondsSinceEpoch,
         'completed_at': completedAt?.millisecondsSinceEpoch,
+        'deleted_at': deletedAt?.millisecondsSinceEpoch,
         'xp': xp,
       };
 
@@ -146,6 +177,9 @@ class Entry {
         completedAt: m['completed_at'] == null
             ? null
             : DateTime.fromMillisecondsSinceEpoch(m['completed_at']! as int),
+        deletedAt: m['deleted_at'] == null
+            ? null
+            : DateTime.fromMillisecondsSinceEpoch(m['deleted_at']! as int),
         xp: (m['xp'] as int?) ?? 10,
         axisIds: axisIds,
       );

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../data/profile.dart';
+import 'auth_service.dart';
 
 /// Mirrors `services/roadmap_api.dart` — same backend, different endpoint.
 const String _kDefaultBackendUrl =
@@ -40,15 +41,20 @@ class AxesApiException implements Exception {
 }
 
 class AxesApi {
-  AxesApi({String? baseUrl, http.Client? client})
-      : _baseUrl = (baseUrl ?? _resolveBaseUrl()).trim().replaceAll(
+  AxesApi({
+    String? baseUrl,
+    http.Client? client,
+    AuthService? authService,
+  })  : _baseUrl = (baseUrl ?? _resolveBaseUrl()).trim().replaceAll(
               RegExp(r'/+$'),
               '',
             ),
-        _client = client ?? http.Client();
+        _client = client ?? http.Client(),
+        _auth = authService;
 
   final String _baseUrl;
   final http.Client _client;
+  final AuthService? _auth;
 
   static String _resolveBaseUrl() {
     const fromDefine = String.fromEnvironment(
@@ -76,12 +82,22 @@ class AxesApi {
       'count': count,
     };
 
+    final token = _auth?.current?.accessToken;
+    if (token == null || token.isEmpty) {
+      throw AxesApiException(
+        'Не выполнен вход в Google. Перезайдите и попробуйте снова.',
+        status: 401,
+      );
+    }
     http.Response response;
     try {
       response = await _client
           .post(
             uri,
-            headers: const {'Content-Type': 'application/json'},
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
             body: jsonEncode(payload),
           )
           .timeout(const Duration(seconds: 60));

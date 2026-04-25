@@ -16,7 +16,7 @@ void main() {
     final raw = await databaseFactory.openDatabase(
       inMemoryDatabasePath,
       options: OpenDatabaseOptions(
-        version: 1,
+        version: 2,
         onConfigure: (db) async {
           await db.execute('PRAGMA foreign_keys = ON');
         },
@@ -27,7 +27,9 @@ void main() {
               name TEXT NOT NULL,
               symbol TEXT NOT NULL,
               position INTEGER NOT NULL,
-              created_at INTEGER NOT NULL
+              created_at INTEGER NOT NULL,
+              updated_at INTEGER NOT NULL,
+              deleted_at INTEGER
             )
           ''');
           await db.execute('''
@@ -40,7 +42,8 @@ void main() {
               updated_at INTEGER NOT NULL,
               due_at INTEGER,
               completed_at INTEGER,
-              xp INTEGER NOT NULL DEFAULT 10
+              xp INTEGER NOT NULL DEFAULT 10,
+              deleted_at INTEGER
             )
           ''');
           await db.execute('''
