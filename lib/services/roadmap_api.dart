@@ -106,6 +106,7 @@ class RoadmapApi {
     required String goal,
     required UserProfile? profile,
     required List<LifeAxis> axes,
+    PersonalKnowledge? knowledge,
     int horizonDays = 30,
     int taskCount = 6,
   }) async {
@@ -119,6 +120,17 @@ class RoadmapApi {
         'weekly_hours': profile?.weeklyHours ?? 5,
         'interest_levels': profile?.interestLevels ?? const <String, String>{},
       },
+      // Optional persistent context. Backend will fold this into the
+      // system prompt so the LLM stops generating things the user has
+      // already done or that contradict known constraints.
+      if (knowledge != null && knowledge.summary.isNotEmpty)
+        'knowledge': {
+          'summary': knowledge.summary,
+          'goals': knowledge.goals,
+          'constraints': knowledge.constraints,
+          'recent_reflections': knowledge.recentReflections,
+          'completed_highlights': knowledge.completedHighlights,
+        },
       'axes': [
         for (final a in axes)
           {'id': a.id, 'name': a.name, 'symbol': a.symbol},

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../data/models.dart';
+import '../../data/personal_knowledge_service.dart';
 import '../../providers.dart';
 import '../../theme/app_theme.dart';
 
@@ -62,9 +63,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     });
     try {
       final profile = ref.read(profileProvider).value;
+      final knowledge = await PersonalKnowledgeService().load();
       final result = await ref.read(axesApiProvider).generate(
             profile: profile,
             interests: widget.seedInterests,
+            knowledge: knowledge,
             count: 5,
           );
       if (!mounted) return;

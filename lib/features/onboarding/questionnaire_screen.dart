@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/personal_knowledge_service.dart';
 import '../../data/profile.dart';
 import '../../providers.dart';
 import '../../theme/app_theme.dart';
@@ -140,6 +141,21 @@ class _QuestionnaireScreenState extends ConsumerState<QuestionnaireScreen> {
     setState(() => _step -= 1);
   }
 
+  String _buildKnowledgeSummary(UserProfile profile) {
+    final levelsBlurb = profile.interestLevels.entries
+        .where((e) => e.value.isNotEmpty)
+        .map((e) => '${e.key} (${e.value})')
+        .join(', ');
+    final parts = <String>[
+      if (profile.name.isNotEmpty) 'Зовут ${profile.name}.',
+      if (profile.aspiration.isNotEmpty) 'Цель: ${profile.aspiration}.',
+      if (levelsBlurb.isNotEmpty) 'Сейчас: $levelsBlurb.',
+      if (profile.painPoint.isNotEmpty) 'Что мешает: ${profile.painPoint}.',
+      'В неделю готов уделять около ${profile.weeklyHours} часов.',
+    ];
+    return parts.join(' ');
+  }
+
   Future<void> _finish() async {
     setState(() => _saving = true);
     HapticFeedback.selectionClick();
@@ -169,6 +185,19 @@ class _QuestionnaireScreenState extends ConsumerState<QuestionnaireScreen> {
         updatedAt: DateTime.now(),
       );
       await svc.save(profile);
+      // Seed the personal knowledge base with what we just learned in
+      // the questionnaire. Future LLM prompts will pull from this
+      // document so the model has stable context across sessions.
+      final summary = _buildKnowledgeSummary(profile);
+      await PersonalKnowledgeService().recordOnboarding(
+        summary: summary,
+        goals: profile.aspiration.isEmpty ? const [] : [profile.aspiration],
+        constraints: [
+          'В неделю на развитие: ~${profile.weeklyHours} ч',
+          if (profile.painPoint.isNotEmpty)
+            'Что мешает: ${profile.painPoint}',
+        ],
+      );
       ref.invalidate(profileProvider);
       if (widget.onDone != null) {
         widget.onDone!();

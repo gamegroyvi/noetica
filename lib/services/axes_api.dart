@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import '../data/models.dart';
 import '../data/profile.dart';
 import 'auth_service.dart';
 
@@ -68,6 +69,7 @@ class AxesApi {
   Future<AxesGenerationResult> generate({
     required UserProfile? profile,
     required List<String> interests,
+    PersonalKnowledge? knowledge,
     int count = 5,
   }) async {
     final uri = Uri.parse('$_baseUrl/onboarding/axes');
@@ -79,6 +81,14 @@ class AxesApi {
         'weekly_hours': profile?.weeklyHours ?? 5,
         'interest_levels': profile?.interestLevels ?? const <String, String>{},
       },
+      if (knowledge != null && knowledge.summary.isNotEmpty)
+        'knowledge': {
+          'summary': knowledge.summary,
+          'goals': knowledge.goals,
+          'constraints': knowledge.constraints,
+          'recent_reflections': knowledge.recentReflections,
+          'completed_highlights': knowledge.completedHighlights,
+        },
       'interests': interests,
       'count': count,
     };

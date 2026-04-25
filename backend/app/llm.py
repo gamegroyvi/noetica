@@ -13,7 +13,45 @@ from typing import Any
 
 import httpx
 
-from .schemas import AxisDraft, AxisInput, ProfileInput, RoadmapTask
+from .schemas import (
+    AxisDraft,
+    AxisInput,
+    KnowledgeInput,
+    ProfileInput,
+    RoadmapTask,
+)
+
+
+def _knowledge_lines(knowledge: KnowledgeInput | None) -> list[str]:
+    """Render the persistent knowledge document into a compact prompt
+    fragment. Each section is capped to keep the total under ~600 tokens
+    so the model retains room for actual reasoning even with verbose
+    histories. Returns an empty list when there is nothing useful to
+    inline."""
+    if knowledge is None:
+        return []
+    lines: list[str] = []
+    if knowledge.summary:
+        lines.append(f"About the user: {knowledge.summary}")
+    if knowledge.goals:
+        lines.append("Stated goals:")
+        for g in knowledge.goals[:5]:
+            lines.append(f"  - {g}")
+    if knowledge.constraints:
+        lines.append("Constraints to respect:")
+        for c in knowledge.constraints[:5]:
+            lines.append(f"  - {c}")
+    if knowledge.completed_highlights:
+        lines.append("Recently completed (do NOT regenerate equivalents):")
+        for h in knowledge.completed_highlights[:8]:
+            lines.append(f"  - {h}")
+    if knowledge.recent_reflections:
+        lines.append("Recent reflections (lessons learned):")
+        for r in knowledge.recent_reflections[:5]:
+            # cap individual entries so a long blurb can't dominate
+            snippet = r if len(r) <= 200 else r[:197] + "…"
+            lines.append(f"  - {snippet}")
+    return lines
 
 DEFAULT_BASE_URL = "https://api.openai.com/v1"
 DEFAULT_MODEL = "gpt-4o-mini"
@@ -81,6 +119,7 @@ def _user_prompt(
     axes: list[AxisInput],
     horizon_days: int,
     task_count: int,
+    knowledge: KnowledgeInput | None = None,
 ) -> str:
     axes_lines = "\n".join(
         f'  - {{"id": "{a.id}", "name": "{a.name}", "symbol": "{a.symbol}"}}'
@@ -112,13 +151,21 @@ def _user_prompt(
         "}"
     )
 
-    return (
-        f"GOAL: {goal}\n\n"
-        f"PROFILE:\n" + "\n".join(profile_lines) + "\n\n"
+    sections = [
+        f"GOAL: {goal}",
+        "PROFILE:\n" + "\n".join(profile_lines),
+    ]
+    klines = _knowledge_lines(knowledge)
+    if klines:
+        sections.append("CONTEXT (persistent knowledge about the user):\n" + "\n".join(klines))
+    sections.append(
         "AXES (vertices of the user's pentagon, use their 'id' fields):\n"
-        f"{axes_lines}\n\n"
+        + axes_lines
+    )
+    sections.append(
         f"Return JSON exactly in this shape (no extra keys, no fences):\n{schema}"
     )
+    return "\n\n".join(sections)
 
 
 class LlmClient:
@@ -147,6 +194,7 @@ class LlmClient:
         axes: list[AxisInput],
         horizon_days: int,
         task_count: int,
+        knowledge: KnowledgeInput | None = None,
     ) -> tuple[list[RoadmapTask], str]:
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -165,7 +213,12 @@ class LlmClient:
                 {
                     "role": "user",
                     "content": _user_prompt(
-                        goal, profile, axes, horizon_days, task_count
+                        goal,
+                        profile,
+                        axes,
+                        horizon_days,
+                        task_count,
+                        knowledge,
                     ),
                 },
             ],
@@ -203,6 +256,7 @@ class LlmClient:
         profile: ProfileInput,
         interests: list[str],
         count: int,
+        knowledge: KnowledgeInput | None = None,
     ) -> list[AxisDraft]:
         """Have the LLM design 3..8 personalised growth axes.
 
@@ -222,7 +276,9 @@ class LlmClient:
                 {"role": "system", "content": _axes_system_prompt(count)},
                 {
                     "role": "user",
-                    "content": _axes_user_prompt(profile, interests, count),
+                    "content": _axes_user_prompt(
+                        profile, interests, count, knowledge
+                    ),
                 },
             ],
             "response_format": {"type": "json_object"},
@@ -287,7 +343,10 @@ def _axes_system_prompt(count: int) -> str:
 
 
 def _axes_user_prompt(
-    profile: ProfileInput, interests: list[str], count: int
+    profile: ProfileInput,
+    interests: list[str],
+    count: int,
+    knowledge: KnowledgeInput | None = None,
 ) -> str:
     profile_lines: list[str] = []
     if profile.name:
@@ -320,14 +379,22 @@ def _axes_user_prompt(
         f"  ]\n"  # exactly {count} items
         "}"
     )
-    return (
-        "PROFILE:\n" + "\n".join(profile_lines) + "\n\n"
-        f"{interests_block}\n\n"
+    sections = [
+        "PROFILE:\n" + "\n".join(profile_lines),
+        interests_block,
+    ]
+    klines = _knowledge_lines(knowledge)
+    if klines:
+        sections.append("CONTEXT (persistent knowledge about the user):\n" + "\n".join(klines))
+    sections.append(
         f"Design exactly {count} personalised growth axes. "
         "Names should reflect the user's real interests, not abstract life "
-        "buckets. Symbols must be unique across the set.\n\n"
+        "buckets. Symbols must be unique across the set."
+    )
+    sections.append(
         f"Return JSON exactly in this shape (no extra keys, no fences):\n{schema}"
     )
+    return "\n\n".join(sections)
 
 
 def _normalize_axes(raw_axes: list[Any], count: int) -> list[AxisDraft]:

@@ -7,6 +7,7 @@ import '../../theme/app_theme.dart';
 import '../../utils/time_utils.dart';
 import '../../widgets/brand_glyph.dart';
 import '../entry/entry_editor_sheet.dart';
+import '../reflection/reflection_sheet.dart';
 
 class TasksScreen extends ConsumerWidget {
   const TasksScreen({super.key});
@@ -115,11 +116,7 @@ class _TaskTile extends ConsumerWidget {
           children: [
             _Checkbox(
               checked: task.isCompleted,
-              onTap: () async {
-                final repo =
-                    await ref.read(repositoryProvider.future);
-                await repo.toggleTaskComplete(task);
-              },
+              onTap: () => toggleTaskWithReflection(context, ref, task),
             ),
             const SizedBox(width: 12),
             Expanded(

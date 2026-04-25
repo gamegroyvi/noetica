@@ -135,6 +135,7 @@ async def generate_roadmap(
             axes=request.axes,
             horizon_days=request.horizon_days,
             task_count=request.task_count,
+            knowledge=request.knowledge,
         )
     except LlmUpstreamError as exc:
         logger.warning("LLM upstream error: status=%s", exc.status)
@@ -178,6 +179,7 @@ async def generate_axes(
             profile=request.profile,
             interests=request.interests,
             count=request.count,
+            knowledge=request.knowledge,
         )
     except LlmUpstreamError as exc:
         logger.warning("LLM upstream error: status=%s", exc.status)

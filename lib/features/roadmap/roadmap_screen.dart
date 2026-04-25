@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models.dart';
+import '../../data/personal_knowledge_service.dart';
 import '../../providers.dart';
 import '../../services/roadmap_api.dart';
 import '../../theme/app_theme.dart';
@@ -53,10 +54,12 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
       _error = null;
     });
     try {
+      final knowledge = await PersonalKnowledgeService().load();
       final result = await api.generate(
         goal: goal,
         profile: profile,
         axes: axes,
+        knowledge: knowledge,
         horizonDays: _horizonDays,
         taskCount: _taskCount,
       );

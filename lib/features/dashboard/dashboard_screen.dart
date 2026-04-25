@@ -10,6 +10,7 @@ import '../entry/entry_card.dart';
 import '../entry/entry_editor_sheet.dart';
 import '../notes/notes_screen.dart';
 import '../pomodoro/pomodoro_sheet.dart';
+import '../reflection/reflection_sheet.dart';
 import '../self/pentagon_painter.dart';
 import '../tasks/tasks_screen.dart';
 
@@ -462,10 +463,7 @@ class _NearestTaskRow extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             InkWell(
-              onTap: () async {
-                final repo = await ref.read(repositoryProvider.future);
-                await repo.toggleTaskComplete(task);
-              },
+              onTap: () => toggleTaskWithReflection(context, ref, task),
               borderRadius: BorderRadius.circular(4),
               child: Padding(
                 padding: const EdgeInsets.all(2),

@@ -257,6 +257,58 @@ class NoeticaRepository {
     unawaited(NotificationsService.instance.cancelForEntry(id));
   }
 
+  // ---------- reflections ----------
+
+  /// Persist a reflection for a task. One reflection per task — calling
+  /// twice replaces the existing row.
+  Future<m.TaskReflection> saveReflection({
+    required String entryId,
+    required m.ReflectionStatus status,
+    String outcome = '',
+    String difficulties = '',
+    int? actualMinutes,
+  }) async {
+    final existing = await getReflection(entryId);
+    final reflection = m.TaskReflection(
+      id: existing?.id ?? _uuid.v4(),
+      entryId: entryId,
+      status: status,
+      createdAt: existing?.createdAt ?? DateTime.now(),
+      outcome: outcome,
+      difficulties: difficulties,
+      actualMinutes: actualMinutes,
+    );
+    await _db.raw.insert(
+      'task_reflections',
+      reflection.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    _markDirty();
+    return reflection;
+  }
+
+  Future<m.TaskReflection?> getReflection(String entryId) async {
+    final rows = await _db.raw.query(
+      'task_reflections',
+      where: 'entry_id = ?',
+      whereArgs: [entryId],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    return m.TaskReflection.fromMap(rows.first);
+  }
+
+  /// Most recent reflections across all tasks. Used by the personal
+  /// knowledge base to summarise the user's recent activity.
+  Future<List<m.TaskReflection>> recentReflections({int limit = 20}) async {
+    final rows = await _db.raw.query(
+      'task_reflections',
+      orderBy: 'created_at DESC',
+      limit: limit,
+    );
+    return rows.map(m.TaskReflection.fromMap).toList();
+  }
+
   /// Flip a task's completion state in-place via a targeted SQL UPDATE.
   ///
   /// Crucially this does **not** rewrite the `entry_axes` table — it would be
@@ -264,14 +316,28 @@ class NoeticaRepository {
   /// transactional rewrite of join rows can race with the score recompute and
   /// the user sees the pentagon stay flat after ticking a roadmap-imported
   /// task. UPDATE keeps axes attached, full stop.
-  Future<m.Entry> toggleTaskComplete(m.Entry entry) async {
+  Future<m.Entry> toggleTaskComplete(
+    m.Entry entry, {
+    m.ReflectionStatus? reflectionStatus,
+  }) async {
     final now = DateTime.now();
     final newCompletedAt = entry.isCompleted ? null : now;
+
+    // Apply reflection-based XP adjustment when completing. Re-opening a
+    // task does NOT reset XP (the user might re-close it later — keep the
+    // history simple and idempotent).
+    int? newXp;
+    if (newCompletedAt != null && reflectionStatus != null) {
+      final factor = reflectionStatus.xpFactor;
+      newXp = (entry.xp * factor).round().clamp(1, 999);
+    }
+
     await _db.raw.update(
       'entries',
       {
         'completed_at': newCompletedAt?.millisecondsSinceEpoch,
         'updated_at': now.millisecondsSinceEpoch,
+        if (newXp != null) 'xp': newXp,
       },
       where: 'id = ?',
       whereArgs: [entry.id],
@@ -282,6 +348,7 @@ class NoeticaRepository {
       completedAt: newCompletedAt,
       clearCompleted: newCompletedAt == null,
       updatedAt: now,
+      xp: newXp,
     );
     unawaited(NotificationsService.instance.reschedule(updated));
     return updated;
