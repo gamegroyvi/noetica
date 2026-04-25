@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../theme/app_theme.dart';
+import '../dashboard/dashboard_screen.dart';
 import '../entry/entry_editor_sheet.dart';
+import '../notes/notes_screen.dart';
 import '../self/self_screen.dart';
-import '../tasks/tasks_screen.dart';
-import '../timeline/timeline_screen.dart';
 
 class HomeShell extends ConsumerStatefulWidget {
   const HomeShell({super.key});
@@ -15,15 +15,15 @@ class HomeShell extends ConsumerStatefulWidget {
 }
 
 class _HomeShellState extends ConsumerState<HomeShell> {
-  int _index = 1;
+  int _index = 0;
 
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
     const pages = [
+      DashboardScreen(),
       SelfScreen(),
-      TimelineScreen(),
-      TasksScreen(),
+      NotesScreen(),
     ];
     return Scaffold(
       body: IndexedStack(index: _index, children: pages),
@@ -40,19 +40,19 @@ class _HomeShellState extends ConsumerState<HomeShell> {
           onDestinationSelected: (i) => setState(() => _index = i),
           destinations: const [
             NavigationDestination(
+              icon: Icon(Icons.dashboard_outlined),
+              selectedIcon: Icon(Icons.dashboard),
+              label: 'Сейчас',
+            ),
+            NavigationDestination(
               icon: Icon(Icons.auto_graph_outlined),
               selectedIcon: Icon(Icons.auto_graph),
               label: 'Я',
             ),
             NavigationDestination(
-              icon: Icon(Icons.timeline_outlined),
-              selectedIcon: Icon(Icons.timeline),
-              label: 'Лента',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.check_circle_outline),
-              selectedIcon: Icon(Icons.check_circle),
-              label: 'Задачи',
+              icon: Icon(Icons.notes_outlined),
+              selectedIcon: Icon(Icons.notes),
+              label: 'Заметки',
             ),
           ],
         ),
