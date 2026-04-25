@@ -17,6 +17,8 @@ class PentagonPainter extends CustomPainter {
     required this.muted,
     required this.line,
     required this.bg,
+    this.progress = 1.0,
+    this.highlightedAxisIndex,
   });
 
   final List<AxisScore> scores;
@@ -24,6 +26,14 @@ class PentagonPainter extends CustomPainter {
   final Color muted;
   final Color line;
   final Color bg;
+
+  /// 0..1 — current progress of the entering tween. Multiplied into each
+  /// vertex's radius so the shape grows out from the center.
+  final double progress;
+
+  /// If set, the spoke + label for this axis are drawn with extra weight
+  /// to mark the user's tap. Other axes stay normal.
+  final int? highlightedAxisIndex;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -69,17 +79,27 @@ class PentagonPainter extends CustomPainter {
       canvas.drawPath(path, ringPaint);
     }
 
-    // spokes
+    // spokes — highlight the tapped axis with a thicker stroke.
     for (var i = 0; i < n; i++) {
       final p = _vertex(center, radius, i, n);
-      canvas.drawLine(center, p, spokePaint);
+      final highlight = i == highlightedAxisIndex;
+      canvas.drawLine(
+        center,
+        p,
+        highlight
+            ? (Paint()
+              ..style = PaintingStyle.stroke
+              ..color = fg
+              ..strokeWidth = 1.5)
+            : spokePaint,
+      );
     }
 
-    // current state polygon
+    // current state polygon (animated outward via [progress])
     final shape = Path();
     for (var i = 0; i < n; i++) {
       final s = scores[i].value.clamp(0.0, 100.0) / 100.0;
-      final r = radius * s;
+      final r = radius * s * progress;
       final p = _vertex(center, r, i, n);
       if (i == 0) {
         shape.moveTo(p.dx, p.dy);
@@ -94,14 +114,27 @@ class PentagonPainter extends CustomPainter {
     // dots at the polygon vertices
     for (var i = 0; i < n; i++) {
       final s = scores[i].value.clamp(0.0, 100.0) / 100.0;
-      final r = radius * s;
+      final r = radius * s * progress;
       final p = _vertex(center, r, i, n);
-      canvas.drawCircle(p, 3.5, dotPaint);
+      final highlight = i == highlightedAxisIndex;
+      canvas.drawCircle(p, highlight ? 5.0 : 3.5, dotPaint);
     }
 
-    // axis labels
+    // axis labels (symbol). The tapped axis gets a small ring around it
+    // so the user can see what they touched.
     for (var i = 0; i < n; i++) {
       final p = _vertex(center, radius + 18, i, n);
+      final highlight = i == highlightedAxisIndex;
+      if (highlight) {
+        canvas.drawCircle(
+          p,
+          14,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..color = fg
+            ..strokeWidth = 1.2,
+        );
+      }
       final tp = TextPainter(
         text: TextSpan(
           text: scores[i].axis.symbol,
@@ -116,6 +149,27 @@ class PentagonPainter extends CustomPainter {
       )..layout();
       tp.paint(canvas, p - Offset(tp.width / 2, tp.height / 2));
     }
+  }
+
+  /// Hit-test: return the axis index whose label sits closest to [tap]
+  /// within [tolerance] pixels, or null. Lets the parent open a sheet
+  /// for the tapped axis.
+  int? hitTestAxis(Offset tap, Size size, {double tolerance = 22}) {
+    final n = scores.length;
+    if (n < 3) return null;
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = math.min(size.width, size.height) / 2 - 36;
+    int? best;
+    double bestDist = tolerance;
+    for (var i = 0; i < n; i++) {
+      final p = _vertex(center, radius + 18, i, n);
+      final d = (p - tap).distance;
+      if (d < bestDist) {
+        bestDist = d;
+        best = i;
+      }
+    }
+    return best;
   }
 
   /// Vertex coordinate; vertex 0 sits at the top of the shape.
@@ -133,5 +187,7 @@ class PentagonPainter extends CustomPainter {
       oldDelegate.fg != fg ||
       oldDelegate.muted != muted ||
       oldDelegate.line != line ||
-      oldDelegate.bg != bg;
+      oldDelegate.bg != bg ||
+      oldDelegate.progress != progress ||
+      oldDelegate.highlightedAxisIndex != highlightedAxisIndex;
 }

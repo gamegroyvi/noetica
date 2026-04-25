@@ -9,6 +9,7 @@ import '../../widgets/brand_glyph.dart';
 import '../roadmap/roadmap_screen.dart';
 import '../settings/settings_screen.dart';
 import 'axes_editor_screen.dart';
+import 'axis_detail_sheet.dart';
 import 'pentagon_painter.dart';
 
 class SelfScreen extends ConsumerWidget {
@@ -75,20 +76,11 @@ class SelfScreen extends ConsumerWidget {
               else ...[
                 SizedBox(
                   height: 320,
-                  child: CustomPaint(
-                    painter: PentagonPainter(
-                      scores: scores,
-                      fg: palette.fg,
-                      muted: palette.muted,
-                      line: palette.line,
-                      bg: palette.bg,
-                    ),
-                    child: const SizedBox.expand(),
-                  ),
+                  child: _DrevoCanvas(scores: scores),
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  'ТЕКУЩЕЕ СОСТОЯНИЕ',
+                  'ДРЕВО · ВЕТКИ',
                   style: TextStyle(
                     color: palette.muted,
                     fontSize: 11,
@@ -293,7 +285,8 @@ class _EmptyAxes extends StatelessWidget {
           Icon(Icons.workspaces_outline, size: 32, color: palette.muted),
           const SizedBox(height: 12),
           Text(
-            'Чтобы увидеть пентаграмму, нужно хотя бы 3 оси.',
+            'Древо вырастает от 3 ветвей. Добавь хотя бы 3 оси, чтобы '
+            'увидеть его.',
             textAlign: TextAlign.center,
             style: TextStyle(color: palette.muted),
           ),
@@ -414,6 +407,104 @@ class _AxisTile extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Animated Древо: every time `scores` changes (new task completed,
+/// reflection submitted, etc.) the polygon tweens out from 0 → its new
+/// size, giving the user a visceral "ветка выросла" cue. Tap on a
+/// branch label to open the per-axis detail sheet.
+class _DrevoCanvas extends ConsumerStatefulWidget {
+  const _DrevoCanvas({required this.scores});
+  final List<AxisScore> scores;
+
+  @override
+  ConsumerState<_DrevoCanvas> createState() => _DrevoCanvasState();
+}
+
+class _DrevoCanvasState extends ConsumerState<_DrevoCanvas>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 700),
+  )..forward();
+  int? _highlight;
+
+  @override
+  void didUpdateWidget(covariant _DrevoCanvas oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Replay the grow animation only when the actual axis values changed
+    // — not on every parent rebuild — so casual scrolling doesn't jitter
+    // the canvas.
+    final changed = oldWidget.scores.length != widget.scores.length ||
+        () {
+          for (var i = 0; i < oldWidget.scores.length; i++) {
+            if ((oldWidget.scores[i].value - widget.scores[i].value).abs() >
+                0.01) {
+              return true;
+            }
+          }
+          return false;
+        }();
+    if (changed) {
+      _ctrl
+        ..reset()
+        ..forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final size = Size(constraints.maxWidth, constraints.maxHeight);
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapUp: (d) {
+            // Build a one-shot painter to reuse its hit-test math.
+            final probe = PentagonPainter(
+              scores: widget.scores,
+              fg: palette.fg,
+              muted: palette.muted,
+              line: palette.line,
+              bg: palette.bg,
+            );
+            final hit = probe.hitTestAxis(d.localPosition, size);
+            if (hit == null) return;
+            setState(() => _highlight = hit);
+            showAxisDetailSheet(
+              context,
+              ref,
+              score: widget.scores[hit],
+            ).whenComplete(() {
+              if (mounted) setState(() => _highlight = null);
+            });
+          },
+          child: AnimatedBuilder(
+            animation: _ctrl,
+            builder: (_, __) => CustomPaint(
+              painter: PentagonPainter(
+                scores: widget.scores,
+                fg: palette.fg,
+                muted: palette.muted,
+                line: palette.line,
+                bg: palette.bg,
+                progress: Curves.easeOutCubic.transform(_ctrl.value),
+                highlightedAxisIndex: _highlight,
+              ),
+              child: const SizedBox.expand(),
+            ),
+          ),
+        );
+      },
     );
   }
 }
