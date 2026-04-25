@@ -142,33 +142,31 @@ class _TaskTile extends ConsumerWidget {
                       ),
                     ),
                   ],
-                  if (task.axisIds.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: [
-                        for (final aid in task.axisIds)
-                          if (axesById[aid] != null)
-                            _MiniAxisChip(axis: axesById[aid]!),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: palette.line),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Text(
-                            '+${task.xp} XP',
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: palette.fg,
-                            ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      for (final aid in task.axisIds)
+                        if (axesById[aid] != null)
+                          _MiniAxisChip(axis: axesById[aid]!),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: palette.line),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          '+${task.xp} XP',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: palette.fg,
                           ),
                         ),
-                      ],
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
