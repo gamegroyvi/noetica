@@ -4,5 +4,5 @@
 ///   flutter build apk --dart-define=NOETICA_BACKEND_URL=https://api.example.com
 const String kDefaultBackendUrl = String.fromEnvironment(
   'NOETICA_BACKEND_URL',
-  defaultValue: 'https://noetica-backend-nzlazosh.fly.dev',
+  defaultValue: 'https://noetica-backend-rxecvoov.fly.dev',
 );

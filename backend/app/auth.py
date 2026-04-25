@@ -15,8 +15,10 @@ yet — the lifetime is 30 days, and re-auth via Google is one tap.
 from __future__ import annotations
 
 import os
+import secrets
 import time
 import uuid
+from pathlib import Path
 from typing import Annotated
 
 import jwt
@@ -27,11 +29,56 @@ from google.oauth2 import id_token as google_id_token
 from . import db
 
 
-JWT_SECRET = os.getenv("JWT_SECRET", "")
 JWT_ALGO = "HS256"
 JWT_TTL_SECONDS = 60 * 60 * 24 * 30  # 30 days
 
-GOOGLE_OAUTH_WEB_CLIENT_ID = os.getenv("GOOGLE_OAUTH_WEB_CLIENT_ID", "")
+# Public Google OAuth Web client ID — used both by Flutter (`serverClientId`)
+# and the backend (`audience`). It's not a secret — it's literally the `aud`
+# claim of every ID token Google emits. Override via env if you fork.
+DEFAULT_WEB_CLIENT_ID = (
+    "566738030703-lmo4a5k7u2i5l0okkd6b6r50mgmlma30.apps.googleusercontent.com"
+)
+
+
+def _jwt_secret() -> str:
+    """Return the JWT signing secret, generating + persisting one on first run.
+
+    Resolution order:
+    1. `JWT_SECRET` env var (preferred — set via Fly secrets in production).
+    2. A 64-byte token persisted at `/data/jwt_secret` (auto-created so the
+       app boots without manual env config; survives across deploys via the
+       Fly volume).
+    3. An in-memory fallback if /data isn't writable (dev/CI only — JWTs
+       won't survive process restart).
+    """
+    env = os.getenv("JWT_SECRET")
+    if env:
+        return env
+    secret_path = Path(os.getenv("JWT_SECRET_FILE", "/data/jwt_secret"))
+    try:
+        if secret_path.exists():
+            value = secret_path.read_text().strip()
+            if value:
+                return value
+        secret_path.parent.mkdir(parents=True, exist_ok=True)
+        value = secrets.token_urlsafe(64)
+        secret_path.write_text(value)
+        try:
+            secret_path.chmod(0o600)
+        except OSError:
+            pass
+        return value
+    except OSError:
+        # Last resort — process-local secret. Re-issued on every restart.
+        return secrets.token_urlsafe(64)
+
+
+def _web_client_id() -> str:
+    return os.getenv("GOOGLE_OAUTH_WEB_CLIENT_ID") or DEFAULT_WEB_CLIENT_ID
+
+
+JWT_SECRET = _jwt_secret()
+GOOGLE_OAUTH_WEB_CLIENT_ID = _web_client_id()
 
 
 class AuthConfigError(RuntimeError):
