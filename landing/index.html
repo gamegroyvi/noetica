@@ -17,10 +17,14 @@
 
   <!-- ═══════════ NAV ═══════════ -->
   <nav class="nav" id="nav">
-    <a href="#" class="nav__logo">noetica</a>
+    <a href="#" class="nav__logo">
+      <img src="img/logo-icon.png" alt="Noetica" class="nav__logo-img" />
+      noetica
+    </a>
     <div class="nav__links">
       <a href="#features">Возможности</a>
-      <a href="#how">Как это работает</a>
+      <a href="#screens">Приложение</a>
+      <a href="#how">Как работает</a>
       <a href="#philosophy">Философия</a>
       <a href="#download" class="nav__cta">Скачать</a>
     </div>
@@ -32,7 +36,8 @@
   <!-- ═══════════ MOBILE MENU ═══════════ -->
   <div class="mobile-menu" id="mobileMenu">
     <a href="#features">Возможности</a>
-    <a href="#how">Как это работает</a>
+    <a href="#screens">Приложение</a>
+    <a href="#how">Как работает</a>
     <a href="#philosophy">Философия</a>
     <a href="#download" class="nav__cta">Скачать</a>
   </div>
@@ -40,10 +45,9 @@
   <!-- ═══════════ HERO ═══════════ -->
   <header class="hero" id="hero">
     <div class="hero__content">
+      <img src="img/logo-splash.png" alt="Noetica Logo" class="hero__logo" />
       <p class="hero__tag">second brain &middot; growth tracker &middot; memoir</p>
-      <h1 class="hero__title">
-        <span class="hero__n">n</span>oetica
-      </h1>
+      <h1 class="hero__title">noetica</h1>
       <p class="hero__sub">
         Единый инструмент для мышления, запоминания и роста.
         <br/>Отслеживай прогресс. Рефлексируй. Становись лучше.
@@ -57,6 +61,56 @@
     <!-- Animated pentagon canvas -->
     <canvas id="pentagonCanvas" class="hero__canvas"></canvas>
   </header>
+
+  <!-- ═══════════ APP SCREENSHOTS ═══════════ -->
+  <section class="screens" id="screens">
+    <div class="container">
+      <p class="section-tag">Приложение</p>
+      <h2 class="section-title">Посмотри, как это выглядит</h2>
+
+      <div class="screens__carousel">
+        <div class="screen-card" data-anim="fade-up">
+          <div class="screen-card__frame">
+            <img src="img/screen-dashboard.png" alt="Дашборд Сейчас" loading="lazy" />
+          </div>
+          <h3>Сейчас</h3>
+          <p>Главный дашборд с текущими задачами и навигацией по всем модулям</p>
+        </div>
+
+        <div class="screen-card" data-anim="fade-up">
+          <div class="screen-card__frame">
+            <img src="img/screen-self.png" alt="Экран Я — Древо роста" loading="lazy" />
+          </div>
+          <h3>Я — Древо</h3>
+          <p>Уровень, XP, стрик и интерактивный пентагон осей роста</p>
+        </div>
+
+        <div class="screen-card" data-anim="fade-up">
+          <div class="screen-card__frame">
+            <img src="img/screen-tasks.png" alt="Задачи" loading="lazy" />
+          </div>
+          <h3>Задачи</h3>
+          <p>Фильтрация по статусу: открытые, просроченные, готово. Привязка к осям роста</p>
+        </div>
+
+        <div class="screen-card" data-anim="fade-up">
+          <div class="screen-card__frame">
+            <img src="img/screen-calendar.png" alt="Календарь" loading="lazy" />
+          </div>
+          <h3>Календарь</h3>
+          <p>Месячный вид с деталями дня. Видишь всю активность за любой период</p>
+        </div>
+
+        <div class="screen-card" data-anim="fade-up">
+          <div class="screen-card__frame">
+            <img src="img/screen-pomodoro.png" alt="Помодоро таймер" loading="lazy" />
+          </div>
+          <h3>Помодоро</h3>
+          <p>Встроенный таймер 25/5 с настройками, фокус-режим прямо в приложении</p>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <!-- ═══════════ FEATURES ═══════════ -->
   <section class="features" id="features">
@@ -239,6 +293,7 @@
   <!-- ═══════════ CTA / DOWNLOAD ═══════════ -->
   <section class="download" id="download">
     <div class="container download__inner">
+      <img src="img/logo-icon.png" alt="Noetica" class="download__logo" />
       <h2 class="download__title">Начни расти сегодня</h2>
       <p class="download__sub">Бесплатно. Приватно. Без подписок.</p>
       <div class="download__buttons">
