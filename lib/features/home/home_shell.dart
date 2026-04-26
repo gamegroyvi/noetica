@@ -25,8 +25,6 @@ const double _kRailExtended = 1200;
 /// hidden under the bar.
 const double kFloatingTabBarHeight = 64;
 const double kFloatingTabBarMargin = 12;
-const double kFloatingTabBarReserve =
-    kFloatingTabBarHeight + kFloatingTabBarMargin * 2;
 
 class HomeShell extends ConsumerStatefulWidget {
   const HomeShell({super.key});
@@ -196,28 +194,22 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       // the bar's selectedIndex so it doesn't break when index = 3 (would
       // happen if user navigated to journal then resized to mobile).
       final mobileSelected = _index < _destinations.length ? _index : 0;
-      // Telegram-style floating tab bar: the body extends behind the
-      // bar; the bar itself sits in a margin'd, fully-rounded capsule
-      // that hovers over content and matches the new TG iOS design.
-      // Pages get an extra bottom inset injected via MediaQuery so
-      // their last items aren't hidden under the capsule.
+      // Telegram-style floating tab bar: the bar is a fully-rounded
+      // capsule with horizontal margins + a shadow so it visually hovers
+      // over content. We deliberately do NOT use extendBody:true here —
+      // letting the body slide UNDER the capsule means many screens
+      // (which use hard-coded ListView padding instead of MediaQuery)
+      // end up with their last items clipped, and the FAB has to be
+      // pushed up by a fragile constant. Keeping the bar inside the
+      // standard bottomNavigationBar slot lets Scaffold reserve the
+      // exact height and place the FAB right above the capsule, while
+      // the 12 px outer margin in _FloatingTabBar still produces the
+      // floating-capsule look the user asked for.
       return Scaffold(
-        extendBody: true,
-        body: MediaQuery(
-          data: MediaQuery.of(context).copyWith(
-            padding: MediaQuery.of(context).padding.copyWith(
-                  bottom: MediaQuery.of(context).padding.bottom +
-                      kFloatingTabBarReserve,
-                ),
-          ),
-          child: body,
-        ),
-        floatingActionButton: Padding(
-          padding: const EdgeInsets.only(bottom: kFloatingTabBarReserve),
-          child: FloatingActionButton(
-            onPressed: () => showEntryEditor(context, ref),
-            child: const Icon(Icons.add),
-          ),
+        body: body,
+        floatingActionButton: FloatingActionButton(
+          onPressed: () => showEntryEditor(context, ref),
+          child: const Icon(Icons.add),
         ),
         bottomNavigationBar: _FloatingTabBar(
           palette: palette,
