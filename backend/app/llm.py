@@ -57,6 +57,13 @@ DEFAULT_BASE_URL = "https://api.openai.com/v1"
 DEFAULT_MODEL = "gpt-4o-mini"
 REQUEST_TIMEOUT = 45.0
 
+# DeepSeek-native endpoint. When DEEPSEEK_API_KEY is set and no explicit
+# LLM_BASE_URL / LLM_MODEL override is provided, we route to DeepSeek
+# automatically — it's OpenAI-compatible and significantly cheaper, so
+# it makes sense as the default when available.
+DEEPSEEK_BASE_URL = "https://api.deepseek.com/v1"
+DEEPSEEK_MODEL = "deepseek-chat"
+
 
 class LlmConfigError(RuntimeError):
     pass
@@ -181,17 +188,34 @@ def _user_prompt(
 
 class LlmClient:
     def __init__(self) -> None:
-        self.base_url = os.getenv("LLM_BASE_URL", DEFAULT_BASE_URL).rstrip("/")
-        self.model = os.getenv("LLM_MODEL", DEFAULT_MODEL)
-        self.api_key = (
-            os.getenv("OPENAI_API_KEY")
-            or os.getenv("OPENROUTER_API_KEY")
-            or os.getenv("LLM_API_KEY")
-        )
+        deepseek_key = os.getenv("DEEPSEEK_API_KEY")
+        # Key resolution order:
+        #   1. DEEPSEEK_API_KEY — if present, make DeepSeek the default
+        #      backend (cheap, OpenAI-compatible, strong JSON output).
+        #   2. OPENAI_API_KEY / OPENROUTER_API_KEY / LLM_API_KEY — fallback
+        #      for the previous default OpenAI gateway.
+        # LLM_BASE_URL / LLM_MODEL overrides always win over these
+        # defaults, so an ops override stays authoritative.
+        if deepseek_key:
+            self.api_key = deepseek_key
+            self.base_url = os.getenv(
+                "LLM_BASE_URL", DEEPSEEK_BASE_URL
+            ).rstrip("/")
+            self.model = os.getenv("LLM_MODEL", DEEPSEEK_MODEL)
+        else:
+            self.api_key = (
+                os.getenv("OPENAI_API_KEY")
+                or os.getenv("OPENROUTER_API_KEY")
+                or os.getenv("LLM_API_KEY")
+            )
+            self.base_url = os.getenv(
+                "LLM_BASE_URL", DEFAULT_BASE_URL
+            ).rstrip("/")
+            self.model = os.getenv("LLM_MODEL", DEFAULT_MODEL)
         if not self.api_key:
             raise LlmConfigError(
-                "No API key configured (OPENAI_API_KEY / "
-                "OPENROUTER_API_KEY / LLM_API_KEY)."
+                "No API key configured (DEEPSEEK_API_KEY / OPENAI_API_KEY"
+                " / OPENROUTER_API_KEY / LLM_API_KEY)."
             )
         self.referer = os.getenv(
             "LLM_HTTP_REFERER", "https://noetica.app"
@@ -235,7 +259,11 @@ class LlmClient:
             ],
             "response_format": {"type": "json_object"},
             "temperature": 0.6,
-            "max_tokens": 1400,
+            # 1400 is enough for 6–8 tasks from gpt-4o-mini but gets
+            # truncated by verbose models (DeepSeek, Llama) on 10-task
+            # requests with bodies + steps. 3000 lets those complete
+            # cleanly without blowing latency up noticeably.
+            "max_tokens": 3000,
         }
 
         url = f"{self.base_url}/chat/completions"
@@ -251,10 +279,22 @@ class LlmClient:
         data = response.json()
         try:
             content = data["choices"][0]["message"]["content"]
+            finish = data["choices"][0].get("finish_reason")
         except (KeyError, IndexError, TypeError) as exc:
             raise LlmUpstreamError(
                 502, f"Malformed LLM response: {exc}: {data!r}"
             ) from exc
+
+        if finish == "length":
+            # The model ran out of tokens mid-JSON — the subsequent
+            # `_parse_json` will blow up with a confusing "Unterminated
+            # string" error. Fail loudly up front with an actionable
+            # message so callers/ops know to bump max_tokens.
+            raise LlmUpstreamError(
+                502,
+                "LLM response was truncated (finish_reason=length). "
+                "Increase max_tokens or ask for fewer/shorter tasks.",
+            )
 
         parsed = _parse_json(content)
         axis_ids = {a.id for a in axes}
