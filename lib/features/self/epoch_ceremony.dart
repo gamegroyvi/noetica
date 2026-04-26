@@ -100,22 +100,15 @@ class _EpochOverlayState extends ConsumerState<EpochOverlay>
     duration: const Duration(milliseconds: 1100),
   );
 
-  /// Controls the bottom-sheet card slide-in (and the scrim alpha).
-  /// Reverses on dismiss / commit so the card slides back down before
-  /// the tree exit completes.
-  late final AnimationController _enter = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 380),
-  );
-
   bool _committing = false;
+  bool _sheetOpen = false;
   _EpochPath _path = _EpochPath.none;
 
   @override
   void initState() {
     super.initState();
     if (widget.visible) {
-      _enter.value = 1;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _openSheet());
     }
   }
 
@@ -123,10 +116,11 @@ class _EpochOverlayState extends ConsumerState<EpochOverlay>
   void didUpdateWidget(covariant EpochOverlay oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.visible != widget.visible) {
-      if (widget.visible) {
-        _enter.forward(from: 0);
-      } else {
-        _enter.reverse();
+      if (widget.visible && !_sheetOpen) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _openSheet());
+      } else if (!widget.visible && _sheetOpen) {
+        // Programmatic dismiss — pop the sheet if it's still up.
+        Navigator.of(context, rootNavigator: true).maybePop();
       }
     }
   }
@@ -134,8 +128,46 @@ class _EpochOverlayState extends ConsumerState<EpochOverlay>
   @override
   void dispose() {
     _exit.dispose();
-    _enter.dispose();
     super.dispose();
+  }
+
+  /// Show the epoch card as a real Material 3 modal bottom sheet pinned
+  /// to the bottom of the viewport (not the inline 320 px Древо box).
+  /// Buttons inside pop the sheet, then we run the per-path morph on
+  /// the inline tree underneath.
+  Future<void> _openSheet() async {
+    if (!mounted || _sheetOpen) return;
+    _sheetOpen = true;
+    await showModalBottomSheet<void>(
+      context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withOpacity(0.55),
+      builder: (ctx) => SafeArea(
+        top: false,
+        child: _EpochOverlayCard(
+          palette: context.palette,
+          profile: widget.profile,
+          onNewEpoch: () {
+            Navigator.of(ctx).pop();
+            _commitNewEpoch();
+          },
+          onGoDeeper: () {
+            Navigator.of(ctx).pop();
+            _commitGoDeeper();
+          },
+          onDismiss: () => Navigator.of(ctx).pop(),
+          committing: false,
+        ),
+      ),
+    );
+    _sheetOpen = false;
+    // If the sheet was swiped/scrim-dismissed without committing, treat
+    // it as an explicit "dismiss for now" so the parent can ack it.
+    if (mounted && !_committing && _path == _EpochPath.none) {
+      _dismiss();
+    }
   }
 
   Future<void> _commitNewEpoch() async {
@@ -144,9 +176,6 @@ class _EpochOverlayState extends ConsumerState<EpochOverlay>
       _committing = true;
       _path = _EpochPath.newEpoch;
     });
-    // Slide the card away first so the tree's "explode outward"
-    // animation isn't fighting it for attention.
-    unawaited(_enter.reverse());
     await _exit.forward();
     if (!mounted) return;
     final now = DateTime.now();
@@ -178,7 +207,6 @@ class _EpochOverlayState extends ConsumerState<EpochOverlay>
       _committing = true;
       _path = _EpochPath.goDeeper;
     });
-    unawaited(_enter.reverse());
     await _exit.forward();
     if (!mounted) return;
     final now = DateTime.now();
@@ -207,25 +235,8 @@ class _EpochOverlayState extends ConsumerState<EpochOverlay>
   Widget build(BuildContext context) {
     final palette = context.palette;
     return AnimatedBuilder(
-      animation: Listenable.merge([_enter, _exit]),
-      builder: (context, _) {
-        return Stack(
-          fit: StackFit.passthrough,
-          children: [
-            // Animated tree — per-path morph during exit so «Новая
-            // эпоха» feels expansive (расцветает) and «Углубиться»
-            // feels concentrative (сжимается + вспышка).
-            _buildTreeMorph(palette),
-            if (widget.visible || _enter.isAnimating || _enter.value > 0)
-              Positioned.fill(
-                child: IgnorePointer(
-                  ignoring: !widget.visible,
-                  child: _buildOverlay(palette),
-                ),
-              ),
-          ],
-        );
-      },
+      animation: _exit,
+      builder: (context, _) => _buildTreeMorph(palette),
     );
   }
 
@@ -304,42 +315,6 @@ class _EpochOverlayState extends ConsumerState<EpochOverlay>
     }
   }
 
-  Widget _buildOverlay(NoeticaPalette palette) {
-    final entry = Curves.easeOutCubic.transform(_enter.value);
-    // Dim the tree while overlay is up. Ease the scrim away during
-    // exit so it doesn't linger after the morph completes.
-    final scrimAlpha = (entry * 0.66) * (1 - _exit.value);
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: _dismiss,
-          child: Container(color: Colors.black.withOpacity(scrimAlpha)),
-        ),
-        // Bottom-sheet style card. Slides up on enter, slides down on
-        // dismiss / commit. Always anchored to the bottom so it can't
-        // run off the top of small phone screens.
-        Align(
-          alignment: Alignment.bottomCenter,
-          child: FractionalTranslation(
-            translation: Offset(0, 1 - entry),
-            child: SafeArea(
-              top: false,
-              child: _EpochOverlayCard(
-                palette: palette,
-                profile: widget.profile,
-                onNewEpoch: _commitNewEpoch,
-                onGoDeeper: _commitGoDeeper,
-                onDismiss: _dismiss,
-                committing: _committing,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
 }
 
 class _EpochOverlayCard extends StatelessWidget {

@@ -74,7 +74,7 @@ class _SelfScreenState extends ConsumerState<SelfScreen> {
         title: Text(hasName ? profile.name : 'Я'),
         actions: [
           IconButton(
-            tooltip: 'Оси',
+            tooltip: 'Ветви',
             icon: const Icon(Icons.tune),
             onPressed: () {
               Navigator.of(context).push(
@@ -415,7 +415,7 @@ class _EmptyAxes extends StatelessWidget {
           Icon(Icons.workspaces_outline, size: 32, color: palette.muted),
           const SizedBox(height: 12),
           Text(
-            'Древо вырастает от 3 ветвей. Добавь хотя бы 3 оси, чтобы '
+            'Древо вырастает от 3 ветвей. Добавь хотя бы 3 ветви, чтобы '
             'увидеть его.',
             textAlign: TextAlign.center,
             style: TextStyle(color: palette.muted),

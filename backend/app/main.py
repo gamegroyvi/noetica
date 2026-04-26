@@ -202,6 +202,8 @@ async def generate_axes(
             interests=request.interests,
             count=request.count,
             knowledge=request.knowledge,
+            regen_hint=request.regen_hint,
+            variation_seed=request.variation_seed,
         )
     except LlmUpstreamError as exc:
         logger.warning("LLM upstream error: status=%s", exc.status)

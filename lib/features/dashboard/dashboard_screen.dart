@@ -1661,11 +1661,24 @@ class _ActivityHeatmapState extends State<_ActivityHeatmap> {
     String Function(int) monthName,
     NoeticaPalette palette,
   ) {
-    // Cells outside the selected year or in the future are rendered as
-    // transparent placeholders — they keep the grid rectangular without
-    // suggesting they're "empty data" days.
-    if (date.year != year || date.isAfter(todayD)) {
+    // Cells outside the selected year are fully transparent — they
+    // keep the grid rectangular without suggesting they're "empty data"
+    // days. Future days INSIDE the selected year still render as a
+    // faint placeholder so the user always sees the full 12-month
+    // skeleton (otherwise the heatmap visually ends at today and the
+    // user thinks the calendar is broken).
+    if (date.year != year) {
       return SizedBox(width: size, height: size);
+    }
+    if (date.isAfter(todayD)) {
+      return Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: palette.line.withOpacity(0.18),
+          borderRadius: BorderRadius.circular(2),
+        ),
+      );
     }
     final key = DateTime(date.year, date.month, date.day);
     final value = counts[key] ?? 0;

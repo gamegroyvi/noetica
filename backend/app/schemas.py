@@ -92,6 +92,17 @@ class AxesRequest(BaseModel):
     knowledge: KnowledgeInput | None = None
     interests: list[str] = Field(default_factory=list)
     count: int = Field(default=5, ge=3, le=8)
+    # Free-form hint from the user when calling regeneration — appended
+    # to the LLM prompt so the new set actually addresses the user's
+    # ask instead of converging to the same answer every time. Empty /
+    # None means "no preference".
+    regen_hint: str | None = Field(default=None, max_length=500)
+    # Random integer client-side, included verbatim in the prompt as a
+    # variation hash. LLMs reliably produce different outputs when the
+    # prompt differs even by a meaningless tail string, so this is what
+    # makes "regenerate without a hint" actually feel different on each
+    # tap. None means "let the LLM decide deterministically".
+    variation_seed: int | None = Field(default=None, ge=0, le=2**31)
 
     @field_validator("interests")
     @classmethod

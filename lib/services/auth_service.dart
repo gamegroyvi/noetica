@@ -78,6 +78,16 @@ class AuthService {
   static const _kTokenKey = 'noetica.auth.jwt.v1';
   static const _kUserKey = 'noetica.auth.user.v1';
 
+  /// DEV-ONLY: when set to "true" via --dart-define=DEV_SKIP_AUTH=true,
+  /// `restore()` and `signInWithGoogle()` return a synthetic local session
+  /// without contacting Google or the backend. Used for offline web/desktop
+  /// previews of UI changes. Never set this in release builds.
+  static const String _devSkipAuth = String.fromEnvironment(
+    'DEV_SKIP_AUTH',
+    defaultValue: 'false',
+  );
+  static bool get _skipAuth => _devSkipAuth == 'true';
+
   /// Web client ID — supplied at build time:
   ///   flutter build apk --dart-define=GOOGLE_OAUTH_WEB_CLIENT_ID=...
   static const String _webClientId = String.fromEnvironment(
@@ -107,6 +117,11 @@ class AuthService {
   AuthSession? get current => _current;
 
   Future<AuthSession?> restore() async {
+    if (_skipAuth) {
+      _current = _devStubSession();
+      _stateController.add(_current);
+      return _current;
+    }
     final token = await _storage.read(key: _kTokenKey);
     final userJson = await _storage.read(key: _kUserKey);
     if (token == null || token.isEmpty || userJson == null) {
@@ -130,6 +145,11 @@ class AuthService {
   /// Run the platform-appropriate Google Sign-In flow, exchange the resulting
   /// ID token for a Noetica JWT, and persist both.
   Future<AuthSession> signInWithGoogle() async {
+    if (_skipAuth) {
+      _current = _devStubSession();
+      _stateController.add(_current);
+      return _current!;
+    }
     final idToken = await _obtainGoogleIdToken();
     final response = await _http
         .post(
@@ -244,4 +264,14 @@ class AuthService {
     _stateController.close();
     _http.close();
   }
+
+  AuthSession _devStubSession() => const AuthSession(
+        accessToken: 'dev-skip-auth-token',
+        user: AuthUser(
+          id: 'dev-local-user',
+          email: 'dev@noetica.local',
+          name: 'Dev',
+          pictureUrl: '',
+        ),
+      );
 }

@@ -20,6 +20,14 @@ import '../tasks/tasks_screen.dart';
 const double _kRailMin = 900;
 const double _kRailExtended = 1200;
 
+/// Vertical space the floating capsule reserves above safe-area bottom.
+/// Pages add this to their scroll padding so the last items aren't
+/// hidden under the bar.
+const double kFloatingTabBarHeight = 64;
+const double kFloatingTabBarMargin = 12;
+const double kFloatingTabBarReserve =
+    kFloatingTabBarHeight + kFloatingTabBarMargin * 2;
+
 class HomeShell extends ConsumerStatefulWidget {
   const HomeShell({super.key});
 
@@ -98,8 +106,12 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   // Page indices. The first three are primary tabs (visible in the
   // mobile bottom bar). The rest are "secondary" desktop-only entries
   // reached from the sidebar; on mobile they push onto the navigator.
-  static const _tasksIndex = 1;
-  static const _selfIndex = 2;
+  //
+  // Mobile tab order: Dashboard → Я → Задачи. The Себя sits between
+  // dashboard and tasks because the user wants quick access to their
+  // Древо from the home screen.
+  static const _selfIndex = 1;
+  static const _tasksIndex = 2;
   static const _journalIndex = 3;
   static const _knowledgeIndex = 4;
   static const _calendarIndex = 5;
@@ -122,8 +134,8 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       onOpenJournal: _openJournal,
       onOpenCalendar: _openCalendar,
     ),
-    const TasksScreen(),
     const SelfScreen(),
+    const TasksScreen(),
     const NotesScreen(),
     const KnowledgeGraphScreen(),
     const CalendarScreen(),
@@ -159,14 +171,14 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       label: 'Сейчас',
     ),
     _Destination(
-      icon: Icons.checklist_outlined,
-      selectedIcon: Icons.checklist,
-      label: 'Задачи',
-    ),
-    _Destination(
       icon: Icons.auto_graph_outlined,
       selectedIcon: Icons.auto_graph,
       label: 'Я',
+    ),
+    _Destination(
+      icon: Icons.checklist_outlined,
+      selectedIcon: Icons.checklist,
+      label: 'Задачи',
     ),
   ];
 
@@ -184,28 +196,34 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       // the bar's selectedIndex so it doesn't break when index = 3 (would
       // happen if user navigated to journal then resized to mobile).
       final mobileSelected = _index < _destinations.length ? _index : 0;
+      // Telegram-style floating tab bar: the body extends behind the
+      // bar; the bar itself sits in a margin'd, fully-rounded capsule
+      // that hovers over content and matches the new TG iOS design.
+      // Pages get an extra bottom inset injected via MediaQuery so
+      // their last items aren't hidden under the capsule.
       return Scaffold(
-        body: body,
-        floatingActionButton: FloatingActionButton(
-          onPressed: () => showEntryEditor(context, ref),
-          child: const Icon(Icons.add),
-        ),
-        bottomNavigationBar: Container(
-          decoration: BoxDecoration(
-            border: Border(top: BorderSide(color: palette.line)),
-          ),
-          child: NavigationBar(
-            selectedIndex: mobileSelected,
-            onDestinationSelected: (i) => setState(() => _index = i),
-            destinations: [
-              for (final d in _destinations)
-                NavigationDestination(
-                  icon: Icon(d.icon),
-                  selectedIcon: Icon(d.selectedIcon),
-                  label: d.label,
+        extendBody: true,
+        body: MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            padding: MediaQuery.of(context).padding.copyWith(
+                  bottom: MediaQuery.of(context).padding.bottom +
+                      kFloatingTabBarReserve,
                 ),
-            ],
           ),
+          child: body,
+        ),
+        floatingActionButton: Padding(
+          padding: const EdgeInsets.only(bottom: kFloatingTabBarReserve),
+          child: FloatingActionButton(
+            onPressed: () => showEntryEditor(context, ref),
+            child: const Icon(Icons.add),
+          ),
+        ),
+        bottomNavigationBar: _FloatingTabBar(
+          palette: palette,
+          selectedIndex: mobileSelected,
+          destinations: _destinations,
+          onDestinationSelected: (i) => setState(() => _index = i),
         ),
       );
     }
@@ -494,6 +512,113 @@ class _SidebarTile extends StatelessWidget {
                       ),
                     ),
                   ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Telegram-style floating mobile tab bar — capsule shape, fully rounded
+/// on both sides, hovers over content with a soft shadow. Sits inside a
+/// horizontal margin so the bar visibly detaches from the screen edges.
+class _FloatingTabBar extends StatelessWidget {
+  const _FloatingTabBar({
+    required this.palette,
+    required this.selectedIndex,
+    required this.destinations,
+    required this.onDestinationSelected,
+  });
+
+  final NoeticaPalette palette;
+  final int selectedIndex;
+  final List<_Destination> destinations;
+  final ValueChanged<int> onDestinationSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomSafe = MediaQuery.of(context).padding.bottom;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        16,
+        kFloatingTabBarMargin,
+        16,
+        kFloatingTabBarMargin + bottomSafe,
+      ),
+      child: PhysicalModel(
+        color: Colors.transparent,
+        elevation: 16,
+        shadowColor: Colors.black.withOpacity(0.45),
+        borderRadius: BorderRadius.circular(kFloatingTabBarHeight / 2),
+        child: Container(
+          height: kFloatingTabBarHeight,
+          decoration: BoxDecoration(
+            color: palette.surface,
+            borderRadius: BorderRadius.circular(kFloatingTabBarHeight / 2),
+            border: Border.all(color: palette.line, width: 1),
+          ),
+          child: Row(
+            children: [
+              for (var i = 0; i < destinations.length; i++)
+                Expanded(
+                  child: _FloatingTabItem(
+                    palette: palette,
+                    destination: destinations[i],
+                    selected: i == selectedIndex,
+                    onTap: () => onDestinationSelected(i),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FloatingTabItem extends StatelessWidget {
+  const _FloatingTabItem({
+    required this.palette,
+    required this.destination,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final NoeticaPalette palette;
+  final _Destination destination;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = selected ? palette.fg : palette.muted;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(kFloatingTabBarHeight / 2),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                selected ? destination.selectedIcon : destination.icon,
+                color: color,
+                size: 22,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                destination.label,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 11,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ),
         ),
       ),

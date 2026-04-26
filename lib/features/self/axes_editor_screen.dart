@@ -1,11 +1,15 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../data/models.dart';
+import '../../data/personal_knowledge_service.dart';
 import '../../providers.dart';
 import '../../theme/app_theme.dart';
+import '../onboarding/onboarding_chat_screen.dart';
 
 const _kMinAxes = 3;
 const _kMaxAxes = 8;
@@ -145,19 +149,146 @@ class _AxesEditorScreenState extends ConsumerState<AxesEditorScreen> {
     });
   }
 
+  /// Re-generate the entire branch set via the LLM. Asks the user for a
+  /// short "что хочешь изменить?" hint so re-runs don't always converge
+  /// on the same answer (we also pass a random variation seed so even
+  /// no-hint regen produces a fresh look). The current drafts are
+  /// replaced with the AI's output — user can still edit / save.
+  Future<void> _regenerateBranches() async {
+    final profile = ref.read(profileProvider).valueOrNull;
+    if (profile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Сначала пройди онбординг.')),
+      );
+      return;
+    }
+    final hint = await showDialog<String?>(
+      context: context,
+      builder: (ctx) => const _RegenHintDialog(),
+    );
+    if (hint == null) return; // user cancelled
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _saving = true);
+    messenger.showSnackBar(
+      const SnackBar(content: Text('AI рисует новые ветви…')),
+    );
+    try {
+      final api = ref.read(axesApiProvider);
+      final knowledge = await PersonalKnowledgeService().load();
+      final seed = math.Random().nextInt(1 << 31);
+      final result = await api.generate(
+        profile: profile,
+        interests: profile.interests,
+        knowledge: knowledge,
+        count: math.max(_kMinAxes, _drafts.length).clamp(_kMinAxes, _kMaxAxes),
+        regenHint: hint.isEmpty ? null : hint,
+        variationSeed: seed,
+      );
+      if (!mounted) return;
+      messenger.hideCurrentSnackBar();
+      setState(() {
+        _drafts = [
+          for (final a in result.axes)
+            _DraftAxis(
+              id: _uuid.v4(),
+              name: a.name,
+              symbol: a.symbol,
+              createdAt: DateTime.now(),
+              isNew: true,
+            ),
+        ];
+      });
+      HapticFeedback.mediumImpact();
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text('Не удалось перегенерировать: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  /// Re-run the onboarding chat — collects fresh interests, levels, pain
+  /// points etc. and saves them to the profile. Does NOT touch the
+  /// existing branches; the user can hit «Перегенерировать» right after
+  /// to redraw with the new inputs.
+  Future<void> _reOnboard() async {
+    final profile = ref.read(profileProvider).valueOrNull;
+    if (profile == null) return;
+    final navigator = Navigator.of(context);
+    await navigator.push(
+      MaterialPageRoute(
+        builder: (_) => OnboardingChatScreen(
+          existing: profile,
+          onDone: () => navigator.pop(),
+        ),
+      ),
+    );
+    if (!mounted) return;
+    // Suggest immediate regen so the new answers actually shape the tree.
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(
+      SnackBar(
+        content: const Text(
+            'Профиль обновлён. Хочешь сразу перегенерировать ветви?'),
+        action: SnackBarAction(
+          label: 'Да',
+          onPressed: _regenerateBranches,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
     if (!_hydrated) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Оси')),
+        appBar: AppBar(title: const Text('Ветви')),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Оси'),
+        title: const Text('Ветви'),
         actions: [
+          PopupMenuButton<String>(
+            tooltip: 'Ещё',
+            icon: const Icon(Icons.more_vert),
+            onSelected: (v) {
+              switch (v) {
+                case 'regen':
+                  _regenerateBranches();
+                  break;
+                case 'reonboard':
+                  _reOnboard();
+                  break;
+              }
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                value: 'regen',
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.auto_awesome),
+                  title: Text('Перегенерировать ветви'),
+                  subtitle: Text('AI перерисует набор с новыми вводными'),
+                ),
+              ),
+              PopupMenuItem(
+                value: 'reonboard',
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.refresh),
+                  title: Text('Пройти онбординг заново'),
+                  subtitle: Text(
+                      'Обновить интересы, боли, цели и пересобрать ветви'),
+                ),
+              ),
+            ],
+          ),
           TextButton(
             onPressed: _isValid && !_saving ? _save : null,
             child: const Padding(
@@ -174,7 +305,8 @@ class _AxesEditorScreenState extends ConsumerState<AxesEditorScreen> {
             child: Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                'Перетаскивай, переименовывай, добавляй или удаляй (от $_kMinAxes до $_kMaxAxes).',
+                'Перетаскивай, переименовывай, добавляй или удаляй (от $_kMinAxes до $_kMaxAxes). '
+                'Чтобы AI перерисовал ветви с нуля — Меню → «Perveгенерировать».',
                 style: Theme.of(context)
                     .textTheme
                     .bodySmall
@@ -211,8 +343,8 @@ class _AxesEditorScreenState extends ConsumerState<AxesEditorScreen> {
                 label: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   child: Text(_drafts.length >= _kMaxAxes
-                      ? 'Максимум $_kMaxAxes осей'
-                      : 'Добавить ось'),
+                      ? 'Максимум $_kMaxAxes ветвей'
+                      : 'Добавить ветвь'),
                 ),
               ),
             ),
@@ -296,7 +428,7 @@ class _AxisRow extends StatelessWidget {
                   ),
                 ),
                 IconButton(
-                  tooltip: canRemove ? 'Удалить' : 'Минимум 3 оси',
+                  tooltip: canRemove ? 'Удалить' : 'Минимум 3 ветви',
                   onPressed: canRemove ? onRemove : null,
                   icon: Icon(
                     Icons.delete_outline,
@@ -456,6 +588,69 @@ class _AxisEditSheetState extends State<_AxisEditSheet> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Lightweight dialog that asks the user *what* they want to be
+/// different in the regenerated set. Empty input is allowed (we then
+/// rely on the variation seed alone). The dialog returns `null` on
+/// cancel, or the trimmed hint string on confirm.
+class _RegenHintDialog extends StatefulWidget {
+  const _RegenHintDialog();
+
+  @override
+  State<_RegenHintDialog> createState() => _RegenHintDialogState();
+}
+
+class _RegenHintDialogState extends State<_RegenHintDialog> {
+  final _ctrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Перегенерировать ветви'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'AI составит новый набор. Опиши, что хочешь изменить '
+            '(тон, акцент, жизненные сферы) — или оставь поле '
+            'пустым, и тогда просто получится другой случайный '
+            'вариант на тех же интересах.',
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _ctrl,
+            autofocus: true,
+            maxLines: 3,
+            decoration: const InputDecoration(
+              hintText:
+                  'например: больше про здоровье и творчество, '
+                  'меньше про работу',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Отмена'),
+        ),
+        FilledButton(
+          onPressed: () =>
+              Navigator.of(context).pop(_ctrl.text.trim()),
+          child: const Text('Перегенерировать'),
+        ),
+      ],
     );
   }
 }

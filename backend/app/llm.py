@@ -322,6 +322,8 @@ class LlmClient:
         interests: list[str],
         count: int,
         knowledge: KnowledgeInput | None = None,
+        regen_hint: str | None = None,
+        variation_seed: int | None = None,
     ) -> list[AxisDraft]:
         """Have the LLM design 3..8 personalised growth axes.
 
@@ -342,7 +344,9 @@ class LlmClient:
                 {
                     "role": "user",
                     "content": _axes_user_prompt(
-                        profile, interests, count, knowledge
+                        profile, interests, count, knowledge,
+                        regen_hint=regen_hint,
+                        variation_seed=variation_seed,
                     ),
                 },
             ],
@@ -428,6 +432,8 @@ def _axes_user_prompt(
     interests: list[str],
     count: int,
     knowledge: KnowledgeInput | None = None,
+    regen_hint: str | None = None,
+    variation_seed: int | None = None,
 ) -> str:
     profile_lines: list[str] = []
     if profile.name:
@@ -472,6 +478,17 @@ def _axes_user_prompt(
         "Names should reflect the user's real interests, not abstract life "
         "buckets. Symbols must be unique across the set."
     )
+    if regen_hint:
+        sections.append(
+            "REGENERATION REQUEST: the user already has a set of axes "
+            "and is asking for a *different* one. Honour this guidance "
+            "— don't repeat the previous answer:\n"
+            f"  {regen_hint.strip()}"
+        )
+    if variation_seed is not None:
+        # Pure-noise tail — ensures the prompt hashes differently per
+        # call so the LLM produces a fresh sample on repeated taps.
+        sections.append(f"VARIATION HASH: 0x{variation_seed:08x}")
     sections.append(
         f"Return JSON exactly in this shape (no extra keys, no fences):\n{schema}"
     )

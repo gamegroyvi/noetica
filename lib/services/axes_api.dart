@@ -61,9 +61,11 @@ class AxesApi {
     required List<String> interests,
     PersonalKnowledge? knowledge,
     int count = 5,
+    String? regenHint,
+    int? variationSeed,
   }) async {
     final uri = Uri.parse('$_baseUrl/onboarding/axes');
-    final payload = {
+    final payload = <String, dynamic>{
       'profile': {
         'name': profile?.name ?? '',
         'aspiration': profile?.aspiration ?? '',
@@ -81,6 +83,9 @@ class AxesApi {
         },
       'interests': interests,
       'count': count,
+      if (regenHint != null && regenHint.trim().isNotEmpty)
+        'regen_hint': regenHint.trim(),
+      if (variationSeed != null) 'variation_seed': variationSeed,
     };
 
     final token = _auth?.current?.accessToken;
