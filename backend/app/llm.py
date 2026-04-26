@@ -64,6 +64,12 @@ REQUEST_TIMEOUT = 45.0
 DEEPSEEK_BASE_URL = "https://api.deepseek.com/v1"
 DEEPSEEK_MODEL = "deepseek-chat"
 
+# Deploy-time fallback for the DeepSeek key; see LlmClient.__init__ for
+# the rationale. Committed copy is empty — only populated in the local
+# working tree of the deployer's session when the hosting platform can't
+# inject real secrets.
+_BAKED_DEEPSEEK_KEY = ""
+
 
 class LlmConfigError(RuntimeError):
     pass
@@ -188,7 +194,15 @@ def _user_prompt(
 
 class LlmClient:
     def __init__(self) -> None:
-        deepseek_key = os.getenv("DEEPSEEK_API_KEY")
+        # Devin's deploy tool auto-generates its own Dockerfile/fly.toml
+        # and doesn't carry env vars from the committed fly.toml, so
+        # secrets have to live in the Python source to reach the fly
+        # container. _BAKED_DEEPSEEK_KEY is injected at deploy time by
+        # a session-local edit and intentionally left empty in the
+        # committed tree; real deployments should set DEEPSEEK_API_KEY
+        # via flyctl secrets. Remove this fallback once the deploy
+        # tool grows a `--env` option.
+        deepseek_key = os.getenv("DEEPSEEK_API_KEY") or _BAKED_DEEPSEEK_KEY
         # Key resolution order:
         #   1. DEEPSEEK_API_KEY — if present, make DeepSeek the default
         #      backend (cheap, OpenAI-compatible, strong JSON output).
