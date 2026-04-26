@@ -156,10 +156,14 @@ class _AxisDetailSheet extends ConsumerWidget {
             ],
             if (ls != null) ...[
               const SizedBox(height: 12),
+              // Progress bar now tracks the same metric as the adjacent
+              // "ДО Э…" stat — эпоха progress — so the numbers can't
+              // drift against the bar. 0..1 of the current эпоха.
               ClipRRect(
                 borderRadius: BorderRadius.circular(2),
                 child: LinearProgressIndicator(
-                  value: ls.progress,
+                  value: ((ls.totalXp % kXpPerEpoch) / kXpPerEpoch)
+                      .clamp(0.0, 1.0),
                   minHeight: 4,
                   backgroundColor: palette.line,
                   valueColor: AlwaysStoppedAnimation<Color>(palette.fg),
