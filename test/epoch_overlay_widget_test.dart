@@ -34,9 +34,9 @@ Widget _harness({
 }
 
 void main() {
-  const _sentinelKey = Key('tree-sentinel');
-  const _tree = Center(
-    key: _sentinelKey,
+  const sentinelKey = Key('tree-sentinel');
+  const tree = Center(
+    key: sentinelKey,
     child: Text('tree'),
   );
 
@@ -62,20 +62,20 @@ void main() {
       await tester.pumpWidget(_harness(
         profile: build(),
         visible: false,
-        child: _tree,
+        child: tree,
       ));
-      expect(find.byKey(_sentinelKey), findsOneWidget);
+      expect(find.byKey(sentinelKey), findsOneWidget);
       expect(find.text('Ты заполнил древо.'), findsNothing);
 
       await tester.pumpWidget(_harness(
         profile: build(),
         visible: true,
-        child: _tree,
+        child: tree,
       ));
       // Enter animation settles quickly; pumpAndSettle is bounded by
       // the overlay's internal 380ms controller.
       await tester.pumpAndSettle();
-      expect(find.byKey(_sentinelKey), findsOneWidget);
+      expect(find.byKey(sentinelKey), findsOneWidget);
       expect(find.text('Ты заполнил древо.'), findsOneWidget);
       expect(find.text('Новая эпоха'), findsOneWidget);
       expect(find.text('Углубиться'), findsOneWidget);
@@ -87,7 +87,7 @@ void main() {
     await tester.pumpWidget(_harness(
       profile: build(epoch: 4),
       visible: true,
-      child: _tree,
+      child: tree,
     ));
     await tester.pumpAndSettle();
     // Subtitle references "Эпоха 5" (current + 1).
@@ -102,7 +102,7 @@ void main() {
     await tester.pumpWidget(_harness(
       profile: build(epoch: 2, tier: 2),
       visible: true,
-      child: _tree,
+      child: tree,
     ));
     await tester.pumpAndSettle();
     // Tier bumps from 2 to 3.
@@ -120,7 +120,7 @@ void main() {
               profile: build(),
               visible: true,
               onDismissed: () => dismissed++,
-              child: _tree,
+              child: tree,
             ),
           ),
         ),
