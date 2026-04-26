@@ -334,7 +334,11 @@ class LlmClient:
             ],
             "response_format": {"type": "json_object"},
             "temperature": 0.7,
-            "max_tokens": 700,
+            # 700 was fine for gpt-4o-mini but tight for DeepSeek/Llama
+            # when asked for 6–7 axes each with a full description —
+            # the tail of the JSON array gets truncated. 1200 gives
+            # enough headroom without meaningfully hurting latency.
+            "max_tokens": 1200,
         }
         url = f"{self.base_url}/chat/completions"
         async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
@@ -347,10 +351,22 @@ class LlmClient:
         data = response.json()
         try:
             content = data["choices"][0]["message"]["content"]
+            finish = data["choices"][0].get("finish_reason")
         except (KeyError, IndexError, TypeError) as exc:
             raise LlmUpstreamError(
                 502, f"Malformed LLM response: {exc}: {data!r}"
             ) from exc
+        if finish == "length":
+            # Mirror the safeguard from generate_roadmap — verbose
+            # models (DeepSeek/Llama) can truncate a partially-emitted
+            # axes array and produce unparseable JSON; surface the real
+            # reason instead of a cryptic "LLM did not return valid JSON".
+            raise LlmUpstreamError(
+                502,
+                "LLM axes response was truncated "
+                "(finish_reason=length). Increase max_tokens or "
+                "request fewer axes.",
+            )
         parsed = _parse_json(content)
         return _normalize_axes(parsed.get("axes", []), count)
 
