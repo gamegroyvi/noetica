@@ -152,6 +152,70 @@ class NoeticaRepository {
     _markDirty();
   }
 
+  /// Replace axes AND remap any pre-existing `entry_axes` links to the
+  /// new axis IDs by best-effort name/symbol matching. Without this,
+  /// every regeneration of axes would orphan all completed-task XP and
+  /// the Древо would silently reset to zero — even though the user can
+  /// see the tasks themselves are still completed in Журнал.
+  ///
+  /// Returns the number of axis-link rows that were remapped.
+  Future<int> replaceAxesWithMigration(List<m.LifeAxis> newAxes) async {
+    final oldAxes = await listAxes();
+    final byName = <String, String>{
+      for (final a in newAxes) a.name.toLowerCase().trim(): a.id,
+    };
+    final bySymbol = <String, String>{
+      for (final a in newAxes) a.symbol.trim(): a.id,
+    };
+    final mapping = <String, String>{};
+    for (final o in oldAxes) {
+      final n = byName[o.name.toLowerCase().trim()];
+      if (n != null) {
+        mapping[o.id] = n;
+        continue;
+      }
+      final s = bySymbol[o.symbol.trim()];
+      if (s != null) mapping[o.id] = s;
+    }
+    await replaceAxes(newAxes);
+    if (mapping.isEmpty) return 0;
+    var migrated = 0;
+    await _db.raw.transaction((txn) async {
+      for (final pair in mapping.entries) {
+        if (pair.key == pair.value) continue;
+        // De-duplicate: if the entry already has a row pointing to the new
+        // axis, drop the old one instead of duplicating the link.
+        final dupes = await txn.rawQuery(
+          '''
+          SELECT a.entry_id AS entry_id
+          FROM entry_axes a
+          JOIN entry_axes b ON a.entry_id = b.entry_id
+          WHERE a.axis_id = ? AND b.axis_id = ?
+          ''',
+          [pair.key, pair.value],
+        );
+        for (final r in dupes) {
+          await txn.delete(
+            'entry_axes',
+            where: 'entry_id = ? AND axis_id = ?',
+            whereArgs: [r['entry_id'], pair.key],
+          );
+        }
+        final n = await txn.update(
+          'entry_axes',
+          {'axis_id': pair.value},
+          where: 'axis_id = ?',
+          whereArgs: [pair.key],
+        );
+        migrated += n;
+      }
+    });
+    await _emitAxes();
+    await _emitEntries();
+    _markDirty();
+    return migrated;
+  }
+
   // ---------- entries ----------
 
   Future<List<m.Entry>> listEntries({

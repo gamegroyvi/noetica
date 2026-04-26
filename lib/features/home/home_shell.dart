@@ -5,6 +5,7 @@ import '../../theme/app_theme.dart';
 import '../../widgets/brand_glyph.dart';
 import '../dashboard/dashboard_screen.dart';
 import '../entry/entry_editor_sheet.dart';
+import '../knowledge/knowledge_graph_screen.dart';
 import '../notes/notes_screen.dart';
 import '../pomodoro/pomodoro_sheet.dart';
 import '../self/self_screen.dart';
@@ -109,6 +110,11 @@ class _HomeShellState extends ConsumerState<HomeShell> {
             journalSelected: _index == _journalIndex,
             onJournal: () => setState(() => _index = _journalIndex),
             onPomodoro: () => PomodoroSheet.show(context),
+            onKnowledge: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const KnowledgeGraphScreen(),
+              ),
+            ),
             palette: palette,
           ),
           Expanded(child: body),
@@ -142,6 +148,7 @@ class _DesktopSidebar extends StatelessWidget {
     required this.journalSelected,
     required this.onJournal,
     required this.onPomodoro,
+    required this.onKnowledge,
     required this.palette,
   });
 
@@ -153,6 +160,7 @@ class _DesktopSidebar extends StatelessWidget {
   final bool journalSelected;
   final VoidCallback onJournal;
   final VoidCallback onPomodoro;
+  final VoidCallback onKnowledge;
   final NoeticaPalette palette;
 
   @override
@@ -219,6 +227,15 @@ class _DesktopSidebar extends StatelessWidget {
                 extended: extended,
                 palette: palette,
                 onTap: onJournal,
+              ),
+              _SidebarTile(
+                icon: Icons.account_tree_outlined,
+                selectedIcon: Icons.account_tree,
+                label: 'База знаний',
+                selected: false,
+                extended: extended,
+                palette: palette,
+                onTap: onKnowledge,
               ),
               _SidebarTile(
                 icon: Icons.timer_outlined,

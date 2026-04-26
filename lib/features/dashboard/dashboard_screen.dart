@@ -8,10 +8,13 @@ import '../../utils/time_utils.dart';
 import '../../widgets/brand_glyph.dart';
 import '../../services/weekly_reflection_service.dart';
 import '../entry/entry_editor_sheet.dart';
+import '../knowledge/knowledge_graph_screen.dart';
 import '../notes/notes_screen.dart';
 import '../pomodoro/pomodoro_sheet.dart';
 import '../reflection/reflection_sheet.dart';
 import '../reflection/weekly_reflection_sheet.dart';
+import '../self/pentagon_painter.dart';
+import '../self/self_screen.dart';
 import '../tasks/tasks_screen.dart';
 
 /// "Сейчас" tab — focused dashboard.
@@ -81,6 +84,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ),
                 );
               },
+            ),
+          if (!isDesktop)
+            IconButton(
+              tooltip: 'База знаний',
+              icon: const Icon(Icons.account_tree_outlined),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const KnowledgeGraphScreen(),
+                ),
+              ),
             ),
           IconButton(
             tooltip: 'Pomodoro',
@@ -185,7 +198,36 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               const SizedBox(height: 22),
               _SectionHeader(label: 'ПУЛЬС', palette: palette),
               const SizedBox(height: 8),
+              _StatsTiles(
+                stats: stats,
+                axesById: axesById,
+                palette: palette,
+                onTapDeadline: focus == null
+                    ? null
+                    : () => showEntryEditor(context, ref, existing: focus),
+              ),
+              const SizedBox(height: 12),
               _PulseStrip(stats: stats, palette: palette),
+              const SizedBox(height: 22),
+              _SectionHeader(label: 'АКТИВНОСТЬ', palette: palette,
+                  trailing: '${stats.heatmap.fold(0, (a, b) => a + b)} закрыто за 90 дней'),
+              const SizedBox(height: 8),
+              _ActivityHeatmap(values: stats.heatmap, palette: palette),
+              if (axes.length >= 3) ...[
+                const SizedBox(height: 22),
+                _SectionHeader(
+                  label: 'ДРЕВО',
+                  palette: palette,
+                  trailing: 'все →',
+                  onTrailingTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const SelfScreen(),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                _MiniTreeCard(palette: palette),
+              ],
               const SizedBox(height: 22),
               _SectionHeader(
                 label: 'ПОСЛЕДНЕЕ',
@@ -840,12 +882,35 @@ class _DashboardStats {
     required this.todayCompleted,
     required this.weekCompleted,
     required this.perDay,
+    required this.heatmap,
+    required this.totalXpToday,
+    required this.totalXpWeek,
+    required this.bestAxis,
+    required this.bestAxisXp,
+    required this.nextDeadline,
   });
 
   final int streak;
   final int todayCompleted;
   final int weekCompleted;
+
+  /// Last 7 days of completed-task counts (oldest → today).
   final List<int> perDay;
+
+  /// Last 91 days (13 weeks) of completed-task counts, oldest → today.
+  /// Used by the GitHub-style activity heatmap.
+  final List<int> heatmap;
+
+  final int totalXpToday;
+  final int totalXpWeek;
+
+  /// Axis ID with the highest XP earned in the past 7 days, or null when
+  /// nothing was completed.
+  final String? bestAxis;
+  final int bestAxisXp;
+
+  /// Earliest future due date among non-completed tasks, or null.
+  final DateTime? nextDeadline;
 
   factory _DashboardStats.from(List<Entry> entries) {
     final now = DateTime.now();
@@ -866,8 +931,21 @@ class _DashboardStats {
       cursor = DateTime(cursor.year, cursor.month, cursor.day - 1);
     }
 
+    const heatmapDays = 91;
     final perDay = List<int>.filled(7, 0);
+    final heatmap = List<int>.filled(heatmapDays, 0);
+    var totalXpToday = 0;
+    var totalXpWeek = 0;
+    final perAxisXpWeek = <String, int>{};
+    DateTime? nextDeadline;
+
     for (final e in entries) {
+      // Track upcoming deadline among open tasks.
+      if (e.isTask && !e.isCompleted && e.dueAt != null && e.dueAt!.isAfter(now)) {
+        if (nextDeadline == null || e.dueAt!.isBefore(nextDeadline)) {
+          nextDeadline = e.dueAt;
+        }
+      }
       final completedAt = e.completedAt;
       if (completedAt == null) continue;
       final day = DateTime(
@@ -879,13 +957,360 @@ class _DashboardStats {
       if (diff >= 0 && diff < 7) {
         perDay[6 - diff] += 1;
       }
+      if (diff >= 0 && diff < heatmapDays) {
+        heatmap[heatmapDays - 1 - diff] += 1;
+      }
+      if (diff == 0) totalXpToday += e.xp;
+      if (diff >= 0 && diff < 7) {
+        totalXpWeek += e.xp;
+        // Naive even-split per axis for "best axis this week" display.
+        final ids = e.axisIds;
+        if (ids.isNotEmpty) {
+          final share = e.xp / ids.length;
+          for (final id in ids) {
+            perAxisXpWeek[id] =
+                (perAxisXpWeek[id] ?? 0) + share.round();
+          }
+        }
+      }
     }
+
+    String? bestAxis;
+    var bestAxisXp = 0;
+    perAxisXpWeek.forEach((k, v) {
+      if (v > bestAxisXp) {
+        bestAxis = k;
+        bestAxisXp = v;
+      }
+    });
 
     return _DashboardStats(
       streak: streak,
       todayCompleted: perDay[6],
       weekCompleted: perDay.fold(0, (a, b) => a + b),
       perDay: perDay,
+      heatmap: heatmap,
+      totalXpToday: totalXpToday,
+      totalXpWeek: totalXpWeek,
+      bestAxis: bestAxis,
+      bestAxisXp: bestAxisXp,
+      nextDeadline: nextDeadline,
+    );
+  }
+}
+
+class _StatsTiles extends StatelessWidget {
+  const _StatsTiles({
+    required this.stats,
+    required this.axesById,
+    required this.palette,
+    this.onTapDeadline,
+  });
+
+  final _DashboardStats stats;
+  final Map<String, LifeAxis> axesById;
+  final NoeticaPalette palette;
+  final VoidCallback? onTapDeadline;
+
+  @override
+  Widget build(BuildContext context) {
+    final bestAxisName = stats.bestAxis != null
+        ? (axesById[stats.bestAxis!]?.name ?? '—')
+        : '—';
+    final bestAxisSym = stats.bestAxis != null
+        ? (axesById[stats.bestAxis!]?.symbol ?? '·')
+        : '·';
+    final dl = stats.nextDeadline;
+    final dlLabel = dl == null
+        ? '—'
+        : (dl.difference(DateTime.now()).inHours < 24
+            ? '${dl.difference(DateTime.now()).inHours}ч'
+            : '${dl.difference(DateTime.now()).inDays}д');
+
+    return GridView.count(
+      crossAxisCount: 4,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: 8,
+      crossAxisSpacing: 8,
+      childAspectRatio: 1.05,
+      children: [
+        _StatTile(
+          value: '${stats.streak}',
+          label: 'стрик',
+          hint: stats.streak == 0
+              ? 'начни сегодня'
+              : _plural(stats.streak, 'день', 'дня', 'дней'),
+          palette: palette,
+        ),
+        _StatTile(
+          value: '${stats.totalXpToday}',
+          label: 'XP сегодня',
+          hint: '${stats.totalXpWeek} за неделю',
+          palette: palette,
+        ),
+        _StatTile(
+          value: bestAxisSym,
+          label: bestAxisName,
+          hint: stats.bestAxisXp == 0 ? '—' : '+${stats.bestAxisXp} XP',
+          monoBig: true,
+          palette: palette,
+        ),
+        _StatTile(
+          value: dlLabel,
+          label: 'дедлайн',
+          hint: dl == null
+              ? 'нет ближайших'
+              : 'до ${formatTimestamp(dl)}',
+          palette: palette,
+          onTap: onTapDeadline,
+        ),
+      ],
+    );
+  }
+}
+
+class _StatTile extends StatelessWidget {
+  const _StatTile({
+    required this.value,
+    required this.label,
+    required this.hint,
+    required this.palette,
+    this.onTap,
+    this.monoBig = false,
+  });
+
+  final String value;
+  final String label;
+  final String hint;
+  final NoeticaPalette palette;
+  final VoidCallback? onTap;
+  final bool monoBig;
+
+  @override
+  Widget build(BuildContext context) {
+    final body = Container(
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
+      decoration: BoxDecoration(
+        color: palette.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: palette.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            value,
+            style: TextStyle(
+              color: palette.fg,
+              fontSize: monoBig ? 22 : 22,
+              fontWeight: FontWeight.w700,
+              height: 1.0,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: palette.fg,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                hint,
+                style: TextStyle(color: palette.muted, fontSize: 10),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+    if (onTap == null) return body;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: body,
+    );
+  }
+}
+
+/// 13-week × 7-day GitHub-style activity grid. Cell intensity is bucketed
+/// 0..3 against the heatmap max so even small samples get visible contrast.
+class _ActivityHeatmap extends StatelessWidget {
+  const _ActivityHeatmap({required this.values, required this.palette});
+
+  final List<int> values;
+  final NoeticaPalette palette;
+
+  @override
+  Widget build(BuildContext context) {
+    final maxV = values.fold<int>(0, (a, b) => b > a ? b : a);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const rows = 7;
+        final cols = (values.length / rows).ceil();
+        const spacing = 2.0;
+        final cell =
+            (constraints.maxWidth - (cols - 1) * spacing) / cols;
+        return SizedBox(
+          height: rows * cell + (rows - 1) * spacing,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (var c = 0; c < cols; c++) ...[
+                Column(
+                  children: [
+                    for (var r = 0; r < rows; r++) ...[
+                      _heatCell(c, r, cell, maxV),
+                      if (r < rows - 1) const SizedBox(height: spacing),
+                    ],
+                  ],
+                ),
+                if (c < cols - 1) const SizedBox(width: spacing),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _heatCell(int c, int r, double size, int maxV) {
+    final idx = c * 7 + r;
+    final v = idx < values.length ? values[idx] : 0;
+    final t = maxV == 0 ? 0.0 : (v / maxV);
+    Color color;
+    if (v == 0) {
+      color = palette.line.withOpacity(0.45);
+    } else if (t < 0.34) {
+      color = palette.fg.withOpacity(0.30);
+    } else if (t < 0.67) {
+      color = palette.fg.withOpacity(0.60);
+    } else {
+      color = palette.fg;
+    }
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(2),
+      ),
+    );
+  }
+}
+
+/// Compact tappable Древо preview — small radar polygon plus axis-symbol
+/// strip and a hint. Animates entrance like the full one and routes to
+/// SelfScreen on tap.
+class _MiniTreeCard extends ConsumerWidget {
+  const _MiniTreeCard({required this.palette});
+
+  final NoeticaPalette palette;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scoresAsync = ref.watch(scoresProvider);
+    final levelStatsAsync = ref.watch(axisLevelStatsProvider);
+    return InkWell(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => const SelfScreen()),
+      ),
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+        decoration: BoxDecoration(
+          color: palette.surface,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: palette.line),
+        ),
+        child: scoresAsync.when(
+          loading: () => const SizedBox(height: 90),
+          error: (_, __) => const SizedBox(height: 0),
+          data: (scores) {
+            if (scores.isEmpty) {
+              return Text(
+                'Древо появится после первой ветви',
+                style: TextStyle(color: palette.muted, fontSize: 12),
+              );
+            }
+            final levels = levelStatsAsync.valueOrNull ?? const {};
+            final topAxis = scores.reduce(
+              (a, b) => a.value >= b.value ? a : b,
+            );
+            final topLevel = levels[topAxis.axis.id]?.level ?? 1;
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 96,
+                  height: 96,
+                  child: TweenAnimationBuilder<double>(
+                    duration: const Duration(milliseconds: 700),
+                    curve: Curves.easeOutCubic,
+                    tween: Tween(begin: 0, end: 1),
+                    builder: (_, t, __) => CustomPaint(
+                      painter: PentagonPainter(
+                        scores: scores,
+                        fg: palette.fg,
+                        muted: palette.muted,
+                        line: palette.line,
+                        bg: palette.bg,
+                        progress: t,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${scores.length} ветвей · L$topLevel ${topAxis.axis.name.toLowerCase()}',
+                        style: TextStyle(
+                          color: palette.fg,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        scores
+                            .map((s) =>
+                                '${s.axis.symbol} ${s.value.round()}')
+                            .join('  '),
+                        style: TextStyle(
+                          color: palette.muted,
+                          fontSize: 11,
+                          fontFamily: 'IBMPlexMono',
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'тап — посмотреть полностью',
+                        style: TextStyle(color: palette.muted, fontSize: 10),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
     );
   }
 }

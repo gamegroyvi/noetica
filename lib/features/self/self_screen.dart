@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -424,11 +426,28 @@ class _DrevoCanvas extends ConsumerStatefulWidget {
 }
 
 class _DrevoCanvasState extends ConsumerState<_DrevoCanvas>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl = AnimationController(
+    with TickerProviderStateMixin {
+  // One-shot grow animation, replayed when scores change. We use
+  // easeOutBack for a slight spring overshoot so the polygon visibly
+  // springs into place instead of merely settling.
+  late final AnimationController _grow = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 700),
+    duration: const Duration(milliseconds: 1100),
   )..forward();
+
+  // Continuous idle "breathing" — slow oscillation in radius (~±2%) so the
+  // tree never feels frozen. Loops indefinitely.
+  late final AnimationController _breath = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 6),
+  )..repeat();
+
+  // Short reaction pulse fired every time a score increases. Drives a
+  // small overshoot that overlays on top of the steady-state shape.
+  late final AnimationController _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 600),
+  );
   int? _highlight;
 
   @override
@@ -437,18 +456,22 @@ class _DrevoCanvasState extends ConsumerState<_DrevoCanvas>
     // Replay the grow animation only when the actual axis values changed
     // — not on every parent rebuild — so casual scrolling doesn't jitter
     // the canvas.
-    final changed = oldWidget.scores.length != widget.scores.length ||
-        () {
-          for (var i = 0; i < oldWidget.scores.length; i++) {
-            if ((oldWidget.scores[i].value - widget.scores[i].value).abs() >
-                0.01) {
-              return true;
-            }
-          }
-          return false;
-        }();
+    var changed = oldWidget.scores.length != widget.scores.length;
+    var increased = false;
+    if (!changed) {
+      for (var i = 0; i < oldWidget.scores.length; i++) {
+        final delta = widget.scores[i].value - oldWidget.scores[i].value;
+        if (delta.abs() > 0.01) changed = true;
+        if (delta > 0.01) increased = true;
+      }
+    }
     if (changed) {
-      _ctrl
+      _grow
+        ..reset()
+        ..forward();
+    }
+    if (increased) {
+      _pulse
         ..reset()
         ..forward();
     }
@@ -456,7 +479,9 @@ class _DrevoCanvasState extends ConsumerState<_DrevoCanvas>
 
   @override
   void dispose() {
-    _ctrl.dispose();
+    _grow.dispose();
+    _breath.dispose();
+    _pulse.dispose();
     super.dispose();
   }
 
@@ -489,19 +514,31 @@ class _DrevoCanvasState extends ConsumerState<_DrevoCanvas>
             });
           },
           child: AnimatedBuilder(
-            animation: _ctrl,
-            builder: (_, __) => CustomPaint(
-              painter: PentagonPainter(
-                scores: widget.scores,
-                fg: palette.fg,
-                muted: palette.muted,
-                line: palette.line,
-                bg: palette.bg,
-                progress: Curves.easeOutCubic.transform(_ctrl.value),
-                highlightedAxisIndex: _highlight,
-              ),
-              child: const SizedBox.expand(),
-            ),
+            animation: Listenable.merge([_grow, _breath, _pulse]),
+            builder: (_, __) {
+              final grow = Curves.easeOutBack.transform(_grow.value).clamp(0.0, 1.05);
+              final breath = 1 + 0.018 *
+                  math.sin(_breath.value * 2 * math.pi);
+              final pulse = _pulse.isAnimating
+                  ? 1 +
+                      0.06 *
+                          math.sin(_pulse.value * math.pi) *
+                          (1 - _pulse.value)
+                  : 1.0;
+              final progress = grow * breath * pulse;
+              return CustomPaint(
+                painter: PentagonPainter(
+                  scores: widget.scores,
+                  fg: palette.fg,
+                  muted: palette.muted,
+                  line: palette.line,
+                  bg: palette.bg,
+                  progress: progress.toDouble(),
+                  highlightedAxisIndex: _highlight,
+                ),
+                child: const SizedBox.expand(),
+              );
+            },
           ),
         );
       },

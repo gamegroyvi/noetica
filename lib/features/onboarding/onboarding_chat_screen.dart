@@ -96,7 +96,6 @@ class _OnboardingChatScreenState
     'ночью',
     'в выходные',
   ];
-  static const _hoursOptions = <int>[2, 5, 10, 18, 30];
 
   @override
   void initState() {
@@ -491,12 +490,9 @@ class _OnboardingChatScreenState
         );
       case 5:
         return _HoursReply(
-          options: _hoursOptions,
-          selected: _weeklyHours,
-          onPick: (v) {
-            setState(() => _weeklyHours = v);
-            _advance();
-          },
+          value: _weeklyHours.clamp(1, 60),
+          onChanged: (v) => setState(() => _weeklyHours = v),
+          onSubmit: _canAdvance ? _advance : null,
           palette: palette,
         );
       case 6:
@@ -877,30 +873,102 @@ class _LevelsReply extends StatelessWidget {
 
 class _HoursReply extends StatelessWidget {
   const _HoursReply({
-    required this.options,
-    required this.selected,
-    required this.onPick,
+    required this.value,
+    required this.onChanged,
+    required this.onSubmit,
     required this.palette,
   });
 
-  final List<int> options;
-  final int selected;
-  final ValueChanged<int> onPick;
+  final int value;
+  final ValueChanged<int> onChanged;
+  final VoidCallback? onSubmit;
   final NoeticaPalette palette;
+
+  String _hint(int v) {
+    if (v <= 3) return 'мини-объём, по чуть-чуть';
+    if (v <= 8) return 'комфортный темп';
+    if (v <= 15) return 'серьёзная вовлечённость';
+    if (v <= 25) return 'почти второй джоб';
+    return 'максимальный режим';
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        for (final h in options)
-          _Chip(
-            label: '$h ч/нед',
-            selected: h == selected,
-            onTap: () => onPick(h),
-            palette: palette,
+        Row(
+          children: [
+            Text(
+              '$value',
+              style: TextStyle(
+                fontFamily: 'IBMPlexMono',
+                fontSize: 32,
+                fontWeight: FontWeight.w700,
+                color: palette.fg,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'ч/нед',
+              style: TextStyle(
+                fontFamily: 'IBMPlexMono',
+                fontSize: 14,
+                color: palette.muted,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              _hint(value),
+              style: TextStyle(
+                fontFamily: 'IBMPlexMono',
+                fontSize: 11,
+                color: palette.muted,
+              ),
+            ),
+          ],
+        ),
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            activeTrackColor: palette.fg,
+            inactiveTrackColor: palette.line,
+            thumbColor: palette.fg,
+            overlayColor: palette.fg.withOpacity(0.12),
+            valueIndicatorColor: palette.fg,
+            valueIndicatorTextStyle: TextStyle(
+              color: palette.surface,
+              fontFamily: 'IBMPlexMono',
+              fontWeight: FontWeight.w700,
+            ),
           ),
+          child: Slider(
+            value: value.toDouble(),
+            min: 1,
+            max: 60,
+            divisions: 59,
+            label: '$value ч',
+            onChanged: (v) => onChanged(v.round()),
+          ),
+        ),
+        Row(
+          children: [
+            Text('1', style: TextStyle(fontFamily: 'IBMPlexMono', fontSize: 11, color: palette.muted)),
+            const Spacer(),
+            Text('60', style: TextStyle(fontFamily: 'IBMPlexMono', fontSize: 11, color: palette.muted)),
+          ],
+        ),
+        const SizedBox(height: 12),
+        FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: palette.fg,
+            foregroundColor: palette.surface,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            padding: const EdgeInsets.symmetric(vertical: 14),
+          ),
+          onPressed: onSubmit,
+          child: const Text('Далее', style: TextStyle(fontFamily: 'IBMPlexMono', fontWeight: FontWeight.w700)),
+        ),
       ],
     );
   }

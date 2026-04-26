@@ -133,9 +133,18 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           createdAt: DateTime.now(),
         ));
       }
-      await repo.replaceAxes(axes);
+      final migrated = await repo.replaceAxesWithMigration(axes);
       await markOnboarded();
       ref.invalidate(onboardedProvider);
+      if (mounted && migrated > 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Перенесено $migrated связей с задачами на новые ветви',
+            ),
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
