@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -40,21 +42,26 @@ class EpochCeremony {
   }
 }
 
+/// Which decisive path the user picked. Drives the tree exit animation
+/// so «Новая эпоха» (расцветает наружу) and «Углубиться» (сжимается
+/// внутрь, потом вспышка) feel visibly distinct — instead of both
+/// looking like "tree just disappears".
+enum _EpochPath { none, newEpoch, goDeeper }
+
 /// Inline overlay placed on top of the Древо canvas. Dims the tree,
-/// floats a card with two actions:
+/// floats a bottom-sheet card with two actions:
 ///
-///   * **Новая эпоха** — runs a one-time exit animation (tree shrinks
-///     to the center and fades), bumps `currentEpoch`, resets the
-///     tier, then routes to the axes editor.
+///   * **Новая эпоха** — tree explodes outward and fades (rotation +
+///     scale up). Then bumps `currentEpoch`, resets the tier, routes
+///     to the axes editor.
 ///
-///   * **Углубиться** — runs the same animation, stamps
-///     `epochRefreshedAt` so the pentagon resets visually, bumps
-///     `epochTier` to signal "harder tasks under the same axes".
+///   * **Углубиться** — tree contracts to a tight glowing point
+///     (scale down + bright flash), then fades. Stamps
+///     `epochRefreshedAt` and bumps `epochTier`.
 ///
-/// Tap the scrim to dismiss — the overlay just slides away without
-/// touching the profile, so the user can come back to it. A tiny
-/// chip in the Self screen header will still indicate that the
-/// threshold is reached so they aren't accidentally locked out.
+/// The action card slides up from the bottom of the screen (bottom-
+/// sheet style) so it always fits on phones. Tap the scrim above the
+/// card to dismiss without touching the profile.
 class EpochOverlay extends ConsumerStatefulWidget {
   const EpochOverlay({
     super.key,
@@ -86,36 +93,41 @@ class EpochOverlay extends ConsumerStatefulWidget {
 
 class _EpochOverlayState extends ConsumerState<EpochOverlay>
     with TickerProviderStateMixin {
-  /// Controls the one-time *exit* animation — tree shrinks to center
-  /// + fades. Runs when the user commits to either path. Completion
-  /// triggers the side-effect (navigate / save profile).
+  /// Controls the one-time *exit* animation — tree morphs (per-path)
+  /// then fades. Runs when the user commits to either path.
   late final AnimationController _exit = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 900),
+    duration: const Duration(milliseconds: 1100),
   );
 
-  /// Controls the entry animation for the overlay card — a quick
-  /// settle from slightly scaled-up + dimmed to normal.
+  /// Controls the bottom-sheet card slide-in (and the scrim alpha).
+  /// Reverses on dismiss / commit so the card slides back down before
+  /// the tree exit completes.
   late final AnimationController _enter = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 380),
   );
 
   bool _committing = false;
+  _EpochPath _path = _EpochPath.none;
 
   @override
   void initState() {
     super.initState();
-    if (widget.visible) _enter.forward();
+    if (widget.visible) {
+      _enter.value = 1;
+    }
   }
 
   @override
-  void didUpdateWidget(covariant EpochOverlay old) {
-    super.didUpdateWidget(old);
-    if (widget.visible && !old.visible) {
-      _enter.forward(from: 0);
-    } else if (!widget.visible && old.visible) {
-      _enter.reverse();
+  void didUpdateWidget(covariant EpochOverlay oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.visible != widget.visible) {
+      if (widget.visible) {
+        _enter.forward(from: 0);
+      } else {
+        _enter.reverse();
+      }
     }
   }
 
@@ -128,20 +140,22 @@ class _EpochOverlayState extends ConsumerState<EpochOverlay>
 
   Future<void> _commitNewEpoch() async {
     if (_committing) return;
-    setState(() => _committing = true);
+    setState(() {
+      _committing = true;
+      _path = _EpochPath.newEpoch;
+    });
+    // Slide the card away first so the tree's "explode outward"
+    // animation isn't fighting it for attention.
+    unawaited(_enter.reverse());
     await _exit.forward();
     if (!mounted) return;
     final now = DateTime.now();
     final updated = widget.profile.copyWith(
       currentEpoch: widget.profile.currentEpoch + 1,
-      epochTier: 1,
       epochStartedAt: now,
-      // Stamp ack so the overlay doesn't re-open against the fresh
-      // scores (they take a cycle to drop).
-      epochAckedAt: now,
-      // Also refresh so the pentagon visually resets under the new
-      // axes the user is about to draw.
+      epochTier: 1,
       epochRefreshedAt: now,
+      epochAckedAt: now,
       updatedAt: now,
     );
     await ref.read(profileServiceProvider).save(updated);
@@ -151,13 +165,20 @@ class _EpochOverlayState extends ConsumerState<EpochOverlay>
     );
     if (mounted) {
       _exit.reverse();
-      setState(() => _committing = false);
+      setState(() {
+        _committing = false;
+        _path = _EpochPath.none;
+      });
     }
   }
 
   Future<void> _commitGoDeeper() async {
     if (_committing) return;
-    setState(() => _committing = true);
+    setState(() {
+      _committing = true;
+      _path = _EpochPath.goDeeper;
+    });
+    unawaited(_enter.reverse());
     await _exit.forward();
     if (!mounted) return;
     final now = DateTime.now();
@@ -170,7 +191,10 @@ class _EpochOverlayState extends ConsumerState<EpochOverlay>
     await ref.read(profileServiceProvider).save(updated);
     if (mounted) {
       _exit.reverse();
-      setState(() => _committing = false);
+      setState(() {
+        _committing = false;
+        _path = _EpochPath.none;
+      });
     }
   }
 
@@ -185,23 +209,14 @@ class _EpochOverlayState extends ConsumerState<EpochOverlay>
     return AnimatedBuilder(
       animation: Listenable.merge([_enter, _exit]),
       builder: (context, _) {
-        final exit = Curves.easeInCubic.transform(_exit.value);
-        final treeScale = 1 - 0.55 * exit;
-        final treeOpacity = 1 - exit;
         return Stack(
           fit: StackFit.passthrough,
           children: [
-            // Animated tree — shrinks + fades during the exit ritual
-            // so the user visually sees "древо сжалось, пора расти
-            // заново".
-            Opacity(
-              opacity: treeOpacity,
-              child: Transform.scale(
-                scale: treeScale,
-                child: widget.child,
-              ),
-            ),
-            if (widget.visible || _enter.isAnimating)
+            // Animated tree — per-path morph during exit so «Новая
+            // эпоха» feels expansive (расцветает) and «Углубиться»
+            // feels concentrative (сжимается + вспышка).
+            _buildTreeMorph(palette),
+            if (widget.visible || _enter.isAnimating || _enter.value > 0)
               Positioned.fill(
                 child: IgnorePointer(
                   ignoring: !widget.visible,
@@ -214,13 +229,86 @@ class _EpochOverlayState extends ConsumerState<EpochOverlay>
     );
   }
 
+  Widget _buildTreeMorph(NoeticaPalette palette) {
+    final exit = _exit.value;
+    switch (_path) {
+      case _EpochPath.none:
+        // No commit pressed → tree pristine.
+        return widget.child;
+      case _EpochPath.newEpoch:
+        // BLOOM-OUT: tree scales up, rotates a touch, fades. Reads as
+        // "let it scatter, start fresh".
+        final t = Curves.easeInQuart.transform(exit);
+        final scale = 1.0 + 0.85 * t;
+        final rot = 0.22 * t; // ~13°
+        final opacity = (1 - t * 1.15).clamp(0.0, 1.0);
+        return Opacity(
+          opacity: opacity,
+          child: Transform.rotate(
+            angle: rot,
+            child: Transform.scale(
+              scale: scale,
+              child: widget.child,
+            ),
+          ),
+        );
+      case _EpochPath.goDeeper:
+        // CONDENSE: tree shrinks to a glowing pip + flash, then fades.
+        // Reads as "concentrate, drill in".
+        final t = Curves.easeInOutCubic.transform(exit);
+        final scale = (1.0 - 0.92 * t).clamp(0.04, 1.0);
+        // Flash is a brief overlay glow that peaks at ~0.55, fades by
+        // 0.85, gone by 1.0. Layered as a radial vignette via Opacity
+        // on a Container with the foreground colour.
+        final flash = (() {
+          if (t < 0.35) return 0.0;
+          if (t < 0.55) return (t - 0.35) / 0.20;
+          if (t < 0.85) return 1.0 - (t - 0.55) / 0.30;
+          return 0.0;
+        })();
+        final opacity = (1 - (t * 1.1)).clamp(0.0, 1.0);
+        return Stack(
+          fit: StackFit.passthrough,
+          children: [
+            Opacity(
+              opacity: opacity,
+              child: Transform.scale(
+                scale: scale,
+                child: widget.child,
+              ),
+            ),
+            if (flash > 0)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: Center(
+                    child: Container(
+                      width: 220 * (1 - 0.4 * (t - 0.35).clamp(0.0, 1.0)),
+                      height: 220 * (1 - 0.4 * (t - 0.35).clamp(0.0, 1.0)),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: [
+                            palette.fg.withOpacity(0.85 * flash),
+                            palette.fg.withOpacity(0.18 * flash),
+                            Colors.transparent,
+                          ],
+                          stops: const [0.0, 0.45, 1.0],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+    }
+  }
+
   Widget _buildOverlay(NoeticaPalette palette) {
     final entry = Curves.easeOutCubic.transform(_enter.value);
-    // Dim the tree while overlay is up. At full exit we ease the
-    // scrim away so the user doesn't see it lingering after commit.
+    // Dim the tree while overlay is up. Ease the scrim away during
+    // exit so it doesn't linger after the morph completes.
     final scrimAlpha = (entry * 0.66) * (1 - _exit.value);
-    final cardOpacity = (entry * (1 - _exit.value)).clamp(0.0, 1.0);
-    final cardScale = 0.94 + 0.06 * entry;
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -229,11 +317,15 @@ class _EpochOverlayState extends ConsumerState<EpochOverlay>
           onTap: _dismiss,
           child: Container(color: Colors.black.withOpacity(scrimAlpha)),
         ),
-        Center(
-          child: Opacity(
-            opacity: cardOpacity,
-            child: Transform.scale(
-              scale: cardScale,
+        // Bottom-sheet style card. Slides up on enter, slides down on
+        // dismiss / commit. Always anchored to the bottom so it can't
+        // run off the top of small phone screens.
+        Align(
+          alignment: Alignment.bottomCenter,
+          child: FractionalTranslation(
+            translation: Offset(0, 1 - entry),
+            child: SafeArea(
+              top: false,
               child: _EpochOverlayCard(
                 palette: palette,
                 profile: widget.profile,
@@ -274,18 +366,20 @@ class _EpochOverlayCard extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 440),
-        margin: const EdgeInsets.symmetric(horizontal: 24),
-        padding: const EdgeInsets.fromLTRB(22, 24, 22, 16),
+        width: double.infinity,
+        constraints: const BoxConstraints(maxWidth: 520),
+        margin: const EdgeInsets.symmetric(horizontal: 8),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 18),
         decoration: BoxDecoration(
           color: palette.surface,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: palette.fg, width: 1.5),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+          border: Border.all(color: palette.fg.withOpacity(0.85), width: 1.4),
           boxShadow: [
             BoxShadow(
-              color: palette.fg.withOpacity(0.18),
-              blurRadius: 30,
-              spreadRadius: 2,
+              color: palette.fg.withOpacity(0.22),
+              blurRadius: 36,
+              spreadRadius: 1,
+              offset: const Offset(0, -4),
             ),
           ],
         ),
@@ -293,6 +387,20 @@ class _EpochOverlayCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Drag-handle visual cue so it reads as a bottom sheet on
+            // phones (matches Material 3 sheets in the rest of the
+            // app).
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 10),
+                decoration: BoxDecoration(
+                  color: palette.muted.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
             Row(
               children: [
                 Expanded(

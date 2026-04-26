@@ -279,14 +279,14 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
       appBar: AppBar(
         title: const Text('База знаний'),
         actions: [
-          IconButton(
-            tooltip: 'К центру',
-            icon: const Icon(Icons.center_focus_weak_outlined),
-            onPressed: _resetCamera,
-          ),
+          // «К центру» убрали из AppBar по просьбе пользователя —
+          // ту же функцию выполняет нижний FAB «Сбросить вид», там она
+          // и осталась. Здесь оставляем только ярлык-«Сводка о тебе»
+          // с более «личной» иконкой (силуэт человека) вместо
+          // дублирующего «фокус-крестика».
           IconButton(
             tooltip: 'Сводка о тебе',
-            icon: const Icon(Icons.center_focus_strong_outlined),
+            icon: const Icon(Icons.account_circle_outlined),
             onPressed: _knowledge == null
                 ? null
                 : () => _editSummary(_knowledge!.summary),
@@ -314,24 +314,25 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
                       // leaves. Boundary margin lets pan go off-canvas.
                       minScale: 0.25,
                       maxScale: 4.0,
-                      // Generous margin so when the user zooms in on an
-                      // edge card (common on phones) they can still pan
-                      // past the canvas without the view snapping back.
-                      boundaryMargin: const EdgeInsets.all(800),
+                      // Generous margin so when the user pans / zooms
+                      // out the InteractiveViewer doesn't aggressively
+                      // clamp the gesture back into a tiny rectangle.
+                      boundaryMargin: const EdgeInsets.all(1200),
                       child: SizedBox(
-                        // Oversized, square-ish canvas so the radial
-                        // layout has room to breathe at any aspect
-                        // ratio. A single shortSide × 2.1 canvas means
-                        // leaves on the far edges never clip on phones
-                        // and the layout keeps its intended circular
-                        // shape even on ultra-wide desktop monitors.
+                        // Square canvas so the radial layout keeps its
+                        // intended geometry at any aspect ratio. Made
+                        // generous so that even the outermost leaves
+                        // fit *strictly inside* the canvas after the
+                        // radius tightening below — peripheral leaves
+                        // were the things getting clipped after zoom-
+                        // out on phones.
                         width: math.max(
-                          900,
-                          MediaQuery.of(context).size.shortestSide * 2.1,
+                          1300,
+                          MediaQuery.of(context).size.shortestSide * 2.6,
                         ),
                         height: math.max(
-                          900,
-                          MediaQuery.of(context).size.shortestSide * 2.1,
+                          1300,
+                          MediaQuery.of(context).size.shortestSide * 2.6,
                         ),
                         child: _GraphCanvas(
                           knowledge: _knowledge!,
@@ -610,8 +611,13 @@ class _GraphCanvas extends StatelessWidget {
       builder: (context, c) {
         final size = Size(c.maxWidth, c.maxHeight);
         final centre = Offset(size.width / 2, size.height / 2);
+        // Tightened from 0.27 → 0.22 so peripheral leaves
+        // (positioned at ~1.9 × branchRadius from центра) stay
+        // strictly inside the canvas — even with a 120-px wide
+        // _LeafNode card. Without this, leaves on the right edge
+        // overshot the SizedBox and got clipped after pinch-zoom-out.
         final branchRadius =
-            math.min(size.width, size.height) * 0.27;
+            math.min(size.width, size.height) * 0.22;
         final leafRadius = branchRadius * 1.65;
 
         // Compute branch positions on a circle.
@@ -673,6 +679,11 @@ class _GraphCanvas extends StatelessWidget {
 
         return Stack(
           fit: StackFit.expand,
+          // Don't clip overflowing children. With the new tight radius
+          // we shouldn't need it — but leave it as a safety so any
+          // future tweak that bumps a leaf a few pixels past the
+          // canvas edge doesn't silently disappear after zoom-out.
+          clipBehavior: Clip.none,
           children: [
             CustomPaint(
               painter: _GraphPainter(

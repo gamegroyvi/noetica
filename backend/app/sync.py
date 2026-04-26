@@ -66,10 +66,21 @@ class ProfilePayload(BaseModel):
     deleted_at: int | None = None
 
 
+class KnowledgePayload(BaseModel):
+    """Personal-knowledge document — same shape as ProfilePayload but stored
+    in its own table so the two can be synced independently and so an empty
+    profile doesn't fight with a populated knowledge doc on LWW."""
+
+    data_json: str
+    updated_at: int
+    deleted_at: int | None = None
+
+
 class PushRequest(BaseModel):
     axes: list[AxisPayload] = Field(default_factory=list)
     entries: list[EntryPayload] = Field(default_factory=list)
     profile: ProfilePayload | None = None
+    knowledge: KnowledgePayload | None = None
 
 
 class PullResponse(BaseModel):
@@ -77,6 +88,7 @@ class PullResponse(BaseModel):
     axes: list[AxisPayload]
     entries: list[EntryPayload]
     profile: ProfilePayload | None
+    knowledge: KnowledgePayload | None = None
 
 
 class PushResponse(BaseModel):
@@ -84,6 +96,7 @@ class PushResponse(BaseModel):
     accepted_axes: int
     accepted_entries: int
     accepted_profile: bool
+    accepted_knowledge: bool = False
 
 
 # ---------- helpers ----------
@@ -302,6 +315,74 @@ async def _accept_entry(
     return True
 
 
+async def _load_knowledge(
+    conn, user_id: str, since_ms: int
+) -> KnowledgePayload | None:
+    cur = await conn.execute(
+        """
+        SELECT data_json, updated_at, deleted_at
+        FROM personal_knowledge WHERE user_id = ? AND updated_at > ?
+        """,
+        (user_id, since_ms),
+    )
+    row = await cur.fetchone()
+    if row is None:
+        return None
+    return KnowledgePayload(
+        data_json=row["data_json"],
+        updated_at=row["updated_at"],
+        deleted_at=row["deleted_at"],
+    )
+
+
+async def _accept_knowledge(
+    conn, user_id: str, knowledge: KnowledgePayload
+) -> bool:
+    cur = await conn.execute(
+        "SELECT updated_at FROM personal_knowledge WHERE user_id = ?",
+        (user_id,),
+    )
+    row = await cur.fetchone()
+    if row is not None and row["updated_at"] >= knowledge.updated_at:
+        return False
+    try:
+        json.loads(knowledge.data_json)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=f"knowledge.data_json is not valid JSON: {exc}",
+        ) from exc
+    if row is None:
+        await conn.execute(
+            """
+            INSERT INTO personal_knowledge (
+                user_id, data_json, updated_at, deleted_at
+            ) VALUES (?, ?, ?, ?)
+            """,
+            (
+                user_id,
+                knowledge.data_json,
+                knowledge.updated_at,
+                knowledge.deleted_at,
+            ),
+        )
+    else:
+        await conn.execute(
+            """
+            UPDATE personal_knowledge
+            SET data_json = ?, updated_at = ?, deleted_at = ?
+            WHERE user_id = ?
+            """,
+            (
+                knowledge.data_json,
+                knowledge.updated_at,
+                knowledge.deleted_at,
+                user_id,
+            ),
+        )
+    return True
+
+
 async def _accept_profile(
     conn, user_id: str, profile: ProfilePayload
 ) -> bool:
@@ -346,11 +427,13 @@ async def pull(req: PullRequest, user: CurrentUser) -> PullResponse:
         axes = await _load_axes(conn, user["id"], req.since_ms)
         entries = await _load_entries(conn, user["id"], req.since_ms)
         profile = await _load_profile(conn, user["id"], req.since_ms)
+        knowledge = await _load_knowledge(conn, user["id"], req.since_ms)
     return PullResponse(
         server_time_ms=_now_ms(),
         axes=axes,
         entries=entries,
         profile=profile,
+        knowledge=knowledge,
     )
 
 
@@ -359,6 +442,7 @@ async def push(req: PushRequest, user: CurrentUser) -> PushResponse:
     accepted_axes = 0
     accepted_entries = 0
     accepted_profile = False
+    accepted_knowledge = False
     async with db.connect() as conn:
         await conn.execute("BEGIN")
         try:
@@ -372,6 +456,10 @@ async def push(req: PushRequest, user: CurrentUser) -> PushResponse:
                 accepted_profile = await _accept_profile(
                     conn, user["id"], req.profile
                 )
+            if req.knowledge is not None:
+                accepted_knowledge = await _accept_knowledge(
+                    conn, user["id"], req.knowledge
+                )
             await conn.commit()
         except Exception:
             await conn.rollback()
@@ -381,6 +469,7 @@ async def push(req: PushRequest, user: CurrentUser) -> PushResponse:
         accepted_axes=accepted_axes,
         accepted_entries=accepted_entries,
         accepted_profile=accepted_profile,
+        accepted_knowledge=accepted_knowledge,
     )
 
 

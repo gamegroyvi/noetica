@@ -1389,11 +1389,13 @@ class _ActivityHeatmapState extends State<_ActivityHeatmap> {
       if (v > maxCount) maxCount = v;
     }
 
-    // Grid spans from the Monday of the week containing Jan 1 → the
-    // Sunday of the week containing Dec 31 (or today, for the current
-    // year).
+    // Grid always spans the full calendar year — Monday of the week
+    // containing Jan 1 → Sunday of the week containing Dec 31. We
+    // intentionally do NOT cap at "today" for the current year: future
+    // days render as empty placeholder cells so the user always sees
+    // the full 12-month strip (the месяц-ярлыки end with «дек»).
     final yearStart = DateTime(year, 1, 1);
-    final yearEndCap = year == todayD.year ? todayD : DateTime(year, 12, 31);
+    final yearEndCap = DateTime(year, 12, 31);
     final firstCol = yearStart.subtract(Duration(days: yearStart.weekday - 1));
     final lastCol = yearEndCap
         .add(Duration(days: DateTime.sunday - yearEndCap.weekday));

@@ -39,6 +39,14 @@ _SCHEMA_STATEMENTS = [
     )
     """,
     """
+    CREATE TABLE IF NOT EXISTS personal_knowledge (
+        user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        data_json TEXT NOT NULL,
+        updated_at INTEGER NOT NULL,
+        deleted_at INTEGER
+    )
+    """,
+    """
     CREATE TABLE IF NOT EXISTS axes (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

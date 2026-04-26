@@ -6,10 +6,12 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/models.dart' as m;
+import '../data/personal_knowledge_service.dart';
 import '../data/profile.dart';
 import '../data/repository.dart';
 import 'api_config.dart';
 import 'auth_service.dart';
+import 'notifications.dart';
 
 /// Two-way sync between local SQLite + SharedPreferences profile and the
 /// Noetica backend. Last-Writer-Wins by `updated_at`.
@@ -50,6 +52,7 @@ class SyncService {
   final NoeticaRepository _repo;
   final AuthService _auth;
   final ProfileService _profileService;
+  final PersonalKnowledgeService _knowledgeService = PersonalKnowledgeService();
   final String _baseUrl;
   final http.Client _http;
   final Duration _pushDebounce;
@@ -58,6 +61,7 @@ class SyncService {
   StreamSubscription<AuthSession?>? _authSub;
   StreamSubscription<void>? _dirtySub;
   StreamSubscription<UserProfile?>? _profileSub;
+  StreamSubscription<m.PersonalKnowledge>? _knowledgeSub;
   Timer? _pushTimer;
   bool _busy = false;
   String? _boundUserId;
@@ -78,6 +82,8 @@ class SyncService {
       _dirtySub = null;
       await _profileSub?.cancel();
       _profileSub = null;
+      await _knowledgeSub?.cancel();
+      _knowledgeSub = null;
       _pushTimer?.cancel();
       _pushTimer = null;
       _boundUserId = null;
@@ -86,12 +92,12 @@ class SyncService {
     final prefs = await SharedPreferences.getInstance();
     final previousBound = prefs.getString(_kBoundUserKey);
     if (previousBound != null && previousBound != session.user.id) {
-      // Different account opened on this device. Reset sync timestamps so
-      // we re-pull everything fresh — the local DB still belongs to the old
-      // user but we don't blow it away here; the user can wipe data via
-      // Settings.
-      await prefs.remove(_kLastPullKey);
-      await prefs.remove(_kLastPushKey);
+      // Different Google account opened on this device. Wipe the previous
+      // user's local cache wholesale (DB + profile + personal knowledge +
+      // onboarding flag + sync timestamps) so nothing bleeds across the
+      // boundary. After the wipe we rebootstrap, which pulls everything
+      // belonging to the new account from the cloud.
+      await _wipeLocalForAccountSwitch(prefs);
     }
     await prefs.setString(_kBoundUserKey, session.user.id);
     _boundUserId = session.user.id;
@@ -99,7 +105,40 @@ class SyncService {
     _dirtySub ??= _repo.dirty.listen((_) => _scheduleDebouncedPush());
     _profileSub ??=
         ProfileService.changes.listen((_) => _scheduleDebouncedPush());
+    _knowledgeSub ??= PersonalKnowledgeService.changes
+        .listen((_) => _scheduleDebouncedPush());
     unawaited(bootstrap());
+  }
+
+  /// Best-effort wipe of every local store so the next user's data is
+  /// pulled clean from the server. We keep auth/secure-storage tokens
+  /// (those are managed by `AuthService`) — only the cached app state
+  /// gets blown away.
+  Future<void> _wipeLocalForAccountSwitch(SharedPreferences prefs) async {
+    try {
+      await _repo.wipeLocalData();
+    } catch (e) {
+      debugPrint('SyncService: wipeLocalData failed: $e');
+    }
+    try {
+      await _profileService.clear();
+    } catch (e) {
+      debugPrint('SyncService: profile clear failed: $e');
+    }
+    try {
+      await PersonalKnowledgeService().clear();
+    } catch (e) {
+      debugPrint('SyncService: personal knowledge clear failed: $e');
+    }
+    try {
+      await NotificationsService.instance.cancelAll();
+    } catch (_) {}
+    // Drop sync bookkeeping + onboarding flag so the next bootstrap
+    // pulls everything from since=0 and the UI routes through the
+    // questionnaire if the new account has no profile yet.
+    await prefs.remove(_kLastPullKey);
+    await prefs.remove(_kLastPushKey);
+    await prefs.remove('noetica.onboarded.v1');
   }
 
   void _scheduleDebouncedPush() {
@@ -160,6 +199,11 @@ class SyncService {
             await _maybeApplyRemoteProfile(profile);
       }
 
+      final knowledge = body['knowledge'] as Map<String, dynamic>?;
+      if (knowledge != null) {
+        await _maybeApplyRemoteKnowledge(knowledge);
+      }
+
       await prefs.setInt(_kLastPullKey, serverNow);
       if (axesAccepted > 0 || entriesAccepted > 0) {
         await _repo.notifyChanged();
@@ -197,6 +241,29 @@ class SyncService {
     }
   }
 
+  Future<bool> _maybeApplyRemoteKnowledge(Map<String, dynamic> raw) async {
+    try {
+      final dataJson = raw['data_json'] as String;
+      final updatedAtMs = raw['updated_at'] as int;
+      final remoteUpdatedAt =
+          DateTime.fromMillisecondsSinceEpoch(updatedAtMs);
+      final local = await _knowledgeService.load();
+      if (!local.updatedAt.isBefore(remoteUpdatedAt)) {
+        return false;
+      }
+      final decoded = jsonDecode(dataJson) as Map<String, dynamic>;
+      // Stamp updatedAt from server payload so subsequent pushes don't
+      // bounce the same row back.
+      decoded['updatedAt'] = updatedAtMs;
+      final remote = m.PersonalKnowledge.fromJson(decoded);
+      await _knowledgeService.save(remote);
+      return true;
+    } catch (e) {
+      debugPrint('SyncService._maybeApplyRemoteKnowledge: $e');
+      return false;
+    }
+  }
+
   // ---------- push ----------
 
   Future<void> pushPending() async {
@@ -213,8 +280,15 @@ class SyncService {
       final profile = await _profileService.load();
       final profileDirty =
           profile != null && profile.updatedAt.millisecondsSinceEpoch > since;
+      final knowledge = await _knowledgeService.load();
+      final knowledgeDirty =
+          knowledge.updatedAt.millisecondsSinceEpoch > since &&
+              knowledge.updatedAt.millisecondsSinceEpoch > 0;
 
-      if (axesDirty.isEmpty && entriesDirty.isEmpty && !profileDirty) {
+      if (axesDirty.isEmpty &&
+          entriesDirty.isEmpty &&
+          !profileDirty &&
+          !knowledgeDirty) {
         return;
       }
 
@@ -226,6 +300,12 @@ class SyncService {
         body['profile'] = {
           'data_json': jsonEncode(profile.toJson()),
           'updated_at': profile.updatedAt.millisecondsSinceEpoch,
+        };
+      }
+      if (knowledgeDirty) {
+        body['knowledge'] = {
+          'data_json': jsonEncode(knowledge.toJson()),
+          'updated_at': knowledge.updatedAt.millisecondsSinceEpoch,
         };
       }
 
@@ -326,6 +406,7 @@ class SyncService {
     _authSub?.cancel();
     _dirtySub?.cancel();
     _profileSub?.cancel();
+    _knowledgeSub?.cancel();
     _pushTimer?.cancel();
     _http.close();
   }

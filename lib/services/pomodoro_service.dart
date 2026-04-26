@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -64,6 +65,23 @@ class PomodoroService extends ChangeNotifier {
   int _completedFocus = 0;
   bool _hydrated = false;
 
+  /// Lazily-instantiated melody player. Loops `assets/sounds/chime.wav`
+  /// after a phase ends so the user has a chance to come back to the app
+  /// and dismiss before the next phase starts. Re-used across phases —
+  /// dispose on app shutdown.
+  AudioPlayer? _player;
+
+  /// True between «phase just ended» and «user dismissed the cue». The UI
+  /// surfaces this as a blocking alert; the next phase's ticker will not
+  /// run until [acknowledgePhaseTransition] flips it back to false. Only
+  /// used when [_soundOn] is true — silent mode keeps the previous
+  /// auto-advance behaviour.
+  bool _awaitingDismissal = false;
+
+  /// Snapshot of the phase that just completed — used to render the
+  /// dismissal copy («Фокус завершён» vs «Отдых завершён»).
+  PomodoroPhase _justCompleted = PomodoroPhase.idle;
+
   PomodoroPhase get phase => _phase;
   Duration get remaining => _remaining;
   int get focusMinutes => _focusMinutes;
@@ -74,6 +92,8 @@ class PomodoroService extends ChangeNotifier {
   bool get soundOn => _soundOn;
   int get completedFocus => _completedFocus;
   bool get hydrated => _hydrated;
+  bool get awaitingDismissal => _awaitingDismissal;
+  PomodoroPhase get justCompleted => _justCompleted;
 
   Future<void> init() async {
     if (_hydrated) return;
@@ -161,11 +181,18 @@ class PomodoroService extends ChangeNotifier {
 
   /// Computes the next phase + duration, persists, fires cue, and either
   /// starts the next ticker or goes idle. Always notifies.
+  ///
+  /// When [_soundOn] is true, the melody loops and we *gate* the next
+  /// phase: the timer stays at its full duration, ticker is not started,
+  /// and [_awaitingDismissal] flips to true. The UI is expected to show
+  /// a blocking alert and call [acknowledgePhaseTransition] when the user
+  /// dismisses it — that's when the next phase actually begins counting.
   void _onPhaseDone({bool silent = false}) {
     _ticker?.cancel();
     final wasFocus = _phase == PomodoroPhase.focus;
     final wasBreak = _phase == PomodoroPhase.breakTime ||
         _phase == PomodoroPhase.longBreak;
+    _justCompleted = _phase;
 
     PomodoroPhase next;
     int dur;
@@ -184,26 +211,66 @@ class PomodoroService extends ChangeNotifier {
 
     _phase = next;
     _remaining = Duration(minutes: dur);
-    _endAt = next == PomodoroPhase.idle
-        ? null
-        : DateTime.now().add(_remaining);
 
-    if (!silent) {
-      _firePhaseCue(wasFocus: wasFocus, wasBreak: wasBreak);
+    final wantsGate =
+        _soundOn && !silent && next != PomodoroPhase.idle;
+
+    if (wantsGate) {
+      // Hold the timer at the next phase's full duration. The ticker is
+      // intentionally not started — the user needs to acknowledge the
+      // alert first.
+      _endAt = null;
+      _awaitingDismissal = true;
+    } else {
+      _endAt = next == PomodoroPhase.idle
+          ? null
+          : DateTime.now().add(_remaining);
     }
 
-    if (_phase != PomodoroPhase.idle &&
+    if (!silent) {
+      _firePhaseCue(
+        wasFocus: wasFocus,
+        wasBreak: wasBreak,
+        loopMelody: wantsGate,
+      );
+    }
+
+    if (!wantsGate &&
+        _phase != PomodoroPhase.idle &&
         (wasFocus || (wasBreak && _autoNext))) {
       _startTicker();
       _scheduleEndOfPhaseNotification();
       unawaited(_persistRunning());
-    } else {
+    } else if (!wantsGate) {
       unawaited(_persistIdle());
     }
     notifyListeners();
   }
 
-  void _firePhaseCue({required bool wasFocus, required bool wasBreak}) {
+  /// Called by the UI when the user dismisses the «фаза завершена»
+  /// alert. Stops the looping melody and starts the next phase's
+  /// ticker (or stays idle if there is no next phase). Safe to call
+  /// when [_awaitingDismissal] is already false.
+  Future<void> acknowledgePhaseTransition() async {
+    if (!_awaitingDismissal) return;
+    _awaitingDismissal = false;
+    await _stopMelody();
+    if (_phase != PomodoroPhase.idle) {
+      _endAt = DateTime.now().add(_remaining);
+      _startTicker();
+      _scheduleEndOfPhaseNotification();
+      await _persistRunning();
+    } else {
+      await _persistIdle();
+    }
+    notifyListeners();
+  }
+
+  void _firePhaseCue({
+    required bool wasFocus,
+    required bool wasBreak,
+    bool loopMelody = false,
+  }) {
     final title = wasFocus ? 'Фокус завершён' : 'Отдых завершён';
     final body = wasFocus
         ? (_phase == PomodoroPhase.longBreak
@@ -214,15 +281,38 @@ class PomodoroService extends ChangeNotifier {
             : 'Запусти следующий фокус когда готов');
 
     // Always fire the OS notification — independent of "sound" toggle.
-    // The toggle only affects in-app haptic / system tone.
+    // The toggle only affects in-app haptic / melody.
     unawaited(NotificationsService.instance.showImmediate(
       title: title,
       body: body,
     ));
     if (_soundOn) {
-      unawaited(SystemSound.play(SystemSoundType.alert));
       unawaited(HapticFeedback.mediumImpact());
+      if (loopMelody) {
+        unawaited(_playMelodyLoop());
+      } else {
+        unawaited(SystemSound.play(SystemSoundType.alert));
+      }
     }
+  }
+
+  Future<void> _playMelodyLoop() async {
+    try {
+      _player ??= AudioPlayer();
+      await _player!.setReleaseMode(ReleaseMode.loop);
+      await _player!.stop();
+      await _player!.play(AssetSource('sounds/chime.wav'));
+    } catch (e) {
+      debugPrint('PomodoroService._playMelodyLoop failed: $e');
+      // Fall back to system tone so the user still gets a cue.
+      unawaited(SystemSound.play(SystemSoundType.alert));
+    }
+  }
+
+  Future<void> _stopMelody() async {
+    try {
+      await _player?.stop();
+    } catch (_) {}
   }
 
   /// Schedules a backup OS notification at the precise moment the current
@@ -259,6 +349,8 @@ class PomodoroService extends ChangeNotifier {
 
   Future<void> stop() async {
     _ticker?.cancel();
+    _awaitingDismissal = false;
+    await _stopMelody();
     _phase = PomodoroPhase.idle;
     _remaining = Duration(minutes: _focusMinutes);
     _endAt = null;

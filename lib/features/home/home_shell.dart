@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../services/pomodoro_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/brand_glyph.dart';
 import '../calendar/calendar_screen.dart';
@@ -28,6 +29,71 @@ class HomeShell extends ConsumerStatefulWidget {
 
 class _HomeShellState extends ConsumerState<HomeShell> {
   int _index = 0;
+  bool _alertOpen = false;
+
+  @override
+  void initState() {
+    super.initState();
+    PomodoroService.instance.addListener(_onPomodoroChanged);
+  }
+
+  @override
+  void dispose() {
+    PomodoroService.instance.removeListener(_onPomodoroChanged);
+    super.dispose();
+  }
+
+  void _onPomodoroChanged() {
+    final svc = PomodoroService.instance;
+    if (!mounted) return;
+    if (svc.awaitingDismissal && !_alertOpen) {
+      _alertOpen = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _showPomodoroDismissDialog();
+      });
+    }
+  }
+
+  Future<void> _showPomodoroDismissDialog() async {
+    final svc = PomodoroService.instance;
+    final justDone = svc.justCompleted;
+    final wasFocus = justDone == PomodoroPhase.focus;
+    final title = wasFocus ? 'Фокус завершён' : 'Отдых завершён';
+    final body = wasFocus
+        ? (svc.phase == PomodoroPhase.longBreak
+            ? 'Время длинного отдыха ${svc.longBreakMinutes} мин — '
+                'нажми «Поехали», когда готов.'
+            : 'Короткий отдых ${svc.breakMinutes} мин — '
+                'нажми «Поехали», когда готов.')
+        : 'Следующий фокус ${svc.focusMinutes} мин — '
+            'нажми «Поехали», когда готов.';
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(body),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              PomodoroService.instance.stop();
+            },
+            child: const Text('Стоп'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              PomodoroService.instance.acknowledgePhaseTransition();
+            },
+            child: const Text('Поехали'),
+          ),
+        ],
+      ),
+    );
+    _alertOpen = false;
+  }
 
   // Page indices. The first three are primary tabs (visible in the
   // mobile bottom bar). The rest are "secondary" desktop-only entries
