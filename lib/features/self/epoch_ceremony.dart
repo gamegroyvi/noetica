@@ -102,6 +102,16 @@ class _EpochOverlayState extends ConsumerState<EpochOverlay>
 
   bool _committing = false;
   bool _sheetOpen = false;
+  /// The actual ModalRoute backing our bottom sheet — captured the
+  /// frame after [showModalBottomSheet] starts. We hold on to it so
+  /// that:
+  ///   * external programmatic dismiss in didUpdateWidget can pop
+  ///     *exactly* this route (instead of "whatever's on top of root
+  ///     navigator", which used to occasionally pop HomeShell);
+  ///   * tap handlers on the sheet ignore late taps that would
+  ///     otherwise pop a different route after the sheet was already
+  ///     dismissed (double-tap on «Новая эпоха» / «Углубиться»).
+  ModalRoute<void>? _sheetRoute;
   _EpochPath _path = _EpochPath.none;
 
   @override
@@ -118,9 +128,16 @@ class _EpochOverlayState extends ConsumerState<EpochOverlay>
     if (oldWidget.visible != widget.visible) {
       if (widget.visible && !_sheetOpen) {
         WidgetsBinding.instance.addPostFrameCallback((_) => _openSheet());
-      } else if (!widget.visible && _sheetOpen) {
-        // Programmatic dismiss — pop the sheet if it's still up.
-        Navigator.of(context, rootNavigator: true).maybePop();
+      } else if (!widget.visible && _sheetOpen && _sheetRoute != null) {
+        // Programmatic dismiss — pop *our* sheet specifically. The
+        // earlier version called `Navigator.maybePop(rootNavigator)`
+        // which on Android could happily pop the wrong route (e.g. the
+        // HomeShell underneath if the sheet was already closing) and
+        // leave the user staring at the onboarding screen.
+        final route = _sheetRoute;
+        if (route != null && route.isActive) {
+          Navigator.of(context, rootNavigator: true).removeRoute(route);
+        }
       }
     }
   }
@@ -138,31 +155,55 @@ class _EpochOverlayState extends ConsumerState<EpochOverlay>
   Future<void> _openSheet() async {
     if (!mounted || _sheetOpen) return;
     _sheetOpen = true;
-    await showModalBottomSheet<void>(
+    // `safePop` only pops if our sheet is still the topmost route.
+    // Without this guard, a late or duplicate tap on a button would
+    // pop the route *behind* the sheet (HomeShell / SelfScreen) once
+    // the sheet had already dismissed itself, leaving the user staring
+    // at onboarding or a black screen.
+    void safePop(BuildContext ctx) {
+      final route = _sheetRoute;
+      if (route == null || !route.isActive || !route.isCurrent) return;
+      Navigator.of(ctx).pop();
+    }
+    final future = showModalBottomSheet<void>(
       context: context,
       useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       barrierColor: Colors.black.withOpacity(0.55),
-      builder: (ctx) => SafeArea(
-        top: false,
-        child: _EpochOverlayCard(
-          palette: context.palette,
-          profile: widget.profile,
-          onNewEpoch: () {
-            Navigator.of(ctx).pop();
-            _commitNewEpoch();
-          },
-          onGoDeeper: () {
-            Navigator.of(ctx).pop();
-            _commitGoDeeper();
-          },
-          onDismiss: () => Navigator.of(ctx).pop(),
-          committing: false,
-        ),
-      ),
+      builder: (ctx) {
+        // Capture the route the very first frame the sheet builds. We
+        // can't grab it before showModalBottomSheet runs the builder,
+        // and grabbing it later via Navigator queries is unreliable on
+        // tear-down.
+        _sheetRoute ??= ModalRoute.of(ctx) as ModalRoute<void>?;
+        return SafeArea(
+          top: false,
+          child: _EpochOverlayCard(
+            palette: context.palette,
+            profile: widget.profile,
+            onNewEpoch: () {
+              if (_committing) return;
+              safePop(ctx);
+              _commitNewEpoch();
+            },
+            onGoDeeper: () {
+              if (_committing) return;
+              safePop(ctx);
+              _commitGoDeeper();
+            },
+            onDismiss: () {
+              if (_committing) return;
+              safePop(ctx);
+            },
+            committing: false,
+          ),
+        );
+      },
     );
+    await future;
     _sheetOpen = false;
+    _sheetRoute = null;
     // If the sheet was swiped/scrim-dismissed without committing, treat
     // it as an explicit "dismiss for now" so the parent can ack it.
     if (mounted && !_committing && _path == _EpochPath.none) {
