@@ -90,12 +90,13 @@ class Entry {
     required this.createdAt,
     required this.updatedAt,
     required this.xp,
+    int? baseXp,
     this.dueAt,
     this.completedAt,
     this.deletedAt,
     this.axisIds = const [],
     this.axisWeights = const {},
-  });
+  }) : baseXp = baseXp ?? xp;
 
   final String id;
   final String title;
@@ -107,8 +108,18 @@ class Entry {
   final DateTime? completedAt;
   final DateTime? deletedAt;
 
-  /// XP awarded to each linked axis on completion. 1..100.
+  /// XP awarded to each linked axis on completion. 1..100. May be
+  /// adjusted by the post-completion reflection (easy/normal/hard/
+  /// blocked → 0.7×/1.0×/1.2×/0.5×). Always derived from [baseXp] so
+  /// re-completing a task doesn't compound the multiplier.
   final int xp;
+
+  /// The XP this task originally shipped with — set at creation time
+  /// and never modified after. The reflection multiplier is always
+  /// applied to `baseXp`, never to the (possibly already-adjusted)
+  /// `xp` value, so re-opening + re-completing a "hard" task gives the
+  /// same xp it would have given on the first completion.
+  final int baseXp;
 
   final List<String> axisIds;
 
@@ -131,6 +142,7 @@ class Entry {
     DateTime? completedAt,
     DateTime? deletedAt,
     int? xp,
+    int? baseXp,
     List<String>? axisIds,
     Map<String, double>? axisWeights,
     bool clearDue = false,
@@ -149,6 +161,7 @@ class Entry {
             clearCompleted ? null : (completedAt ?? this.completedAt),
         deletedAt: clearDeleted ? null : (deletedAt ?? this.deletedAt),
         xp: xp ?? this.xp,
+        baseXp: baseXp ?? this.baseXp,
         axisIds: axisIds ?? this.axisIds,
         axisWeights: axisWeights ?? this.axisWeights,
       );
@@ -164,6 +177,7 @@ class Entry {
         'completed_at': completedAt?.millisecondsSinceEpoch,
         'deleted_at': deletedAt?.millisecondsSinceEpoch,
         'xp': xp,
+        'base_xp': baseXp,
       };
 
   factory Entry.fromMap(
@@ -191,6 +205,7 @@ class Entry {
             ? null
             : DateTime.fromMillisecondsSinceEpoch(m['deleted_at']! as int),
         xp: (m['xp'] as int?) ?? 10,
+        baseXp: (m['base_xp'] as int?) ?? (m['xp'] as int?) ?? 10,
         axisIds: axisIds,
         axisWeights: axisWeights,
       );

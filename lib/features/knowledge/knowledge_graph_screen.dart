@@ -6,7 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models.dart';
 import '../../data/personal_knowledge_service.dart';
+import '../../providers.dart';
 import '../../theme/app_theme.dart';
+import '../entry/entry_editor_sheet.dart';
 
 /// Radial, drevovidnaya visualisation of [PersonalKnowledge].
 ///
@@ -31,6 +33,8 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
   final _service = PersonalKnowledgeService();
   PersonalKnowledge? _knowledge;
   late final AnimationController _shimmer;
+  // Drives the InteractiveViewer, lets us reset to the home position.
+  final _zoom = TransformationController();
   bool _loading = true;
   String? _error;
 
@@ -47,7 +51,14 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
   @override
   void dispose() {
     _shimmer.dispose();
+    _zoom.dispose();
     super.dispose();
+  }
+
+  /// Reset pan + zoom back to the natural "everything fits on screen" view.
+  void _resetCamera() {
+    _zoom.value = Matrix4.identity();
+    HapticFeedback.selectionClick();
   }
 
   Future<void> _load() async {
@@ -227,12 +238,54 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
+    // Recent notes (kind=note) and recent completed tasks (kind=task,
+    // completedAt != null) — both auto-flow into the knowledge graph
+    // as live read-only branches. Capped to 6 each so the radial
+    // layout stays readable.
+    final entries =
+        ref.watch(entriesProvider).valueOrNull ?? const <Entry>[];
+    final recentNotes = [
+      for (final e in entries
+          .where((e) => e.kind == EntryKind.note && !e.isDeleted)
+          .toList()
+            ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt)))
+        e.title.isEmpty
+            ? (e.body.length > 32 ? '${e.body.substring(0, 32)}…' : e.body)
+            : e.title,
+    ].take(6).toList();
+    final recentTasks = [
+      for (final e in entries
+          .where((e) =>
+              e.kind == EntryKind.task && e.isCompleted && !e.isDeleted)
+          .toList()
+            ..sort((a, b) =>
+                (b.completedAt ?? b.updatedAt)
+                    .compareTo(a.completedAt ?? a.updatedAt)))
+        e.title,
+    ].take(6).toList();
+    // Look up the underlying entry by index for tap-to-edit.
+    final notesEntries = entries
+        .where((e) => e.kind == EntryKind.note && !e.isDeleted)
+        .toList()
+      ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    final tasksEntries = entries
+        .where(
+            (e) => e.kind == EntryKind.task && e.isCompleted && !e.isDeleted)
+        .toList()
+      ..sort((a, b) => (b.completedAt ?? b.updatedAt)
+          .compareTo(a.completedAt ?? a.updatedAt));
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('База знаний'),
         actions: [
           IconButton(
-            tooltip: 'Сводка',
+            tooltip: 'К центру',
+            icon: const Icon(Icons.center_focus_weak_outlined),
+            onPressed: _resetCamera,
+          ),
+          IconButton(
+            tooltip: 'Сводка о тебе',
             icon: const Icon(Icons.center_focus_strong_outlined),
             onPressed: _knowledge == null
                 ? null
@@ -240,6 +293,13 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
           ),
         ],
       ),
+      floatingActionButton: _loading
+          ? null
+          : FloatingActionButton.small(
+              tooltip: 'Сбросить вид',
+              onPressed: _resetCamera,
+              child: const Icon(Icons.fit_screen_outlined),
+            ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
@@ -248,16 +308,27 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
                   child: AnimatedBuilder(
                     animation: _shimmer,
                     builder: (context, _) => InteractiveViewer(
-                      minScale: 0.6,
-                      maxScale: 2.5,
-                      boundaryMargin: const EdgeInsets.all(160),
+                      transformationController: _zoom,
+                      // Wider zoom range so the user can pull way out to
+                      // see the whole graph and zoom way in to read tiny
+                      // leaves. Boundary margin lets pan go off-canvas.
+                      minScale: 0.25,
+                      maxScale: 4.0,
+                      boundaryMargin: const EdgeInsets.all(400),
                       child: SizedBox(
-                        width: MediaQuery.of(context).size.width,
-                        height: MediaQuery.of(context).size.height - 100,
+                        // Oversized canvas so the radial layout has room
+                        // to spread (was getting clipped on phones).
+                        // 1.4× viewport works well on both mobile and
+                        // desktop without losing density at scale 1.0.
+                        width: MediaQuery.of(context).size.width * 1.4,
+                        height:
+                            (MediaQuery.of(context).size.height - 100) * 1.4,
                         child: _GraphCanvas(
                           knowledge: _knowledge!,
                           palette: palette,
                           shimmer: _shimmer.value,
+                          recentNotes: recentNotes,
+                          recentTasks: recentTasks,
                           onTapCenter: () =>
                               _editSummary(_knowledge!.summary),
                           onTapBranchHeader: (branch) async {
@@ -334,6 +405,12 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
                                   },
                                 );
                                 break;
+                              case _Branch.notes:
+                              case _Branch.tasks:
+                                // Read-only branches — header tap is a
+                                // no-op; the user edits these from the
+                                // Notes / Tasks tabs (or by tapping a leaf).
+                                break;
                             }
                           },
                           onTapLeaf: (branch, index) async {
@@ -380,6 +457,24 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
                               case _Branch.preferences:
                                 // Edit handled at branch level (key:value).
                                 break;
+                              case _Branch.notes:
+                                if (index < notesEntries.length) {
+                                  await showEntryEditor(
+                                    context,
+                                    ref,
+                                    existing: notesEntries[index],
+                                  );
+                                }
+                                break;
+                              case _Branch.tasks:
+                                if (index < tasksEntries.length) {
+                                  await showEntryEditor(
+                                    context,
+                                    ref,
+                                    existing: tasksEntries[index],
+                                  );
+                                }
+                                break;
                             }
                           },
                         ),
@@ -396,7 +491,20 @@ class _EditResult {
   final String value;
 }
 
-enum _Branch { goals, constraints, highlights, reflections, preferences }
+enum _Branch {
+  goals,
+  constraints,
+  highlights,
+  reflections,
+  preferences,
+  // Live, read-only branches — populated from the entries store directly,
+  // not from PersonalKnowledge. They auto-update whenever the user adds
+  // a note or completes a task and surface that activity inside the
+  // knowledge graph (the user asked for it: "заметки пользвоателя и
+  // прочее, все это должно идти в базу знаний в том числе").
+  notes,
+  tasks,
+}
 
 extension on _Branch {
   String get title {
@@ -411,6 +519,10 @@ extension on _Branch {
         return 'Рефлексии';
       case _Branch.preferences:
         return 'Предпочтения';
+      case _Branch.notes:
+        return 'Заметки';
+      case _Branch.tasks:
+        return 'Задачи';
     }
   }
 
@@ -426,8 +538,13 @@ extension on _Branch {
         return '◯';
       case _Branch.preferences:
         return '■';
+      case _Branch.notes:
+        return '✎';
+      case _Branch.tasks:
+        return '✓';
     }
   }
+
 }
 
 class _GraphCanvas extends StatelessWidget {
@@ -438,6 +555,8 @@ class _GraphCanvas extends StatelessWidget {
     required this.onTapCenter,
     required this.onTapBranchHeader,
     required this.onTapLeaf,
+    required this.recentNotes,
+    required this.recentTasks,
   });
 
   final PersonalKnowledge knowledge;
@@ -446,6 +565,11 @@ class _GraphCanvas extends StatelessWidget {
   final VoidCallback onTapCenter;
   final ValueChanged<_Branch> onTapBranchHeader;
   final void Function(_Branch branch, int index) onTapLeaf;
+
+  /// Live data piped in from the entries store. Capped to ~6 each so
+  /// the graph stays readable.
+  final List<String> recentNotes;
+  final List<String> recentTasks;
 
   List<String> _items(_Branch b) {
     switch (b) {
@@ -462,6 +586,10 @@ class _GraphCanvas extends StatelessWidget {
           for (final e in knowledge.preferences.entries)
             '${e.key}: ${e.value}',
         ];
+      case _Branch.notes:
+        return recentNotes;
+      case _Branch.tasks:
+        return recentTasks;
     }
   }
 

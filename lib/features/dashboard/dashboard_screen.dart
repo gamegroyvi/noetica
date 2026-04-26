@@ -1165,22 +1165,45 @@ class _ActivityHeatmap extends StatelessWidget {
   Widget build(BuildContext context) {
     final maxV = values.fold<int>(0, (a, b) => b > a ? b : a);
     const rows = 7;
-    final cols = (values.length / rows).ceil();
     const spacing = 3.0;
     const labelGutter = 28.0;
 
-    // Map column → first month label visible for that column. Each
-    // column corresponds to a week starting (today - (cols-1-c)*7 days).
+    // We want a true GitHub-style layout where row 0 = Monday and the
+    // rightmost column = the current calendar week, with today landing
+    // in its actual weekday row. Anchor everything to a Monday so the
+    // weekday label rail is correct.
     final today = DateTime.now();
-    final firstDay = today.subtract(Duration(days: cols * rows - 1));
+    final todayD = DateTime(today.year, today.month, today.day);
+    // weekday: 1=Mon..7=Sun → 0..6 offset from Monday-of-this-week.
+    final mondayThisWeek = todayD.subtract(Duration(days: todayD.weekday - 1));
+    final cols = (values.length / rows).ceil();
+    final mondayFirstCol =
+        mondayThisWeek.subtract(Duration(days: (cols - 1) * 7));
+    // Window of dates we actually have data for (last 91 days, today
+    // inclusive). Cells outside this window are rendered blank.
+    final windowStart = todayD.subtract(Duration(days: values.length - 1));
+
+    // Map column → first month label visible for that column. Now keyed
+    // off `mondayFirstCol`, so labels actually line up with the calendar.
     final monthMarkers = <int, String>{};
     int? lastMonth;
     for (var c = 0; c < cols; c++) {
-      final colStart = firstDay.add(Duration(days: c * rows));
+      final colStart = mondayFirstCol.add(Duration(days: c * 7));
       if (lastMonth != colStart.month) {
         monthMarkers[c] = _monthLabels[colStart.month - 1];
         lastMonth = colStart.month;
       }
+    }
+
+    // For a given (col, row) compute (a) the date that cell represents
+    // and (b) the count, indexing into `values` chronologically. Cells
+    // before the data window or after today are rendered blank.
+    int? cellValue(int c, int r) {
+      final date = mondayFirstCol.add(Duration(days: c * 7 + r));
+      if (date.isBefore(windowStart) || date.isAfter(todayD)) return null;
+      final idx = date.difference(windowStart).inDays;
+      if (idx < 0 || idx >= values.length) return null;
+      return values[idx];
     }
 
     return LayoutBuilder(
@@ -1255,7 +1278,7 @@ class _ActivityHeatmap extends StatelessWidget {
                         Column(
                           children: [
                             for (var r = 0; r < rows; r++) ...[
-                              _heatCell(c, r, cell, maxV),
+                              _buildCell(cellValue(c, r), cell, maxV),
                               if (r < rows - 1)
                                 const SizedBox(height: spacing),
                             ],
@@ -1301,15 +1324,18 @@ class _ActivityHeatmap extends StatelessWidget {
     );
   }
 
-  Widget _heatCell(int c, int r, double size, int maxV) {
-    final idx = c * 7 + r;
-    final v = idx < values.length ? values[idx] : 0;
-    final t = maxV == 0 ? 0.0 : (v / maxV);
+  Widget _buildCell(int? value, double size, int maxV) {
+    if (value == null) {
+      // Out-of-window cell — completely transparent so the grid keeps
+      // its rectangular shape but the user sees we have no data there.
+      return SizedBox(width: size, height: size);
+    }
+    final t = maxV == 0 ? 0.0 : (value / maxV);
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: v == 0 ? palette.line.withOpacity(0.35) : _bucketColor(t),
+        color: value == 0 ? palette.line.withOpacity(0.35) : _bucketColor(t),
         borderRadius: BorderRadius.circular(2),
       ),
     );

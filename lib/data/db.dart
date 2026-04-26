@@ -17,7 +17,10 @@ class NoeticaDb {
   /// v4 adds `entry_axes.weight` so XP can be split deterministically
   /// across the axes a task touches (LLM-generated tasks ship explicit
   /// weights; manually-tagged tasks fall back to an even 1/N split).
-  static const int currentSchemaVersion = 4;
+  /// v5 adds `entries.base_xp` so the reflection-difficulty multiplier
+  /// is always applied to the original XP, never to a previously-
+  /// adjusted value (used to compound on every re-complete cycle).
+  static const int currentSchemaVersion = 5;
 
   static Future<NoeticaDb> open() async {
     final path = await _databasePath();
@@ -65,6 +68,7 @@ class NoeticaDb {
         due_at INTEGER,
         completed_at INTEGER,
         xp INTEGER NOT NULL DEFAULT 10,
+        base_xp INTEGER NOT NULL DEFAULT 10,
         deleted_at INTEGER
       )
     ''');
@@ -141,6 +145,15 @@ class NoeticaDb {
       // behaviour on the displayed pentagon.
       await db.execute(
           'ALTER TABLE entry_axes ADD COLUMN weight REAL NOT NULL DEFAULT 1.0');
+    }
+    if (oldVersion < 5) {
+      // base_xp = whatever xp was at migration time, since we have no
+      // record of the original. Future completions will pin themselves
+      // to this value, so the compounding bug stops. Old rows that
+      // never get re-completed are unaffected.
+      await db.execute(
+          'ALTER TABLE entries ADD COLUMN base_xp INTEGER NOT NULL DEFAULT 10');
+      await db.execute('UPDATE entries SET base_xp = xp');
     }
   }
 

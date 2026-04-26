@@ -448,13 +448,17 @@ class NoeticaRepository {
     final now = DateTime.now();
     final newCompletedAt = entry.isCompleted ? null : now;
 
-    // Apply reflection-based XP adjustment when completing. Re-opening a
-    // task does NOT reset XP (the user might re-close it later — keep the
-    // history simple and idempotent).
+    // Apply reflection-based XP adjustment when completing. The factor
+    // is ALWAYS applied to `base_xp` (the original XP this task shipped
+    // with) — never to the current `xp`, otherwise re-opening +
+    // re-completing a "hard" task would compound the multiplier each
+    // time (30 → 36 → 43 → 52 → …). Re-opening still doesn't reset xp
+    // here; that happens implicitly on the next completion when the
+    // factor reapplies cleanly to base_xp.
     int? newXp;
     if (newCompletedAt != null && reflectionStatus != null) {
       final factor = reflectionStatus.xpFactor;
-      newXp = (entry.xp * factor).round().clamp(1, 999);
+      newXp = (entry.baseXp * factor).round().clamp(1, 999);
     }
 
     await _db.raw.update(

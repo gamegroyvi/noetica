@@ -117,7 +117,23 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   Future<void> _finish() async {
     final clean = _drafts.where((d) => d.name.trim().isNotEmpty).toList();
-    if (clean.length < 3 || clean.length > 8) return;
+    if (clean.length < 3) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Заполни хотя бы 3 оси, чтобы пентаграмма имела смысл'),
+        ),
+      );
+      return;
+    }
+    if (clean.length > 8) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content:
+              Text('Слишком много осей: оставь не больше 8, иначе будет хаос'),
+        ),
+      );
+      return;
+    }
     setState(() => _saving = true);
     try {
       final repo = await ref.read(repositoryProvider.future);
@@ -136,14 +152,25 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       final migrated = await repo.replaceAxesWithMigration(axes);
       await markOnboarded();
       ref.invalidate(onboardedProvider);
-      if (mounted && migrated > 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Перенесено $migrated связей с задачами на новые ветви',
-            ),
+      if (!mounted) return;
+      // When this screen is presented as a regeneration step (push from
+      // Settings), the user expects "Сохранить" → close the dialog and
+      // bounce back. Without this, the button looked broken because
+      // tapping it just left them stuck on the same form. On the
+      // first-run onboarding path we don't pop, AuthGate swaps to the
+      // home shell automatically once `onboarded` flips.
+      final wasPushed = Navigator.of(context).canPop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            migrated > 0
+                ? 'Оси обновлены, перенесено $migrated связей с задачами'
+                : 'Оси обновлены',
           ),
-        );
+        ),
+      );
+      if (wasPushed) {
+        Navigator.of(context).pop();
       }
     } catch (e) {
       if (mounted) {
@@ -159,20 +186,33 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
+    final canPop = Navigator.of(context).canPop();
     return Scaffold(
+      // Show an AppBar with a real back button when this screen is
+      // pushed from Settings (axis regeneration). Without it the user
+      // ended up stuck on the "Сохранить" form with no way to abort,
+      // which combined with the silent-fail validation made it look
+      // like the button was broken.
+      appBar: canPop
+          ? AppBar(
+              title: const Text('Перегенерация осей'),
+              elevation: 0,
+            )
+          : null,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'noetica',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      letterSpacing: 4,
-                      fontWeight: FontWeight.w300,
-                    ),
-              ),
+              if (!canPop)
+                Text(
+                  'noetica',
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        letterSpacing: 4,
+                        fontWeight: FontWeight.w300,
+                      ),
+                ),
               const SizedBox(height: 24),
               Text(
                 widget.seedInterests.isEmpty
@@ -251,7 +291,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 width: double.infinity,
                 child: FilledButton(
                   onPressed: (_saving || _generating) ? null : _finish,
-                  child: Text(_saving ? '...' : 'Создать пентаграмму'),
+                  child: Text(
+                    _saving
+                        ? '…'
+                        : (canPop ? 'Сохранить' : 'Создать пентаграмму'),
+                  ),
                 ),
               ),
             ],

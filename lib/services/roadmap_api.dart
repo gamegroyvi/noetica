@@ -1,17 +1,17 @@
 import 'dart:convert';
-import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../data/models.dart';
 import '../data/profile.dart';
+import 'api_config.dart';
 import 'auth_service.dart';
 
-/// Default backend URL — overridable at runtime via `--dart-define`:
-///   flutter run --dart-define=NOETICA_BACKEND_URL=https://noetica-backend.fly.dev
-const String _kDefaultBackendUrl =
-    'https://noetica-backend-nzlazosh.fly.dev';
+// Backend URL is resolved via `kDefaultBackendUrl` from api_config.dart
+// (single source of truth). Used to be hardcoded here pointing at a
+// different fly app than auth/sync, which silently broke cross-device
+// sync because JWTs issued by one host were rejected by the other.
 
 /// One generated roadmap task — a draft of an `Entry` we will create on import.
 @immutable
@@ -90,20 +90,7 @@ class RoadmapApi {
   final http.Client _client;
   final AuthService? _auth;
 
-  static String _resolveBaseUrl() {
-    const fromDefine = String.fromEnvironment(
-      'NOETICA_BACKEND_URL',
-      defaultValue: '',
-    );
-    if (fromDefine.isNotEmpty) return fromDefine;
-    if (kIsWeb) return _kDefaultBackendUrl;
-    try {
-      if (Platform.isAndroid) {
-        return _kDefaultBackendUrl;
-      }
-    } catch (_) {}
-    return _kDefaultBackendUrl;
-  }
+  static String _resolveBaseUrl() => kDefaultBackendUrl;
 
   String get baseUrl => _baseUrl;
 

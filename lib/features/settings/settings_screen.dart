@@ -200,6 +200,29 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
+  Future<void> _syncNow() async {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Синхронизация…')),
+    );
+    try {
+      final sync = await ref.read(syncServiceProvider.future);
+      await sync.pull();
+      await sync.pushPending();
+      if (!mounted) return;
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Готово. Данные подтянуты с облака.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        SnackBar(content: Text('Не удалось: $e')),
+      );
+    }
+  }
+
   Future<void> _signOut() async {
     final ok = await showDialog<bool>(
       context: context,
@@ -248,7 +271,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         padding: const EdgeInsets.symmetric(vertical: 8),
         children: [
           const _SectionHeader(title: 'Аккаунт'),
-          if (session != null)
+          if (session != null) ...[
             ListTile(
               leading: const Icon(Icons.account_circle_outlined),
               title: Text(session.user.name.isNotEmpty
@@ -262,7 +285,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 onPressed: _signOut,
                 child: const Text('Выйти'),
               ),
-            )
+            ),
+            // Manual "force sync now" trigger — useful when the user
+            // logs in on a second device and wants to confirm their
+            // data actually pulls from the cloud, instead of waiting
+            // for the implicit bootstrap on next app launch.
+            ListTile(
+              leading: const Icon(Icons.cloud_sync_outlined),
+              title: const Text('Синхронизировать сейчас'),
+              subtitle: Text(
+                'Стянуть данные с облака и отправить локальные изменения',
+                style: TextStyle(color: palette.muted),
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: _syncNow,
+            ),
+          ]
           else
             ListTile(
               leading: const Icon(Icons.account_circle_outlined),

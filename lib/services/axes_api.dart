@@ -5,11 +5,8 @@ import 'package:http/http.dart' as http;
 
 import '../data/models.dart';
 import '../data/profile.dart';
+import 'api_config.dart';
 import 'auth_service.dart';
-
-/// Mirrors `services/roadmap_api.dart` — same backend, different endpoint.
-const String _kDefaultBackendUrl =
-    'https://noetica-backend-nzlazosh.fly.dev';
 
 @immutable
 class AxisDraft {
@@ -57,14 +54,7 @@ class AxesApi {
   final http.Client _client;
   final AuthService? _auth;
 
-  static String _resolveBaseUrl() {
-    const fromDefine = String.fromEnvironment(
-      'NOETICA_BACKEND_URL',
-      defaultValue: '',
-    );
-    if (fromDefine.isNotEmpty) return fromDefine;
-    return _kDefaultBackendUrl;
-  }
+  static String _resolveBaseUrl() => kDefaultBackendUrl;
 
   Future<AxesGenerationResult> generate({
     required UserProfile? profile,

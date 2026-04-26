@@ -50,7 +50,7 @@ flutter_launcher_icons:
   android: true
   ios: false
   image_path: "assets/branding/tray_icon.png"
-  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_background: "#000000"
   adaptive_icon_foreground: "assets/branding/tray_icon.png"
   windows:
     generate: true

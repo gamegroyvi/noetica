@@ -43,6 +43,7 @@ void main() {
               due_at INTEGER,
               completed_at INTEGER,
               xp INTEGER NOT NULL DEFAULT 10,
+              base_xp INTEGER NOT NULL DEFAULT 10,
               deleted_at INTEGER
             )
           ''');

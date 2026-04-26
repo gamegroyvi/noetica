@@ -33,7 +33,11 @@ class _OnboardingChatScreenState
 
   // Collected answers.
   String _name = '';
-  String _aspiration = '';
+  // Multi-select on the aspiration step — user wanted to be able to
+  // pick more than one goal and also add a custom one. Internally we
+  // still flatten this back into the single `aspiration` string the
+  // backend / LLM expects, by joining with "; ".
+  final List<String> _aspirations = [];
   final List<String> _interests = [];
   final Map<String, String> _interestLevels = {};
   final List<String> _painPoints = [];
@@ -103,7 +107,12 @@ class _OnboardingChatScreenState
     final e = widget.existing;
     if (e != null) {
       _name = e.name;
-      _aspiration = e.aspiration;
+      if (e.aspiration.trim().isNotEmpty) {
+        _aspirations.addAll(
+          e.aspiration.split(RegExp(r'[;,]')).map((s) => s.trim())
+              .where((s) => s.isNotEmpty),
+        );
+      }
       _interests.addAll(e.interests);
       _interestLevels.addAll(e.interestLevels);
       _painPoints.addAll(
@@ -157,7 +166,7 @@ class _OnboardingChatScreenState
       case 0:
         return _name.trim().isNotEmpty;
       case 1:
-        return _aspiration.trim().isNotEmpty;
+        return _aspirations.isNotEmpty;
       case 2:
         return _interests.length >= 3;
       case 3:
@@ -178,7 +187,7 @@ class _OnboardingChatScreenState
       case 0:
         return _name.trim();
       case 1:
-        return _aspiration.trim();
+        return _aspirations.join('; ');
       case 2:
         return _interests.join(', ');
       case 3:
@@ -254,7 +263,7 @@ class _OnboardingChatScreenState
           );
       final profile = base.copyWith(
         name: _name.trim(),
-        aspiration: _aspiration.trim(),
+        aspiration: _aspirations.join('; '),
         interests: List<String>.from(_interests),
         interestLevels: cleanLevels,
         painPoint: _painPoints.join(', '),
@@ -381,12 +390,17 @@ class _OnboardingChatScreenState
       case 1:
         return _ChipsReply(
           options: _aspirationOptions,
-          selected: _aspiration.isEmpty ? const [] : [_aspiration],
-          allowMultiple: false,
-          onPick: (v) {
-            setState(() => _aspiration = v);
-            _advance();
-          },
+          selected: _aspirations,
+          allowMultiple: true,
+          onPick: (v) => setState(() {
+            final idx = _aspirations
+                .indexWhere((e) => e.toLowerCase() == v.toLowerCase());
+            if (idx >= 0) {
+              _aspirations.removeAt(idx);
+            } else if (_aspirations.length < 6) {
+              _aspirations.add(v);
+            }
+          }),
           customOpen: _customOpen,
           onToggleCustom: () =>
               setState(() => _customOpen = !_customOpen),
@@ -394,11 +408,22 @@ class _OnboardingChatScreenState
           onSubmitCustom: () {
             final v = _customCtrl.text.trim();
             if (v.isEmpty) return;
-            setState(() => _aspiration = v);
-            _advance();
+            setState(() {
+              if (_aspirations
+                      .where(
+                          (e) => e.toLowerCase() == v.toLowerCase())
+                      .isEmpty &&
+                  _aspirations.length < 6) {
+                _aspirations.add(v);
+              }
+              _customOpen = false;
+              _customCtrl.clear();
+            });
           },
           palette: palette,
-          submitLabel: null, // single-select auto-advances
+          submitLabel:
+              _aspirations.isEmpty ? 'Выбери хотя бы одну' : 'Далее',
+          onSubmit: _aspirations.isEmpty ? null : _advance,
         );
       case 2:
         return _ChipsReply(
