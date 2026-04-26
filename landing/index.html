@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Noetica — second brain, growth tracker, memoir</title>
+  <meta name="description" content="Noetica — единый инструмент для мышления, запоминания и роста. Трекер личного развития с ИИ-ассистентом, пентагоном роста и системой задач." />
+  <meta property="og:title" content="Noetica — second brain, growth tracker, memoir" />
+  <meta property="og:description" content="Единый инструмент для мышления, запоминания и роста." />
+  <meta property="og:type" content="website" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ═══════════ NAV ═══════════ -->
+  <nav class="nav" id="nav">
+    <a href="#" class="nav__logo">noetica</a>
+    <div class="nav__links">
+      <a href="#features">Возможности</a>
+      <a href="#how">Как это работает</a>
+      <a href="#philosophy">Философия</a>
+      <a href="#download" class="nav__cta">Скачать</a>
+    </div>
+    <button class="nav__burger" id="burger" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+  </nav>
+
+  <!-- ═══════════ MOBILE MENU ═══════════ -->
+  <div class="mobile-menu" id="mobileMenu">
+    <a href="#features">Возможности</a>
+    <a href="#how">Как это работает</a>
+    <a href="#philosophy">Философия</a>
+    <a href="#download" class="nav__cta">Скачать</a>
+  </div>
+
+  <!-- ═══════════ HERO ═══════════ -->
+  <header class="hero" id="hero">
+    <div class="hero__content">
+      <p class="hero__tag">second brain &middot; growth tracker &middot; memoir</p>
+      <h1 class="hero__title">
+        <span class="hero__n">n</span>oetica
+      </h1>
+      <p class="hero__sub">
+        Единый инструмент для мышления, запоминания и роста.
+        <br/>Отслеживай прогресс. Рефлексируй. Становись лучше.
+      </p>
+      <div class="hero__actions">
+        <a href="#download" class="btn btn--primary">Начать</a>
+        <a href="#features" class="btn btn--ghost">Узнать больше</a>
+      </div>
+    </div>
+
+    <!-- Animated pentagon canvas -->
+    <canvas id="pentagonCanvas" class="hero__canvas"></canvas>
+  </header>
+
+  <!-- ═══════════ FEATURES ═══════════ -->
+  <section class="features" id="features">
+    <div class="container">
+      <p class="section-tag">Возможности</p>
+      <h2 class="section-title">Всё, что нужно для роста&nbsp;&mdash; в&nbsp;одном&nbsp;месте</h2>
+
+      <div class="features__grid">
+
+        <div class="feature-card" data-anim="fade-up">
+          <div class="feature-card__icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="12,2 22,8.5 22,15.5 12,22 2,15.5 2,8.5"/>
+              <line x1="12" y1="22" x2="12" y2="15.5"/>
+              <line x1="22" y1="8.5" x2="12" y2="15.5"/>
+              <line x1="2" y1="8.5" x2="12" y2="15.5"/>
+            </svg>
+          </div>
+          <h3>Древо роста</h3>
+          <p>Интерактивный пентагон с осями жизни. XP, уровни и эпохи &mdash; визуализация <em>тебя сейчас</em>, а не суммы прошлого.</p>
+        </div>
+
+        <div class="feature-card" data-anim="fade-up">
+          <div class="feature-card__icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+          </div>
+          <h3>ИИ-ассистент</h3>
+          <p>Диалоговый онбординг и еженедельная рефлексия. Нейронка помнит, что ты уже делал, и подбирает задачи по силам.</p>
+        </div>
+
+        <div class="feature-card" data-anim="fade-up">
+          <div class="feature-card__icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 11l3 3L22 4"/>
+              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+            </svg>
+          </div>
+          <h3>Задачи + рефлексия</h3>
+          <p>Каждая задача привязана к осям роста. После выполнения &mdash; короткая рефлексия, которая корректирует XP и учит ИИ.</p>
+        </div>
+
+        <div class="feature-card" data-anim="fade-up">
+          <div class="feature-card__icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+          </div>
+          <h3>Помодоро</h3>
+          <p>Встроенный таймер с фазами фокуса и отдыха. Уведомления, звук и статистика &mdash; прямо в приложении.</p>
+        </div>
+
+        <div class="feature-card" data-anim="fade-up">
+          <div class="feature-card__icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+          </div>
+          <h3>Календарь и хитмэп</h3>
+          <p>GitHub-стайл хитмэп активности за год. Кликни по дню &mdash; увидишь все задачи и записи.</p>
+        </div>
+
+        <div class="feature-card" data-anim="fade-up">
+          <div class="feature-card__icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+              <path d="M2 17l10 5 10-5"/>
+              <path d="M2 12l10 5 10-5"/>
+            </svg>
+          </div>
+          <h3>База знаний</h3>
+          <p>Персональный граф знаний, который ИИ использует для генерации задач. Растёт вместе с тобой.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ HOW IT WORKS ═══════════ -->
+  <section class="how" id="how">
+    <div class="container">
+      <p class="section-tag">Как это работает</p>
+      <h2 class="section-title">Три&nbsp;слоя на&nbsp;одной оси&nbsp;времени</h2>
+
+      <div class="how__timeline">
+
+        <div class="how__step" data-anim="fade-left">
+          <div class="how__number">01</div>
+          <div class="how__body">
+            <h3>Сейчас</h3>
+            <p>Дашборд с текущей задачей, пульсом недели и мини-пентагоном. Фокус на одном действии прямо сейчас.</p>
+          </div>
+        </div>
+
+        <div class="how__step" data-anim="fade-left">
+          <div class="how__number">02</div>
+          <div class="how__body">
+            <h3>Я</h3>
+            <p>Интерактивное Древо &mdash; многоугольник осей роста с уровнями и эпохами. Каждая задача двигает вершины. Видишь, кем становишься.</p>
+          </div>
+        </div>
+
+        <div class="how__step" data-anim="fade-left">
+          <div class="how__number">03</div>
+          <div class="how__body">
+            <h3>Прошлое</h3>
+            <p>Журнал-мемуар с явными промежутками между записями. Время между событиями &mdash; тоже часть истории.</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ PENTAGON SHOWCASE ═══════════ -->
+  <section class="showcase">
+    <div class="container showcase__inner">
+      <div class="showcase__text" data-anim="fade-up">
+        <p class="section-tag">Древо</p>
+        <h2 class="section-title">Твой рост &mdash;<br/>одним&nbsp;взглядом</h2>
+        <p>Каждая вершина &mdash; ось жизни, которую ты выбрал. Размер фигуры &mdash; твоя форма прямо сейчас. XP за задачи двигает вершины наружу, но без действий &mdash; затухает за 30 дней.</p>
+        <p>Уровни и эпохи &mdash; постоянные. Они не откатываются. Ты всегда видишь, как далеко продвинулся.</p>
+      </div>
+      <div class="showcase__visual">
+        <canvas id="showcaseCanvas" class="showcase__canvas"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ PHILOSOPHY ═══════════ -->
+  <section class="philosophy" id="philosophy">
+    <div class="container">
+      <p class="section-tag">Философия</p>
+      <h2 class="section-title">Не&nbsp;приложение для&nbsp;продуктивности.<br/>Инструмент для&nbsp;тех, кто&nbsp;хочет <em>расти</em>.</h2>
+
+      <div class="philosophy__grid">
+        <div class="philosophy__item" data-anim="fade-up">
+          <h3>Честность, не мотивация</h3>
+          <p>XP затухает за 30 дней. Пентагон показывает тебя сейчас, а не сумму прошлых побед. Если перестал действовать &mdash; это видно.</p>
+        </div>
+        <div class="philosophy__item" data-anim="fade-up">
+          <h3>Рефлексия, не галочки</h3>
+          <p>Задача &mdash; не чекбокс. После выполнения можно записать, как прошло, что мешало, сколько заняло. Из этого ИИ учится.</p>
+        </div>
+        <div class="philosophy__item" data-anim="fade-up">
+          <h3>Локально, приватно</h3>
+          <p>Всё хранится на устройстве в SQLite. Облачная синхронизация &mdash; опциональна. Твои мысли &mdash; только твои.</p>
+        </div>
+        <div class="philosophy__item" data-anim="fade-up">
+          <h3>Чёрное и белое</h3>
+          <p>Строгий дизайн без градиентов и ярких цветов. Фокус на содержании. Ничего лишнего.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ STACK ═══════════ -->
+  <section class="stack">
+    <div class="container">
+      <p class="section-tag">Стек</p>
+      <div class="stack__pills">
+        <span>Flutter 3.24</span>
+        <span>Dart 3.5</span>
+        <span>Riverpod</span>
+        <span>SQLite</span>
+        <span>DeepSeek AI</span>
+        <span>Google Fonts (Inter)</span>
+        <span>Android</span>
+        <span>Windows</span>
+        <span>Web</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ CTA / DOWNLOAD ═══════════ -->
+  <section class="download" id="download">
+    <div class="container download__inner">
+      <h2 class="download__title">Начни расти сегодня</h2>
+      <p class="download__sub">Бесплатно. Приватно. Без подписок.</p>
+      <div class="download__buttons">
+        <a href="#" class="btn btn--primary btn--lg">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Android APK
+        </a>
+        <a href="#" class="btn btn--primary btn--lg">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          Windows
+        </a>
+      </div>
+      <p class="download__note">Скоро: iOS, macOS, Linux</p>
+    </div>
+  </section>
+
+  <!-- ═══════════ FOOTER ═══════════ -->
+  <footer class="footer">
+    <div class="container footer__inner">
+      <span class="footer__logo">noetica</span>
+      <span class="footer__copy">&copy; 2026</span>
+      <a href="https://github.com/gamegroyvi/noetica" class="footer__gh" target="_blank" rel="noopener">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+      </a>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
