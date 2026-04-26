@@ -27,16 +27,18 @@ class HomeShell extends ConsumerStatefulWidget {
 class _HomeShellState extends ConsumerState<HomeShell> {
   int _index = 0;
 
-  // Page index 3 = Journal. On mobile we never select it from the bottom
-  // bar (only 3 tabs there); on desktop the sidebar has a secondary tile
-  // that selects index 3.
+  // Page indices for "secondary" desktop-only sidebar entries — the
+  // mobile NavigationBar still only shows the primary 3, but desktop
+  // can navigate to these as proper tabs (no push, sidebar stays).
   static const _journalIndex = 3;
+  static const _knowledgeIndex = 4;
 
   static const _pages = <Widget>[
     DashboardScreen(),
     TasksScreen(),
     SelfScreen(),
     NotesScreen(),
+    KnowledgeGraphScreen(),
   ];
 
   static const _destinations = <_Destination>[
@@ -109,12 +111,13 @@ class _HomeShellState extends ConsumerState<HomeShell> {
             onAdd: () => showEntryEditor(context, ref),
             journalSelected: _index == _journalIndex,
             onJournal: () => setState(() => _index = _journalIndex),
+            knowledgeSelected: _index == _knowledgeIndex,
+            // Knowledge graph used to push a new route, which hid the
+            // sidebar and trapped the user (no back button on the
+            // graph screen). It's now a proper sidebar tab — selects
+            // page index 4 in the IndexedStack, sidebar stays visible.
+            onKnowledge: () => setState(() => _index = _knowledgeIndex),
             onPomodoro: () => PomodoroSheet.show(context),
-            onKnowledge: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => const KnowledgeGraphScreen(),
-              ),
-            ),
             palette: palette,
           ),
           Expanded(child: body),
@@ -147,8 +150,9 @@ class _DesktopSidebar extends StatelessWidget {
     required this.onAdd,
     required this.journalSelected,
     required this.onJournal,
-    required this.onPomodoro,
+    required this.knowledgeSelected,
     required this.onKnowledge,
+    required this.onPomodoro,
     required this.palette,
   });
 
@@ -159,8 +163,9 @@ class _DesktopSidebar extends StatelessWidget {
   final VoidCallback onAdd;
   final bool journalSelected;
   final VoidCallback onJournal;
-  final VoidCallback onPomodoro;
+  final bool knowledgeSelected;
   final VoidCallback onKnowledge;
+  final VoidCallback onPomodoro;
   final NoeticaPalette palette;
 
   @override
@@ -206,7 +211,9 @@ class _DesktopSidebar extends StatelessWidget {
                   icon: destinations[i].icon,
                   selectedIcon: destinations[i].selectedIcon,
                   label: destinations[i].label,
-                  selected: selectedIndex == i && !journalSelected,
+                  selected: selectedIndex == i &&
+                      !journalSelected &&
+                      !knowledgeSelected,
                   extended: extended,
                   palette: palette,
                   onTap: () => onDestinationSelected(i),
@@ -232,7 +239,7 @@ class _DesktopSidebar extends StatelessWidget {
                 icon: Icons.account_tree_outlined,
                 selectedIcon: Icons.account_tree,
                 label: 'База знаний',
-                selected: false,
+                selected: knowledgeSelected,
                 extended: extended,
                 palette: palette,
                 onTap: onKnowledge,

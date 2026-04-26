@@ -703,150 +703,91 @@ class _PulseSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dl = stats.nextDeadline;
-    final dlLabel = dl == null
+    final dlValue = dl == null
         ? '—'
         : (dl.difference(DateTime.now()).inHours < 24
             ? '${dl.difference(DateTime.now()).inHours}ч'
             : '${dl.difference(DateTime.now()).inDays}д');
+    final dlHint = dl == null
+        ? 'нет дедлайнов'
+        : 'до ${formatTimestamp(dl)}';
     final bestAxisName = stats.bestAxis != null
         ? (axesById[stats.bestAxis!]?.name ?? '—')
         : null;
-    final bestAxisSym = stats.bestAxis != null
-        ? (axesById[stats.bestAxis!]?.symbol ?? '·')
-        : '·';
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: _HeroCard(
-                palette: palette,
-                value: stats.streak.toString(),
-                label: 'стрик',
-                hint: stats.streak == 0
-                    ? 'начни сегодня'
-                    : _plural(stats.streak, 'день', 'дня', 'дней'),
-                child: SizedBox(
-                  height: 28,
-                  child: _WeekBars(
-                    perDay: stats.perDay,
-                    palette: palette,
-                  ),
-                ),
+    final xpHint = bestAxisName != null
+        ? '+${stats.bestAxisXp} XP · $bestAxisName'
+        : '${stats.totalXpWeek} XP за неделю';
+
+    // Three equal-height cards on a single row. IntrinsicHeight forces
+    // them to share the tallest content's height, so the previous
+    // mismatch (sparkline card vs text card) is gone.
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: _StatCard(
+              palette: palette,
+              value: stats.streak.toString(),
+              label: 'СТРИК',
+              hint: stats.streak == 0
+                  ? 'начни сегодня'
+                  : _plural(stats.streak, 'день', 'дня', 'дней'),
+              footer: SizedBox(
+                height: 24,
+                child: _WeekBars(perDay: stats.perDay, palette: palette),
               ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _HeroCard(
-                palette: palette,
-                value: stats.totalXpToday.toString(),
-                label: 'XP сегодня',
-                hint: '${stats.totalXpWeek} XP за неделю',
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(
-                      bestAxisSym,
-                      style: TextStyle(
-                        color: palette.fg,
-                        fontSize: 20,
-                        height: 1.0,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        bestAxisName == null
-                            ? 'нет XP за неделю'
-                            : '+${stats.bestAxisXp} XP · $bestAxisName',
-                        style: TextStyle(
-                          color: palette.muted,
-                          fontSize: 11,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        InkWell(
-          onTap: onTapDeadline,
-          borderRadius: BorderRadius.circular(10),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
-            decoration: BoxDecoration(
-              color: palette.surface,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: palette.line),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.event_outlined, color: palette.muted, size: 16),
-                const SizedBox(width: 8),
-                Text(
-                  'дедлайн',
-                  style: TextStyle(color: palette.muted, fontSize: 12),
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  dlLabel,
-                  style: TextStyle(
-                    color: palette.fg,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    dl == null
-                        ? 'нет ближайших задач'
-                        : 'до ${formatTimestamp(dl)}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: palette.muted, fontSize: 12),
-                  ),
-                ),
-                if (onTapDeadline != null)
-                  Icon(Icons.arrow_forward, color: palette.muted, size: 14),
-              ],
             ),
           ),
-        ),
-      ],
+          const SizedBox(width: 10),
+          Expanded(
+            child: _StatCard(
+              palette: palette,
+              value: stats.totalXpToday.toString(),
+              label: 'XP СЕГОДНЯ',
+              hint: xpHint,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _StatCard(
+              palette: palette,
+              value: dlValue,
+              label: 'БЛИЖАЙШИЙ',
+              hint: dlHint,
+              onTap: onTapDeadline,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
-/// Tall hero card used inside [_PulseSection]: a big number on top, a
-/// small label, a hint, and an optional `child` slot at the bottom for
-/// a sparkline / extra context.
-class _HeroCard extends StatelessWidget {
-  const _HeroCard({
+/// Compact stat card with a big value, an uppercase label, a single
+/// hint line, and an optional footer slot. Replaces the old wide
+/// `_HeroCard`-with-mismatched-children layout that looked awkward
+/// when one card had a sparkline and the other had two-line text.
+class _StatCard extends StatelessWidget {
+  const _StatCard({
     required this.palette,
     required this.value,
     required this.label,
     required this.hint,
-    required this.child,
+    this.footer,
+    this.onTap,
   });
 
   final NoeticaPalette palette;
   final String value;
   final String label;
   final String hint;
-  final Widget child;
+  final Widget? footer;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final card = Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
         color: palette.surface,
@@ -857,43 +798,48 @@ class _HeroCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                value,
-                style: TextStyle(
-                  color: palette.fg,
-                  fontSize: 32,
-                  fontWeight: FontWeight.w700,
-                  height: 1.0,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    color: palette.muted,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
+          Text(
+            label,
+            style: TextStyle(
+              color: palette.muted,
+              fontSize: 10,
+              letterSpacing: 1.2,
+              fontWeight: FontWeight.w700,
+            ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: TextStyle(
+                color: palette.fg,
+                fontSize: 28,
+                fontWeight: FontWeight.w700,
+                height: 1.0,
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
           Text(
             hint,
             style: TextStyle(color: palette.muted, fontSize: 11),
-            maxLines: 1,
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 10),
-          child,
+          if (footer != null) ...[
+            const SizedBox(height: 10),
+            footer!,
+          ],
         ],
       ),
+    );
+    if (onTap == null) return card;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: card,
     );
   }
 }
