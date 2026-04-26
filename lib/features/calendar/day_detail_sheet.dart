@@ -154,9 +154,19 @@ class _DayDetailSheet extends ConsumerWidget {
   String _summaryLine(int done, int xp, int due) {
     final parts = <String>[];
     if (done > 0) parts.add('$done закрыто · +$xp XP');
-    if (due > 0) parts.add('$due дедлайн(ов)');
+    if (due > 0) {
+      parts.add('$due ${_plural(due, "дедлайн", "дедлайна", "дедлайнов")}');
+    }
     if (parts.isEmpty) return 'Без записей.';
     return parts.join(' · ');
+  }
+
+  String _plural(int n, String one, String few, String many) {
+    final mod10 = n % 10;
+    final mod100 = n % 100;
+    if (mod10 == 1 && mod100 != 11) return one;
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few;
+    return many;
   }
 
   String _formatHeadline(DateTime d) {

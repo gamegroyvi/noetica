@@ -1403,7 +1403,7 @@ class _ActivityHeatmap extends StatelessWidget {
     final label = value == 0
         ? '${info.date.day} ${monthName(info.date.month)} · ничего'
         : '${info.date.day} ${monthName(info.date.month)} · '
-            '$value ${value == 1 ? "задача" : "задач(и)"}';
+            '$value ${_plural(value, "задача", "задачи", "задач")}';
     final cell = Container(
       width: size,
       height: size,
