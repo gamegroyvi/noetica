@@ -5,6 +5,7 @@ import '../../theme/app_theme.dart';
 import '../../widgets/brand_glyph.dart';
 import '../dashboard/dashboard_screen.dart';
 import '../entry/entry_editor_sheet.dart';
+import '../knowledge/knowledge_graph_screen.dart';
 import '../notes/notes_screen.dart';
 import '../pomodoro/pomodoro_sheet.dart';
 import '../self/self_screen.dart';
@@ -26,10 +27,18 @@ class HomeShell extends ConsumerStatefulWidget {
 class _HomeShellState extends ConsumerState<HomeShell> {
   int _index = 0;
 
+  // Page indices for "secondary" desktop-only sidebar entries — the
+  // mobile NavigationBar still only shows the primary 3, but desktop
+  // can navigate to these as proper tabs (no push, sidebar stays).
+  static const _journalIndex = 3;
+  static const _knowledgeIndex = 4;
+
   static const _pages = <Widget>[
     DashboardScreen(),
     TasksScreen(),
     SelfScreen(),
+    NotesScreen(),
+    KnowledgeGraphScreen(),
   ];
 
   static const _destinations = <_Destination>[
@@ -59,6 +68,11 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     final body = IndexedStack(index: _index, children: _pages);
 
     if (!useRail) {
+      // On mobile the bottom bar shows only the first 3 destinations;
+      // Journal stays accessible via the AppBar bookmark icon. We clamp
+      // the bar's selectedIndex so it doesn't break when index = 3 (would
+      // happen if user navigated to journal then resized to mobile).
+      final mobileSelected = _index < _destinations.length ? _index : 0;
       return Scaffold(
         body: body,
         floatingActionButton: FloatingActionButton(
@@ -70,7 +84,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
             border: Border(top: BorderSide(color: palette.line)),
           ),
           child: NavigationBar(
-            selectedIndex: _index,
+            selectedIndex: mobileSelected,
             onDestinationSelected: (i) => setState(() => _index = i),
             destinations: [
               for (final d in _destinations)
@@ -95,11 +109,14 @@ class _HomeShellState extends ConsumerState<HomeShell> {
             selectedIndex: _index,
             onDestinationSelected: (i) => setState(() => _index = i),
             onAdd: () => showEntryEditor(context, ref),
-            onJournal: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => const NotesScreen(),
-              ),
-            ),
+            journalSelected: _index == _journalIndex,
+            onJournal: () => setState(() => _index = _journalIndex),
+            knowledgeSelected: _index == _knowledgeIndex,
+            // Knowledge graph used to push a new route, which hid the
+            // sidebar and trapped the user (no back button on the
+            // graph screen). It's now a proper sidebar tab — selects
+            // page index 4 in the IndexedStack, sidebar stays visible.
+            onKnowledge: () => setState(() => _index = _knowledgeIndex),
             onPomodoro: () => PomodoroSheet.show(context),
             palette: palette,
           ),
@@ -131,7 +148,10 @@ class _DesktopSidebar extends StatelessWidget {
     required this.selectedIndex,
     required this.onDestinationSelected,
     required this.onAdd,
+    required this.journalSelected,
     required this.onJournal,
+    required this.knowledgeSelected,
+    required this.onKnowledge,
     required this.onPomodoro,
     required this.palette,
   });
@@ -141,7 +161,10 @@ class _DesktopSidebar extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
   final VoidCallback onAdd;
+  final bool journalSelected;
   final VoidCallback onJournal;
+  final bool knowledgeSelected;
+  final VoidCallback onKnowledge;
   final VoidCallback onPomodoro;
   final NoeticaPalette palette;
 
@@ -188,7 +211,9 @@ class _DesktopSidebar extends StatelessWidget {
                   icon: destinations[i].icon,
                   selectedIcon: destinations[i].selectedIcon,
                   label: destinations[i].label,
-                  selected: selectedIndex == i,
+                  selected: selectedIndex == i &&
+                      !journalSelected &&
+                      !knowledgeSelected,
                   extended: extended,
                   palette: palette,
                   onTap: () => onDestinationSelected(i),
@@ -205,10 +230,19 @@ class _DesktopSidebar extends StatelessWidget {
                 icon: Icons.bookmark_border_outlined,
                 selectedIcon: Icons.bookmark,
                 label: 'Журнал',
-                selected: false,
+                selected: journalSelected,
                 extended: extended,
                 palette: palette,
                 onTap: onJournal,
+              ),
+              _SidebarTile(
+                icon: Icons.account_tree_outlined,
+                selectedIcon: Icons.account_tree,
+                label: 'База знаний',
+                selected: knowledgeSelected,
+                extended: extended,
+                palette: palette,
+                onTap: onKnowledge,
               ),
               _SidebarTile(
                 icon: Icons.timer_outlined,

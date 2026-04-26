@@ -25,9 +25,26 @@ class ProfileInput(BaseModel):
     interest_levels: dict[str, str] = Field(default_factory=dict)
 
 
+class KnowledgeInput(BaseModel):
+    """Optional persistent context the LLM should respect.
+
+    Fed from the client's local PersonalKnowledge document — accumulated
+    summary of who the user is, their goals, recent reflections on
+    completed work, and high-level highlights. Truncated server-side
+    before being inlined into the prompt to keep token usage bounded.
+    """
+
+    summary: str = ""
+    goals: list[str] = Field(default_factory=list)
+    constraints: list[str] = Field(default_factory=list)
+    recent_reflections: list[str] = Field(default_factory=list)
+    completed_highlights: list[str] = Field(default_factory=list)
+
+
 class RoadmapRequest(BaseModel):
     goal: str = Field(min_length=3, max_length=500)
     profile: ProfileInput = ProfileInput()
+    knowledge: KnowledgeInput | None = None
     axes: list[AxisInput]
     horizon_days: int = Field(default=30, ge=1, le=365)
     task_count: int = Field(default=6, ge=1, le=12)
@@ -52,6 +69,14 @@ class RoadmapTask(BaseModel):
     # checkboxes inside the task body.
     steps: list[str] = Field(default_factory=list)
     axis_ids: list[str] = Field(default_factory=list)
+    # Optional explicit XP split across the task's axes. Keys are a
+    # subset of `axis_ids`; values are non-negative weights. The client
+    # normalises them to sum to 1.0 at score time, so absolute scale
+    # doesn't matter — only ratios. If empty, the client falls back to
+    # an even 1/N split which is the deterministic default the user
+    # explicitly asked for ("a 40 XP task split evenly between 2 axes
+    # = 20 each").
+    axis_weights: dict[str, float] = Field(default_factory=dict)
     xp: int = Field(ge=5, le=100)
     due_in_days: int | None = Field(default=None, ge=0, le=365)
 
@@ -64,6 +89,7 @@ class RoadmapResponse(BaseModel):
 
 class AxesRequest(BaseModel):
     profile: ProfileInput = ProfileInput()
+    knowledge: KnowledgeInput | None = None
     interests: list[str] = Field(default_factory=list)
     count: int = Field(default=5, ge=3, le=8)
 

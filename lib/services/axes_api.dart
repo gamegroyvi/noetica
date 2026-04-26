@@ -3,12 +3,10 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import '../data/models.dart';
 import '../data/profile.dart';
+import 'api_config.dart';
 import 'auth_service.dart';
-
-/// Mirrors `services/roadmap_api.dart` — same backend, different endpoint.
-const String _kDefaultBackendUrl =
-    'https://noetica-backend-nzlazosh.fly.dev';
 
 @immutable
 class AxisDraft {
@@ -56,18 +54,12 @@ class AxesApi {
   final http.Client _client;
   final AuthService? _auth;
 
-  static String _resolveBaseUrl() {
-    const fromDefine = String.fromEnvironment(
-      'NOETICA_BACKEND_URL',
-      defaultValue: '',
-    );
-    if (fromDefine.isNotEmpty) return fromDefine;
-    return _kDefaultBackendUrl;
-  }
+  static String _resolveBaseUrl() => kDefaultBackendUrl;
 
   Future<AxesGenerationResult> generate({
     required UserProfile? profile,
     required List<String> interests,
+    PersonalKnowledge? knowledge,
     int count = 5,
   }) async {
     final uri = Uri.parse('$_baseUrl/onboarding/axes');
@@ -79,6 +71,14 @@ class AxesApi {
         'weekly_hours': profile?.weeklyHours ?? 5,
         'interest_levels': profile?.interestLevels ?? const <String, String>{},
       },
+      if (knowledge != null && knowledge.summary.isNotEmpty)
+        'knowledge': {
+          'summary': knowledge.summary,
+          'goals': knowledge.goals,
+          'constraints': knowledge.constraints,
+          'recent_reflections': knowledge.recentReflections,
+          'completed_highlights': knowledge.completedHighlights,
+        },
       'interests': interests,
       'count': count,
     };

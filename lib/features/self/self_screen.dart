@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -9,6 +11,7 @@ import '../../widgets/brand_glyph.dart';
 import '../roadmap/roadmap_screen.dart';
 import '../settings/settings_screen.dart';
 import 'axes_editor_screen.dart';
+import 'axis_detail_sheet.dart';
 import 'pentagon_painter.dart';
 
 class SelfScreen extends ConsumerWidget {
@@ -21,15 +24,22 @@ class SelfScreen extends ConsumerWidget {
     final profile = ref.watch(profileProvider).valueOrNull;
     final streakAsync = ref.watch(streakProvider);
     final levelAsync = ref.watch(levelStatsProvider);
+    final axisLevelsAsync = ref.watch(axisLevelStatsProvider);
     final hasName = profile != null && profile.name.isNotEmpty;
 
+    final canPop = Navigator.of(context).canPop();
     return Scaffold(
       appBar: AppBar(
-        leading: const Padding(
-          padding: EdgeInsets.only(left: 16, top: 12, bottom: 12),
-          child: BrandGlyph(size: 24),
-        ),
-        leadingWidth: 48,
+        // When pushed (e.g. tapped from the mini-Древо on the dashboard) we
+        // want a real back button so the user isn't stranded — don't paint
+        // the brand glyph in that case, AppBar will auto-imply the leading.
+        leading: canPop
+            ? null
+            : const Padding(
+                padding: EdgeInsets.only(left: 16, top: 12, bottom: 12),
+                child: BrandGlyph(size: 24),
+              ),
+        leadingWidth: canPop ? null : 48,
         title: Text(hasName ? profile.name : 'Я'),
         actions: [
           IconButton(
@@ -74,20 +84,11 @@ class SelfScreen extends ConsumerWidget {
               else ...[
                 SizedBox(
                   height: 320,
-                  child: CustomPaint(
-                    painter: PentagonPainter(
-                      scores: scores,
-                      fg: palette.fg,
-                      muted: palette.muted,
-                      line: palette.line,
-                      bg: palette.bg,
-                    ),
-                    child: const SizedBox.expand(),
-                  ),
+                  child: _DrevoCanvas(scores: scores),
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  'ТЕКУЩЕЕ СОСТОЯНИЕ',
+                  'ДРЕВО · ВЕТКИ',
                   style: TextStyle(
                     color: palette.muted,
                     fontSize: 11,
@@ -96,7 +97,11 @@ class SelfScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                for (final s in scores) _AxisTile(score: s),
+                for (final s in scores)
+                  _AxisTile(
+                    score: s,
+                    levelStats: axisLevelsAsync.valueOrNull?[s.axis.id],
+                  ),
                 const SizedBox(height: 20),
                 OutlinedButton.icon(
                   onPressed: () {
@@ -288,7 +293,8 @@ class _EmptyAxes extends StatelessWidget {
           Icon(Icons.workspaces_outline, size: 32, color: palette.muted),
           const SizedBox(height: 12),
           Text(
-            'Чтобы увидеть пентаграмму, нужно хотя бы 3 оси.',
+            'Древо вырастает от 3 ветвей. Добавь хотя бы 3 оси, чтобы '
+            'увидеть его.',
             textAlign: TextAlign.center,
             style: TextStyle(color: palette.muted),
           ),
@@ -299,13 +305,15 @@ class _EmptyAxes extends StatelessWidget {
 }
 
 class _AxisTile extends StatelessWidget {
-  const _AxisTile({required this.score});
+  const _AxisTile({required this.score, this.levelStats});
   final AxisScore score;
+  final LevelStats? levelStats;
 
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
     final v = score.value.clamp(0.0, 100.0) / 100.0;
+    final ls = levelStats;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
@@ -331,10 +339,41 @@ class _AxisTile extends StatelessWidget {
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Text(
-                      score.axis.name,
-                      style: Theme.of(context).textTheme.bodyLarge,
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              score.axis.name,
+                              style: Theme.of(context).textTheme.bodyLarge,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (ls != null) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                border:
+                                    Border.all(color: palette.line),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                'L${ls.level}',
+                                style: TextStyle(
+                                  color: palette.muted,
+                                  fontSize: 10,
+                                  letterSpacing: 1.2,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
                     Text(
                       score.value.round().toString(),
@@ -360,11 +399,155 @@ class _AxisTile extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (ls != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    '${ls.totalXp} XP · до L${ls.level + 1}: '
+                    '${ls.xpAtNextLevel - ls.totalXp}',
+                    style: TextStyle(
+                      color: palette.muted,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Animated Древо: every time `scores` changes (new task completed,
+/// reflection submitted, etc.) the polygon tweens out from 0 → its new
+/// size, giving the user a visceral "ветка выросла" cue. Tap on a
+/// branch label to open the per-axis detail sheet.
+class _DrevoCanvas extends ConsumerStatefulWidget {
+  const _DrevoCanvas({required this.scores});
+  final List<AxisScore> scores;
+
+  @override
+  ConsumerState<_DrevoCanvas> createState() => _DrevoCanvasState();
+}
+
+class _DrevoCanvasState extends ConsumerState<_DrevoCanvas>
+    with TickerProviderStateMixin {
+  // One-shot grow animation, replayed when scores change. We use
+  // easeOutBack for a slight spring overshoot so the polygon visibly
+  // springs into place instead of merely settling.
+  late final AnimationController _grow = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+  )..forward();
+
+  // Continuous idle "breathing" — slow oscillation in radius (~±2%) so the
+  // tree never feels frozen. Loops indefinitely.
+  late final AnimationController _breath = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 6),
+  )..repeat();
+
+  // Short reaction pulse fired every time a score increases. Drives a
+  // small overshoot that overlays on top of the steady-state shape.
+  late final AnimationController _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 600),
+  );
+  int? _highlight;
+
+  @override
+  void didUpdateWidget(covariant _DrevoCanvas oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Replay the grow animation only when the actual axis values changed
+    // — not on every parent rebuild — so casual scrolling doesn't jitter
+    // the canvas.
+    var changed = oldWidget.scores.length != widget.scores.length;
+    var increased = false;
+    if (!changed) {
+      for (var i = 0; i < oldWidget.scores.length; i++) {
+        final delta = widget.scores[i].value - oldWidget.scores[i].value;
+        if (delta.abs() > 0.01) changed = true;
+        if (delta > 0.01) increased = true;
+      }
+    }
+    if (changed) {
+      _grow
+        ..reset()
+        ..forward();
+    }
+    if (increased) {
+      _pulse
+        ..reset()
+        ..forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _grow.dispose();
+    _breath.dispose();
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final size = Size(constraints.maxWidth, constraints.maxHeight);
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapUp: (d) {
+            // Build a one-shot painter to reuse its hit-test math.
+            final probe = PentagonPainter(
+              scores: widget.scores,
+              fg: palette.fg,
+              muted: palette.muted,
+              line: palette.line,
+              bg: palette.bg,
+            );
+            final hit = probe.hitTestAxis(d.localPosition, size);
+            if (hit == null) return;
+            setState(() => _highlight = hit);
+            showAxisDetailSheet(
+              context,
+              ref,
+              score: widget.scores[hit],
+            ).whenComplete(() {
+              if (mounted) setState(() => _highlight = null);
+            });
+          },
+          child: AnimatedBuilder(
+            animation: Listenable.merge([_grow, _breath, _pulse]),
+            builder: (_, __) {
+              final grow = Curves.easeOutBack.transform(_grow.value).clamp(0.0, 1.05);
+              final breath = 1 + 0.018 *
+                  math.sin(_breath.value * 2 * math.pi);
+              final pulse = _pulse.isAnimating
+                  ? 1 +
+                      0.06 *
+                          math.sin(_pulse.value * math.pi) *
+                          (1 - _pulse.value)
+                  : 1.0;
+              final progress = grow * breath * pulse;
+              return CustomPaint(
+                painter: PentagonPainter(
+                  scores: widget.scores,
+                  fg: palette.fg,
+                  muted: palette.muted,
+                  line: palette.line,
+                  bg: palette.bg,
+                  progress: progress.toDouble(),
+                  highlightedAxisIndex: _highlight,
+                ),
+                child: const SizedBox.expand(),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }

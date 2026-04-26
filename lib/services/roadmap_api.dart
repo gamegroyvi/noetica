@@ -1,17 +1,17 @@
 import 'dart:convert';
-import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../data/models.dart';
 import '../data/profile.dart';
+import 'api_config.dart';
 import 'auth_service.dart';
 
-/// Default backend URL — overridable at runtime via `--dart-define`:
-///   flutter run --dart-define=NOETICA_BACKEND_URL=https://noetica-backend.fly.dev
-const String _kDefaultBackendUrl =
-    'https://noetica-backend-nzlazosh.fly.dev';
+// Backend URL is resolved via `kDefaultBackendUrl` from api_config.dart
+// (single source of truth). Used to be hardcoded here pointing at a
+// different fly app than auth/sync, which silently broke cross-device
+// sync because JWTs issued by one host were rejected by the other.
 
 /// One generated roadmap task — a draft of an `Entry` we will create on import.
 @immutable
@@ -22,11 +22,14 @@ class RoadmapDraft {
     required this.axisIds,
     required this.xp,
     this.dueAt,
+    this.axisWeights = const {},
   });
 
   final String title;
   final String body;
   final List<String> axisIds;
+  /// Optional explicit weights; keys subset of [axisIds]. Empty ⇒ even split.
+  final Map<String, double> axisWeights;
   final int xp;
   final DateTime? dueAt;
 
@@ -34,6 +37,7 @@ class RoadmapDraft {
     String? title,
     String? body,
     List<String>? axisIds,
+    Map<String, double>? axisWeights,
     int? xp,
     DateTime? dueAt,
     bool clearDue = false,
@@ -42,6 +46,7 @@ class RoadmapDraft {
         title: title ?? this.title,
         body: body ?? this.body,
         axisIds: axisIds ?? this.axisIds,
+        axisWeights: axisWeights ?? this.axisWeights,
         xp: xp ?? this.xp,
         dueAt: clearDue ? null : (dueAt ?? this.dueAt),
       );
@@ -85,20 +90,7 @@ class RoadmapApi {
   final http.Client _client;
   final AuthService? _auth;
 
-  static String _resolveBaseUrl() {
-    const fromDefine = String.fromEnvironment(
-      'NOETICA_BACKEND_URL',
-      defaultValue: '',
-    );
-    if (fromDefine.isNotEmpty) return fromDefine;
-    if (kIsWeb) return _kDefaultBackendUrl;
-    try {
-      if (Platform.isAndroid) {
-        return _kDefaultBackendUrl;
-      }
-    } catch (_) {}
-    return _kDefaultBackendUrl;
-  }
+  static String _resolveBaseUrl() => kDefaultBackendUrl;
 
   String get baseUrl => _baseUrl;
 
@@ -106,6 +98,7 @@ class RoadmapApi {
     required String goal,
     required UserProfile? profile,
     required List<LifeAxis> axes,
+    PersonalKnowledge? knowledge,
     int horizonDays = 30,
     int taskCount = 6,
   }) async {
@@ -119,6 +112,17 @@ class RoadmapApi {
         'weekly_hours': profile?.weeklyHours ?? 5,
         'interest_levels': profile?.interestLevels ?? const <String, String>{},
       },
+      // Optional persistent context. Backend will fold this into the
+      // system prompt so the LLM stops generating things the user has
+      // already done or that contradict known constraints.
+      if (knowledge != null && knowledge.summary.isNotEmpty)
+        'knowledge': {
+          'summary': knowledge.summary,
+          'goals': knowledge.goals,
+          'constraints': knowledge.constraints,
+          'recent_reflections': knowledge.recentReflections,
+          'completed_highlights': knowledge.completedHighlights,
+        },
       'axes': [
         for (final a in axes)
           {'id': a.id, 'name': a.name, 'symbol': a.symbol},
@@ -193,6 +197,28 @@ class RoadmapApi {
       final axisIds = ((item['axis_ids'] as List?) ?? const [])
           .whereType<String>()
           .toList();
+      // Optional axis_weights: { axisId: number } where the model tells
+      // us how much of the task's XP belongs to each axis. Server has
+      // already filtered to known axisIds; we just coerce + drop zeros.
+      final rawWeights = item['axis_weights'];
+      final axisWeights = <String, double>{};
+      if (rawWeights is Map) {
+        final allowed = axisIds.toSet();
+        for (final e in rawWeights.entries) {
+          final k = e.key;
+          if (k is! String || !allowed.contains(k)) continue;
+          final v = e.value;
+          double? parsed;
+          if (v is num) {
+            parsed = v.toDouble();
+          } else if (v is String) {
+            parsed = double.tryParse(v);
+          }
+          if (parsed != null && parsed > 0) {
+            axisWeights[k] = parsed;
+          }
+        }
+      }
       final dueDays = (item['due_in_days'] as num?)?.toInt();
       final due = dueDays == null
           ? null
@@ -203,6 +229,7 @@ class RoadmapApi {
           title: title,
           body: body,
           axisIds: axisIds,
+          axisWeights: axisWeights,
           xp: xp.clamp(5, 100),
           dueAt: due,
         ),

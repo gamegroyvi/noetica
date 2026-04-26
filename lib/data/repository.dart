@@ -120,13 +120,18 @@ class NoeticaRepository {
     final now = DateTime.now();
     await _db.raw.transaction((txn) async {
       // Soft-delete everything that isn't in the new list, then upsert the
-      // new set. We don't hard-delete because the tombstones need to sync to
-      // other devices.
+      // new set. We don't hard-delete because the tombstones need to sync
+      // to other devices.
       final existing = await txn.query('axes', columns: ['id']);
       final keepIds = axes.map((a) => a.id).toSet();
+      final existingIds = <String>{};
       for (final r in existing) {
         final id = r['id']! as String;
+        existingIds.add(id);
         if (!keepIds.contains(id)) {
+          // Soft-delete: mark deleted_at, do NOT physically remove the
+          // row. Physical DELETE would cascade through entry_axes
+          // (ON DELETE CASCADE) and orphan all completed-task XP.
           await txn.update(
             'axes',
             {
@@ -140,16 +145,117 @@ class NoeticaRepository {
       }
       for (final a in axes) {
         final touched = a.copyWith(updatedAt: now, clearDeleted: true);
-        await txn.insert(
-          'axes',
-          touched.toMap(),
-          conflictAlgorithm: ConflictAlgorithm.replace,
+        // CRITICAL: do NOT use ConflictAlgorithm.replace here — REPLACE
+        // is implemented as DELETE+INSERT which trips the
+        // entry_axes(axis_id) ON DELETE CASCADE foreign key and wipes
+        // every link from completed tasks to this axis. That's exactly
+        // the bug where reordering axes makes the Древо forget all XP.
+        // Instead branch on existence: UPDATE for known IDs, INSERT
+        // otherwise.
+        if (existingIds.contains(a.id)) {
+          await txn.update(
+            'axes',
+            touched.toMap(),
+            where: 'id = ?',
+            whereArgs: [a.id],
+          );
+        } else {
+          await txn.insert('axes', touched.toMap());
+        }
+      }
+    });
+    await _emitAxes();
+    await _emitEntries();
+    _markDirty();
+  }
+
+  /// Replace axes AND remap any pre-existing `entry_axes` links to the
+  /// new axis IDs by best-effort name/symbol matching. Without this,
+  /// every regeneration of axes would orphan all completed-task XP and
+  /// the Древо would silently reset to zero — even though the user can
+  /// see the tasks themselves are still completed in Журнал.
+  ///
+  /// Returns the number of axis-link rows that were remapped.
+  Future<int> replaceAxesWithMigration(List<m.LifeAxis> newAxes) async {
+    final oldAxes = await listAxes();
+    final byName = <String, String>{
+      for (final a in newAxes) a.name.toLowerCase().trim(): a.id,
+    };
+    final bySymbol = <String, String>{
+      for (final a in newAxes) a.symbol.trim(): a.id,
+    };
+    final mapping = <String, String>{};
+    for (final o in oldAxes) {
+      final n = byName[o.name.toLowerCase().trim()];
+      if (n != null) {
+        mapping[o.id] = n;
+        continue;
+      }
+      final s = bySymbol[o.symbol.trim()];
+      if (s != null) mapping[o.id] = s;
+    }
+    await replaceAxes(newAxes);
+    if (mapping.isEmpty) return 0;
+    var migrated = 0;
+    final touchedEntryIds = <String>{};
+    await _db.raw.transaction((txn) async {
+      for (final pair in mapping.entries) {
+        if (pair.key == pair.value) continue;
+        // De-duplicate: if the entry already has a row pointing to the new
+        // axis, drop the old one instead of duplicating the link.
+        final dupes = await txn.rawQuery(
+          '''
+          SELECT a.entry_id AS entry_id
+          FROM entry_axes a
+          JOIN entry_axes b ON a.entry_id = b.entry_id
+          WHERE a.axis_id = ? AND b.axis_id = ?
+          ''',
+          [pair.key, pair.value],
+        );
+        for (final r in dupes) {
+          touchedEntryIds.add(r['entry_id']! as String);
+          await txn.delete(
+            'entry_axes',
+            where: 'entry_id = ? AND axis_id = ?',
+            whereArgs: [r['entry_id'], pair.key],
+          );
+        }
+        // Capture which entries we're about to remap so we can bump
+        // their `updated_at` and let the sync layer push the migrated
+        // axisIds upstream — otherwise the next pull from the server
+        // would resurrect the old axis IDs and re-orphan the XP.
+        final affected = await txn.query(
+          'entry_axes',
+          columns: ['entry_id'],
+          where: 'axis_id = ?',
+          whereArgs: [pair.key],
+        );
+        for (final r in affected) {
+          touchedEntryIds.add(r['entry_id']! as String);
+        }
+        final n = await txn.update(
+          'entry_axes',
+          {'axis_id': pair.value},
+          where: 'axis_id = ?',
+          whereArgs: [pair.key],
+        );
+        migrated += n;
+      }
+      if (touchedEntryIds.isNotEmpty) {
+        final nowMs = DateTime.now().millisecondsSinceEpoch;
+        await txn.update(
+          'entries',
+          {'updated_at': nowMs},
+          where:
+              'id IN (${List.filled(touchedEntryIds.length, '?').join(',')})',
+          whereArgs: touchedEntryIds.toList(),
         );
       }
     });
     await _emitAxes();
     await _emitEntries();
     _markDirty();
+    return migrated;
   }
 
   // ---------- entries ----------
@@ -185,13 +291,22 @@ class NoeticaRepository {
       whereArgs: ids,
     );
     final byEntry = <String, List<String>>{};
+    final weightsByEntry = <String, Map<String, double>>{};
     for (final l in links) {
-      byEntry
-          .putIfAbsent(l['entry_id']! as String, () => [])
-          .add(l['axis_id']! as String);
+      final eid = l['entry_id']! as String;
+      final aid = l['axis_id']! as String;
+      byEntry.putIfAbsent(eid, () => []).add(aid);
+      final w = l['weight'];
+      if (w is num && w != 1.0) {
+        weightsByEntry.putIfAbsent(eid, () => {})[aid] = w.toDouble();
+      }
     }
     return rows
-        .map((r) => m.Entry.fromMap(r, axisIds: byEntry[r['id']] ?? const []))
+        .map((r) => m.Entry.fromMap(
+              r,
+              axisIds: byEntry[r['id']] ?? const [],
+              axisWeights: weightsByEntry[r['id']] ?? const {},
+            ))
         .toList();
   }
 
@@ -205,9 +320,17 @@ class NoeticaRepository {
       await txn
           .delete('entry_axes', where: 'entry_id = ?', whereArgs: [entry.id]);
       for (final aid in entry.axisIds) {
+        // If explicit weights were supplied, persist them; otherwise leave
+        // the column at its DEFAULT 1.0 (interpreted as "even split" at
+        // score time).
+        final weight = entry.axisWeights[aid];
         await txn.insert(
           'entry_axes',
-          {'entry_id': entry.id, 'axis_id': aid},
+          {
+            'entry_id': entry.id,
+            'axis_id': aid,
+            if (weight != null) 'weight': weight,
+          },
           conflictAlgorithm: ConflictAlgorithm.ignore,
         );
       }
@@ -225,6 +348,7 @@ class NoeticaRepository {
     DateTime? dueAt,
     int xp = 10,
     List<String> axisIds = const [],
+    Map<String, double> axisWeights = const {},
   }) {
     final now = DateTime.now();
     final entry = m.Entry(
@@ -237,6 +361,7 @@ class NoeticaRepository {
       dueAt: dueAt,
       xp: xp,
       axisIds: axisIds,
+      axisWeights: axisWeights,
     );
     return upsertEntry(entry);
   }
@@ -257,6 +382,58 @@ class NoeticaRepository {
     unawaited(NotificationsService.instance.cancelForEntry(id));
   }
 
+  // ---------- reflections ----------
+
+  /// Persist a reflection for a task. One reflection per task — calling
+  /// twice replaces the existing row.
+  Future<m.TaskReflection> saveReflection({
+    required String entryId,
+    required m.ReflectionStatus status,
+    String outcome = '',
+    String difficulties = '',
+    int? actualMinutes,
+  }) async {
+    final existing = await getReflection(entryId);
+    final reflection = m.TaskReflection(
+      id: existing?.id ?? _uuid.v4(),
+      entryId: entryId,
+      status: status,
+      createdAt: existing?.createdAt ?? DateTime.now(),
+      outcome: outcome,
+      difficulties: difficulties,
+      actualMinutes: actualMinutes,
+    );
+    await _db.raw.insert(
+      'task_reflections',
+      reflection.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    _markDirty();
+    return reflection;
+  }
+
+  Future<m.TaskReflection?> getReflection(String entryId) async {
+    final rows = await _db.raw.query(
+      'task_reflections',
+      where: 'entry_id = ?',
+      whereArgs: [entryId],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    return m.TaskReflection.fromMap(rows.first);
+  }
+
+  /// Most recent reflections across all tasks. Used by the personal
+  /// knowledge base to summarise the user's recent activity.
+  Future<List<m.TaskReflection>> recentReflections({int limit = 20}) async {
+    final rows = await _db.raw.query(
+      'task_reflections',
+      orderBy: 'created_at DESC',
+      limit: limit,
+    );
+    return rows.map(m.TaskReflection.fromMap).toList();
+  }
+
   /// Flip a task's completion state in-place via a targeted SQL UPDATE.
   ///
   /// Crucially this does **not** rewrite the `entry_axes` table — it would be
@@ -264,14 +441,32 @@ class NoeticaRepository {
   /// transactional rewrite of join rows can race with the score recompute and
   /// the user sees the pentagon stay flat after ticking a roadmap-imported
   /// task. UPDATE keeps axes attached, full stop.
-  Future<m.Entry> toggleTaskComplete(m.Entry entry) async {
+  Future<m.Entry> toggleTaskComplete(
+    m.Entry entry, {
+    m.ReflectionStatus? reflectionStatus,
+  }) async {
     final now = DateTime.now();
     final newCompletedAt = entry.isCompleted ? null : now;
+
+    // Apply reflection-based XP adjustment when completing. The factor
+    // is ALWAYS applied to `base_xp` (the original XP this task shipped
+    // with) — never to the current `xp`, otherwise re-opening +
+    // re-completing a "hard" task would compound the multiplier each
+    // time (30 → 36 → 43 → 52 → …). Re-opening still doesn't reset xp
+    // here; that happens implicitly on the next completion when the
+    // factor reapplies cleanly to base_xp.
+    int? newXp;
+    if (newCompletedAt != null && reflectionStatus != null) {
+      final factor = reflectionStatus.xpFactor;
+      newXp = (entry.baseXp * factor).round().clamp(1, 999);
+    }
+
     await _db.raw.update(
       'entries',
       {
         'completed_at': newCompletedAt?.millisecondsSinceEpoch,
         'updated_at': now.millisecondsSinceEpoch,
+        if (newXp != null) 'xp': newXp,
       },
       where: 'id = ?',
       whereArgs: [entry.id],
@@ -282,6 +477,7 @@ class NoeticaRepository {
       completedAt: newCompletedAt,
       clearCompleted: newCompletedAt == null,
       updatedAt: now,
+      xp: newXp,
     );
     unawaited(NotificationsService.instance.reschedule(updated));
     return updated;
@@ -327,6 +523,12 @@ class NoeticaRepository {
   }
 
   /// Apply a remote axis row using Last-Writer-Wins. Returns true if accepted.
+  ///
+  /// CRITICAL: this used to use `INSERT OR REPLACE`, but REPLACE on
+  /// existing rows trips the entry_axes(axis_id) ON DELETE CASCADE
+  /// foreign key and wipes every link from completed tasks to the axis
+  /// — silently zeroing the Древо on every sync pull. We now branch on
+  /// existence: UPDATE for known IDs, INSERT otherwise.
   Future<bool> mergeRemoteAxis(m.LifeAxis remote) async {
     final existing = await _db.raw.query(
       'axes',
@@ -340,12 +542,15 @@ class NoeticaRepository {
       if (localUpdated >= remote.updatedAt.millisecondsSinceEpoch) {
         return false;
       }
+      await _db.raw.update(
+        'axes',
+        remote.toMap(),
+        where: 'id = ?',
+        whereArgs: [remote.id],
+      );
+    } else {
+      await _db.raw.insert('axes', remote.toMap());
     }
-    await _db.raw.insert(
-      'axes',
-      remote.toMap(),
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
     return true;
   }
 
@@ -398,7 +603,14 @@ class NoeticaRepository {
   // ---------- scores ----------
 
   /// Compute a 0..100 axis score based on completed tasks within
-  /// [_xpDecayWindow]. Linear decay: contribution = xp * (1 - age/window).
+  /// [_xpDecayWindow].
+  ///
+  /// Each task's XP is split across its attached axes via *normalised*
+  /// weights — i.e. the per-axis contribution is `xp * decayFactor *
+  /// weight / sumOfWeightsForThisTask`. With the default `weight = 1.0`
+  /// this is exactly an even 1/N split, which is the deterministic
+  /// "fair share" the user asked for. LLM-generated tasks ship explicit
+  /// weights; manual tasks fall through to the even split.
   Future<List<m.AxisScore>> computeScores() async {
     final axes = await listAxes();
     if (axes.isEmpty) return const [];
@@ -406,7 +618,11 @@ class NoeticaRepository {
     final cutoff = now.subtract(_xpDecayWindow).millisecondsSinceEpoch;
     final rows = await _db.raw.rawQuery(
       '''
-      SELECT ea.axis_id AS axis_id, e.completed_at AS completed_at, e.xp AS xp
+      SELECT ea.entry_id AS entry_id,
+             ea.axis_id AS axis_id,
+             ea.weight AS weight,
+             e.completed_at AS completed_at,
+             e.xp AS xp
       FROM entries e
       JOIN entry_axes ea ON ea.entry_id = e.id
       WHERE e.kind = ?
@@ -416,16 +632,35 @@ class NoeticaRepository {
       ''',
       [m.EntryKind.task.name, cutoff],
     );
-    final raw = <String, double>{for (final a in axes) a.id: 0.0};
+    final knownAxisIds = {for (final a in axes) a.id};
+
+    // Group rows by entry so we can normalise weights per task.
+    final perEntry = <String, List<Map<String, Object?>>>{};
     for (final r in rows) {
-      final axisId = r['axis_id']! as String;
-      if (!raw.containsKey(axisId)) continue;
-      final completedAt = r['completed_at']! as int;
-      final xp = (r['xp'] as int?) ?? 0;
+      final eid = r['entry_id']! as String;
+      perEntry.putIfAbsent(eid, () => []).add(r);
+    }
+
+    final raw = <String, double>{for (final a in axes) a.id: 0.0};
+    for (final entry in perEntry.values) {
+      // Filter to known axes only — drops orphan link rows from deleted
+      // axes that haven't been hard-deleted yet.
+      final live =
+          entry.where((r) => knownAxisIds.contains(r['axis_id'])).toList();
+      if (live.isEmpty) continue;
+      final totalWeight =
+          live.fold<double>(0, (s, r) => s + ((r['weight'] as num?) ?? 1.0));
+      if (totalWeight <= 0) continue;
+      final completedAt = live.first['completed_at']! as int;
+      final xp = (live.first['xp'] as int?) ?? 0;
       final ageMs = now.millisecondsSinceEpoch - completedAt;
-      final factor = 1.0 - (ageMs / _xpDecayWindow.inMilliseconds);
-      if (factor <= 0) continue;
-      raw[axisId] = (raw[axisId] ?? 0) + xp * factor;
+      final decay = 1.0 - (ageMs / _xpDecayWindow.inMilliseconds);
+      if (decay <= 0) continue;
+      for (final r in live) {
+        final axisId = r['axis_id']! as String;
+        final w = ((r['weight'] as num?) ?? 1.0) / totalWeight;
+        raw[axisId] = (raw[axisId] ?? 0) + xp * decay * w;
+      }
     }
     return axes.map((axis) {
       final r = raw[axis.id] ?? 0.0;
@@ -435,6 +670,50 @@ class NoeticaRepository {
   }
 
   // ---------- lifetime stats ----------
+
+  /// Lifetime XP per axis (no decay window). Each completed task's XP
+  /// is split across its axes via the same normalised-weight scheme as
+  /// [computeScores], so this is consistent with what the user sees on
+  /// the Древо. Powers per-axis level rings ("Тело L3 · 540 XP").
+  Future<Map<String, int>> axisLifetimeXp() async {
+    final axes = await listAxes();
+    if (axes.isEmpty) return const {};
+    final knownAxisIds = {for (final a in axes) a.id};
+    final rows = await _db.raw.rawQuery(
+      '''
+      SELECT ea.entry_id AS entry_id,
+             ea.axis_id AS axis_id,
+             ea.weight AS weight,
+             e.xp AS xp
+      FROM entries e
+      JOIN entry_axes ea ON ea.entry_id = e.id
+      WHERE e.kind = ?
+        AND e.completed_at IS NOT NULL
+        AND e.deleted_at IS NULL
+      ''',
+      [m.EntryKind.task.name],
+    );
+    final perEntry = <String, List<Map<String, Object?>>>{};
+    for (final r in rows) {
+      perEntry.putIfAbsent(r['entry_id']! as String, () => []).add(r);
+    }
+    final out = <String, double>{for (final a in axes) a.id: 0};
+    for (final entry in perEntry.values) {
+      final live =
+          entry.where((r) => knownAxisIds.contains(r['axis_id'])).toList();
+      if (live.isEmpty) continue;
+      final totalWeight =
+          live.fold<double>(0, (s, r) => s + ((r['weight'] as num?) ?? 1.0));
+      if (totalWeight <= 0) continue;
+      final xp = (live.first['xp'] as int?) ?? 0;
+      for (final r in live) {
+        final axisId = r['axis_id']! as String;
+        final w = ((r['weight'] as num?) ?? 1.0) / totalWeight;
+        out[axisId] = (out[axisId] ?? 0) + xp * w;
+      }
+    }
+    return out.map((k, v) => MapEntry(k, v.round()));
+  }
 
   /// Total XP across **all** completed tasks ever — no decay window.
   /// Powers the persistent profile level.

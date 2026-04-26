@@ -13,10 +13,14 @@ class NoeticaDb {
   final Database _db;
   Database get raw => _db;
 
-  /// Bumped to 2 to add `updated_at` (axes) and `deleted_at` (axes + entries)
-  /// for cloud-sync. v1 databases are migrated in place; new installs get the
-  /// columns directly.
-  static const int currentSchemaVersion = 2;
+  /// v3 adds `task_reflections` for the post-completion reflection sheet.
+  /// v4 adds `entry_axes.weight` so XP can be split deterministically
+  /// across the axes a task touches (LLM-generated tasks ship explicit
+  /// weights; manually-tagged tasks fall back to an even 1/N split).
+  /// v5 adds `entries.base_xp` so the reflection-difficulty multiplier
+  /// is always applied to the original XP, never to a previously-
+  /// adjusted value (used to compound on every re-complete cycle).
+  static const int currentSchemaVersion = 5;
 
   static Future<NoeticaDb> open() async {
     final path = await _databasePath();
@@ -64,6 +68,7 @@ class NoeticaDb {
         due_at INTEGER,
         completed_at INTEGER,
         xp INTEGER NOT NULL DEFAULT 10,
+        base_xp INTEGER NOT NULL DEFAULT 10,
         deleted_at INTEGER
       )
     ''');
@@ -77,6 +82,7 @@ class NoeticaDb {
       CREATE TABLE entry_axes (
         entry_id TEXT NOT NULL REFERENCES entries(id) ON DELETE CASCADE,
         axis_id TEXT NOT NULL REFERENCES axes(id) ON DELETE CASCADE,
+        weight REAL NOT NULL DEFAULT 1.0,
         PRIMARY KEY (entry_id, axis_id)
       )
     ''');
@@ -84,6 +90,23 @@ class NoeticaDb {
         'CREATE INDEX idx_entry_axes_entry ON entry_axes(entry_id)');
     await db.execute(
         'CREATE INDEX idx_entry_axes_axis ON entry_axes(axis_id)');
+    await _createReflectionsTable(db);
+  }
+
+  static Future<void> _createReflectionsTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE task_reflections (
+        id TEXT PRIMARY KEY,
+        entry_id TEXT NOT NULL REFERENCES entries(id) ON DELETE CASCADE,
+        status TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        outcome TEXT NOT NULL DEFAULT '',
+        difficulties TEXT NOT NULL DEFAULT '',
+        actual_minutes INTEGER
+      )
+    ''');
+    await db.execute(
+        'CREATE INDEX idx_task_reflections_entry ON task_reflections(entry_id)');
   }
 
   static Future<void> _onUpgrade(
@@ -111,6 +134,26 @@ class NoeticaDb {
           'CREATE INDEX IF NOT EXISTS idx_entry_axes_entry ON entry_axes(entry_id)');
       await db.execute(
           'CREATE INDEX IF NOT EXISTS idx_entry_axes_axis ON entry_axes(axis_id)');
+    }
+    if (oldVersion < 3) {
+      await _createReflectionsTable(db);
+    }
+    if (oldVersion < 4) {
+      // SQLite ALTER TABLE ADD COLUMN with a literal default is allowed.
+      // Existing rows get weight = 1.0; the score routine normalises so
+      // that's interpreted as an even 1/N split, matching legacy
+      // behaviour on the displayed pentagon.
+      await db.execute(
+          'ALTER TABLE entry_axes ADD COLUMN weight REAL NOT NULL DEFAULT 1.0');
+    }
+    if (oldVersion < 5) {
+      // base_xp = whatever xp was at migration time, since we have no
+      // record of the original. Future completions will pin themselves
+      // to this value, so the compounding bug stops. Old rows that
+      // never get re-completed are unaffected.
+      await db.execute(
+          'ALTER TABLE entries ADD COLUMN base_xp INTEGER NOT NULL DEFAULT 10');
+      await db.execute('UPDATE entries SET base_xp = xp');
     }
   }
 

@@ -6,24 +6,63 @@ import '../../providers.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/time_utils.dart';
 import '../../widgets/brand_glyph.dart';
-import '../entry/entry_card.dart';
+import '../../services/weekly_reflection_service.dart';
 import '../entry/entry_editor_sheet.dart';
+import '../knowledge/knowledge_graph_screen.dart';
 import '../notes/notes_screen.dart';
 import '../pomodoro/pomodoro_sheet.dart';
+import '../reflection/reflection_sheet.dart';
+import '../reflection/weekly_reflection_sheet.dart';
 import '../self/pentagon_painter.dart';
+import '../self/self_screen.dart';
 import '../tasks/tasks_screen.dart';
 
-/// "Сейчас" tab — at-a-glance dashboard:
-/// streak / week activity / top axes / nearest task / timeline.
-class DashboardScreen extends ConsumerWidget {
+/// "Сейчас" tab — focused dashboard.
+///
+/// Tight visual hierarchy:
+///   1. Greeting + today summary
+///   2. «Сейчас» — the single task to act on right now
+///   3. «Сегодня» — compact list of today's tasks
+///   4. «Пульс» — week bars + streak in one horizontal strip
+///   5. «Последнее» — last 3 entries, link to Журнал
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  bool _showWeeklyBanner = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkWeeklyPrompt();
+  }
+
+  Future<void> _checkWeeklyPrompt() async {
+    final should = await WeeklyReflectionService.instance.shouldPrompt();
+    if (!mounted) return;
+    if (should != _showWeeklyBanner) {
+      setState(() => _showWeeklyBanner = should);
+    }
+  }
+
+  Future<void> _openWeeklyReflection() async {
+    await WeeklyReflectionSheet.show(context);
+    if (!mounted) return;
+    // Re-check (the user may have submitted, snoozed, or just dismissed).
+    _checkWeeklyPrompt();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final palette = context.palette;
     final entriesAsync = ref.watch(entriesProvider);
     final axesAsync = ref.watch(axesProvider);
-    final scoresAsync = ref.watch(scoresProvider);
+    final profileAsync = ref.watch(profileProvider);
+    final isDesktop = MediaQuery.of(context).size.width >= 900;
 
     return Scaffold(
       appBar: AppBar(
@@ -34,17 +73,28 @@ class DashboardScreen extends ConsumerWidget {
         leadingWidth: 48,
         title: const Text('Сейчас'),
         actions: [
-          IconButton(
-            tooltip: 'Журнал',
-            icon: const Icon(Icons.bookmark_border_outlined),
-            onPressed: () {
-              Navigator.of(context).push(
+          if (!isDesktop)
+            IconButton(
+              tooltip: 'Журнал',
+              icon: const Icon(Icons.bookmark_border_outlined),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const NotesScreen(),
+                  ),
+                );
+              },
+            ),
+          if (!isDesktop)
+            IconButton(
+              tooltip: 'База знаний',
+              icon: const Icon(Icons.account_tree_outlined),
+              onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
-                  builder: (_) => const NotesScreen(),
+                  builder: (_) => const KnowledgeGraphScreen(),
                 ),
-              );
-            },
-          ),
+              ),
+            ),
           IconButton(
             tooltip: 'Pomodoro',
             icon: const Icon(Icons.timer_outlined),
@@ -58,71 +108,142 @@ class DashboardScreen extends ConsumerWidget {
         error: (e, _) => Center(child: Text('$e')),
         data: (entries) {
           final axes = axesAsync.valueOrNull ?? const <LifeAxis>[];
-          final scores = scoresAsync.valueOrNull ?? const <AxisScore>[];
           final axesById = {for (final a in axes) a.id: a};
 
           if (entries.isEmpty) {
             return _Empty(palette: palette);
           }
 
-          // Active tasks sorted by due-asc / created-desc.
-          final activeTasks = entries.where((e) => e.isTask && !e.isCompleted).toList()
-            ..sort((a, b) {
-              final ad = a.dueAt;
-              final bd = b.dueAt;
-              if (ad == null && bd != null) return 1;
-              if (ad != null && bd == null) return -1;
-              if (ad != null && bd != null) return ad.compareTo(bd);
-              return b.createdAt.compareTo(a.createdAt);
-            });
+          final now = DateTime.now();
+          final today = DateTime(now.year, now.month, now.day);
+          final endOfToday = today.add(const Duration(days: 1));
 
-          // Timeline: full reverse-chrono list with gap dividers.
-          final timelineWidgets = <Widget>[];
-          for (var i = 0; i < entries.length; i++) {
-            final e = entries[i];
-            if (i > 0) {
-              final prev = entries[i - 1];
-              timelineWidgets.add(GapDivider(
-                from: e.createdAt,
-                to: prev.createdAt,
-              ));
-            }
-            timelineWidgets.add(EntryCard(entry: e, axesById: axesById));
-          }
+          final activeTasks =
+              entries.where((e) => e.isTask && !e.isCompleted).toList()
+                ..sort((a, b) {
+                  final ad = a.dueAt;
+                  final bd = b.dueAt;
+                  if (ad == null && bd != null) return 1;
+                  if (ad != null && bd == null) return -1;
+                  if (ad != null && bd != null) return ad.compareTo(bd);
+                  return b.createdAt.compareTo(a.createdAt);
+                });
+
+          final overdue =
+              activeTasks.where((t) => t.dueAt != null && t.dueAt!.isBefore(now));
+          final dueToday = activeTasks.where((t) =>
+              t.dueAt != null &&
+              !t.dueAt!.isBefore(today) &&
+              t.dueAt!.isBefore(endOfToday));
+
+          // Now-focus pick: first overdue → first due-today → first active.
+          final focus = overdue.isNotEmpty
+              ? overdue.first
+              : (dueToday.isNotEmpty
+                  ? dueToday.first
+                  : (activeTasks.isNotEmpty ? activeTasks.first : null));
+
+          // Today list (excludes the focus pick to avoid duplicate row).
+          final todayList = [
+            ...overdue.where((e) => e.id != focus?.id),
+            ...dueToday.where((e) => e.id != focus?.id),
+          ];
+
+          final stats = _DashboardStats.from(entries);
+          final greeting = _greeting(now, profileAsync.valueOrNull?.name);
 
           return ListView(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
             children: [
-              _StatsHero(
-                entries: entries,
+              if (_showWeeklyBanner) ...[
+                _WeeklyBanner(
+                  palette: palette,
+                  onOpen: _openWeeklyReflection,
+                ),
+                const SizedBox(height: 14),
+              ],
+              _Greeting(
+                title: greeting,
+                subtitle: _todaySubtitle(stats, overdue.length, dueToday.length),
                 palette: palette,
               ),
-              const SizedBox(height: 14),
-              if (scores.length >= 3)
-                _PentagonCard(scores: scores, palette: palette),
-              if (scores.length >= 3) const SizedBox(height: 14),
-              _NearestTasksCard(
-                tasks: activeTasks.take(3).toList(),
+              const SizedBox(height: 18),
+              _SectionHeader(label: 'СЕЙЧАС', palette: palette),
+              const SizedBox(height: 8),
+              _NowFocusCard(
+                task: focus,
                 axesById: axesById,
                 palette: palette,
-                hasMore: activeTasks.length > 3,
+              ),
+              if (todayList.isNotEmpty) ...[
+                const SizedBox(height: 22),
+                _SectionHeader(
+                  label: 'СЕГОДНЯ',
+                  palette: palette,
+                  trailing: '${todayList.length}',
+                ),
+                const SizedBox(height: 4),
+                for (final t in todayList.take(6))
+                  _CompactTaskRow(
+                    task: t,
+                    axesById: axesById,
+                    palette: palette,
+                  ),
+                if (todayList.length > 6)
+                  _AllTasksLink(
+                    label: 'ещё ${todayList.length - 6} задач',
+                    palette: palette,
+                  ),
+              ],
+              const SizedBox(height: 22),
+              _SectionHeader(label: 'ПУЛЬС', palette: palette),
+              const SizedBox(height: 8),
+              _PulseSection(
+                stats: stats,
+                axesById: axesById,
+                palette: palette,
+                onTapDeadline: focus == null
+                    ? null
+                    : () => showEntryEditor(context, ref, existing: focus),
               ),
               const SizedBox(height: 22),
-              Padding(
-                padding: const EdgeInsets.only(left: 4, bottom: 8),
-                child: Text(
-                  'ЛЕНТА',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: palette.muted,
-                        letterSpacing: 1.6,
-                        fontWeight: FontWeight.w600,
-                      ),
+              _SectionHeader(label: 'АКТИВНОСТЬ', palette: palette,
+                  trailing: '${stats.heatmap.fold(0, (a, b) => a + b)} закрыто за 90 дней'),
+              const SizedBox(height: 8),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 720),
+                child: _ActivityHeatmap(values: stats.heatmap, palette: palette),
+              ),
+              if (axes.length >= 3) ...[
+                const SizedBox(height: 22),
+                _SectionHeader(
+                  label: 'ДРЕВО',
+                  palette: palette,
+                  trailing: 'все →',
+                  onTrailingTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const SelfScreen(),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                _MiniTreeCard(palette: palette),
+              ],
+              const SizedBox(height: 22),
+              _SectionHeader(
+                label: 'ПОСЛЕДНЕЕ',
+                palette: palette,
+                trailing: 'журнал →',
+                onTrailingTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(builder: (_) => const NotesScreen()),
                 ),
               ),
-              for (final w in timelineWidgets)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
-                  child: w,
+              const SizedBox(height: 4),
+              for (final e in entries.take(4))
+                _CompactEntryRow(
+                  entry: e,
+                  axesById: axesById,
+                  palette: palette,
                 ),
             ],
           );
@@ -132,309 +253,246 @@ class DashboardScreen extends ConsumerWidget {
   }
 }
 
-class _StatsHero extends StatelessWidget {
-  const _StatsHero({required this.entries, required this.palette});
-
-  final List<Entry> entries;
-  final NoeticaPalette palette;
-
-  @override
-  Widget build(BuildContext context) {
-    final stats = _DashboardStats.from(entries);
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: palette.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: palette.line),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              _Metric(
-                value: stats.streak.toString(),
-                label: stats.streak == 0
-                    ? 'нет стрика'
-                    : _plural(stats.streak, 'день', 'дня', 'дней'),
-                palette: palette,
-              ),
-              const SizedBox(width: 24),
-              _Metric(
-                value: stats.todayCompleted.toString(),
-                label: 'выполнено сегодня',
-                palette: palette,
-              ),
-              const SizedBox(width: 24),
-              _Metric(
-                value: stats.weekCompleted.toString(),
-                label: 'за неделю',
-                palette: palette,
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          _WeekBars(perDay: stats.perDay, palette: palette),
-          const SizedBox(height: 6),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                _weekdayLabel(stats.firstDay),
-                style: TextStyle(color: palette.muted, fontSize: 11),
-              ),
-              Text(
-                'сегодня',
-                style: TextStyle(color: palette.muted, fontSize: 11),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+String _greeting(DateTime now, String? name) {
+  final h = now.hour;
+  final base = h < 5
+      ? 'Доброй ночи'
+      : (h < 12 ? 'Доброе утро' : (h < 18 ? 'Добрый день' : 'Добрый вечер'));
+  if (name == null || name.trim().isEmpty) return base;
+  return '$base, ${name.trim().split(' ').first}';
 }
 
-class _Metric extends StatelessWidget {
-  const _Metric({
-    required this.value,
-    required this.label,
+String _todaySubtitle(_DashboardStats stats, int overdue, int today) {
+  final parts = <String>[];
+  if (overdue > 0) {
+    parts.add('$overdue ${_plural(overdue, "просрочена", "просрочено", "просрочено")}');
+  }
+  if (today > 0) parts.add('$today на сегодня');
+  if (parts.isEmpty) {
+    if (stats.streak > 0) {
+      return 'стрик ${stats.streak} ${_plural(stats.streak, "день", "дня", "дней")}';
+    }
+    return 'свободный день';
+  }
+  return parts.join(' · ');
+}
+
+class _Greeting extends StatelessWidget {
+  const _Greeting({
+    required this.title,
+    required this.subtitle,
     required this.palette,
   });
 
-  final String value;
-  final String label;
+  final String title;
+  final String subtitle;
   final NoeticaPalette palette;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          value,
+          title,
           style: TextStyle(
             color: palette.fg,
-            fontSize: 28,
+            fontSize: 22,
             fontWeight: FontWeight.w700,
-            height: 1.0,
+            height: 1.1,
           ),
         ),
         const SizedBox(height: 4),
         Text(
-          label,
-          style: TextStyle(
-            color: palette.muted,
-            fontSize: 11,
-            letterSpacing: 0.6,
-          ),
+          subtitle,
+          style: TextStyle(color: palette.muted, fontSize: 13),
         ),
       ],
     );
   }
 }
 
-class _WeekBars extends StatelessWidget {
-  const _WeekBars({required this.perDay, required this.palette});
-
-  /// Last-7-days completion counts, oldest first.
-  final List<int> perDay;
-  final NoeticaPalette palette;
-
-  @override
-  Widget build(BuildContext context) {
-    final maxV = perDay.fold<int>(1, (a, b) => b > a ? b : a);
-    return SizedBox(
-      height: 44,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          for (final v in perDay) ...[
-            Expanded(
-              child: TweenAnimationBuilder<double>(
-                duration: const Duration(milliseconds: 450),
-                curve: Curves.easeOutCubic,
-                tween: Tween(begin: 0, end: v / maxV),
-                builder: (_, frac, __) {
-                  return FractionallySizedBox(
-                    heightFactor: frac.clamp(0.04, 1.0),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: v == 0 ? palette.line : palette.fg,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(width: 4),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _PentagonCard extends StatelessWidget {
-  const _PentagonCard({required this.scores, required this.palette});
-
-  final List<AxisScore> scores;
-  final NoeticaPalette palette;
-
-  @override
-  Widget build(BuildContext context) {
-    final sorted = [...scores]..sort((a, b) => b.value.compareTo(a.value));
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
-      decoration: BoxDecoration(
-        color: palette.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: palette.line),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          SizedBox(
-            width: 130,
-            height: 130,
-            child: CustomPaint(
-              painter: PentagonPainter(
-                scores: scores,
-                fg: palette.fg,
-                muted: palette.muted,
-                line: palette.line,
-                bg: palette.bg,
-              ),
-              child: const SizedBox.expand(),
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'РОСТ',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: palette.muted,
-                        letterSpacing: 1.6,
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
-                const SizedBox(height: 8),
-                for (final s in sorted.take(3))
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 3),
-                    child: Row(
-                      children: [
-                        Text(s.axis.symbol,
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: palette.fg,
-                            )),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            s.axis.name,
-                            style: TextStyle(
-                              color: palette.fg,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        Text(
-                          s.value.round().toString(),
-                          style: TextStyle(color: palette.muted),
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _NearestTasksCard extends ConsumerWidget {
-  const _NearestTasksCard({
-    required this.tasks,
-    required this.axesById,
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({
+    required this.label,
     required this.palette,
-    required this.hasMore,
+    this.trailing,
+    this.onTrailingTap,
   });
 
-  final List<Entry> tasks;
+  final String label;
+  final NoeticaPalette palette;
+  final String? trailing;
+  final VoidCallback? onTrailingTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: palette.muted,
+            fontSize: 11,
+            letterSpacing: 1.6,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const Spacer(),
+        if (trailing != null)
+          InkWell(
+            onTap: onTrailingTap,
+            borderRadius: BorderRadius.circular(4),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+              child: Text(
+                trailing!,
+                style: TextStyle(
+                  color: onTrailingTap != null ? palette.fg : palette.muted,
+                  fontSize: 11,
+                  letterSpacing: 1.2,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _NowFocusCard extends ConsumerWidget {
+  const _NowFocusCard({
+    required this.task,
+    required this.axesById,
+    required this.palette,
+  });
+
+  final Entry? task;
   final Map<String, LifeAxis> axesById;
   final NoeticaPalette palette;
-  final bool hasMore;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-      decoration: BoxDecoration(
-        color: palette.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: palette.line),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(
-                'БЛИЖАЙШИЕ ЗАДАЧИ',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: palette.muted,
-                      letterSpacing: 1.6,
-                      fontWeight: FontWeight.w600,
-                    ),
+    if (task == null) {
+      return Container(
+        padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
+        decoration: BoxDecoration(
+          color: palette.surface,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: palette.line),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.check_circle_outline, color: palette.muted, size: 22),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Активных задач нет — отдохни или создай новую.',
+                style: TextStyle(color: palette.fg, fontSize: 14),
               ),
-              const Spacer(),
-              if (hasMore)
-                TextButton(
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    minimumSize: const Size(0, 28),
-                  ),
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const TasksScreen()),
-                  ),
+            ),
+          ],
+        ),
+      );
+    }
+    final t = task!;
+    final overdue = t.dueAt != null && t.dueAt!.isBefore(DateTime.now());
+    final firstAxis =
+        t.axisIds.isNotEmpty ? axesById[t.axisIds.first] : null;
+
+    return InkWell(
+      onTap: () => showEntryEditor(context, ref, existing: t),
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        decoration: BoxDecoration(
+          color: palette.surface,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: overdue ? palette.fg : palette.line,
+            width: overdue ? 1.5 : 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
                   child: Text(
-                    'Все →',
-                    style: TextStyle(color: palette.fg),
+                    t.title.isEmpty ? '—' : t.title,
+                    style: TextStyle(
+                      color: palette.fg,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w600,
+                      height: 1.25,
+                    ),
                   ),
                 ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          if (tasks.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Text(
-                'Активных задач нет.',
-                style: TextStyle(color: palette.muted),
+                if (firstAxis != null) ...[
+                  const SizedBox(width: 8),
+                  Text(firstAxis.symbol,
+                      style: TextStyle(color: palette.fg, fontSize: 18)),
+                ],
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              t.dueAt != null
+                  ? (overdue
+                      ? 'просрочена · ${formatTimestamp(t.dueAt!)}'
+                      : 'до ${formatTimestamp(t.dueAt!)}')
+                  : 'без дедлайна',
+              style: TextStyle(
+                color: overdue ? palette.fg : palette.muted,
+                fontSize: 12,
+                fontWeight: overdue ? FontWeight.w600 : FontWeight.w400,
               ),
-            )
-          else
-            for (final t in tasks)
-              _NearestTaskRow(task: t, axesById: axesById, palette: palette),
-        ],
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: () => PomodoroSheet.show(context),
+                    icon: const Icon(Icons.play_arrow_rounded, size: 18),
+                    label: const Text('Фокус'),
+                    style: FilledButton.styleFrom(
+                      padding:
+                          const EdgeInsets.symmetric(vertical: 10),
+                      backgroundColor: palette.fg,
+                      foregroundColor: palette.bg,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () =>
+                        toggleTaskWithReflection(context, ref, t),
+                    icon: const Icon(Icons.check_rounded, size: 18),
+                    label: const Text('Готово'),
+                    style: OutlinedButton.styleFrom(
+                      padding:
+                          const EdgeInsets.symmetric(vertical: 10),
+                      foregroundColor: palette.fg,
+                      side: BorderSide(color: palette.line),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _NearestTaskRow extends ConsumerWidget {
-  const _NearestTaskRow({
+class _CompactTaskRow extends ConsumerWidget {
+  const _CompactTaskRow({
     required this.task,
     required this.axesById,
     required this.palette,
@@ -448,73 +506,424 @@ class _NearestTaskRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final overdue =
         task.dueAt != null && task.dueAt!.isBefore(DateTime.now());
+    final firstAxis =
+        task.axisIds.isNotEmpty ? axesById[task.axisIds.first] : null;
+
     return InkWell(
       onTap: () => showEntryEditor(context, ref, existing: task),
       borderRadius: BorderRadius.circular(6),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             InkWell(
-              onTap: () async {
-                final repo = await ref.read(repositoryProvider.future);
-                await repo.toggleTaskComplete(task);
-              },
+              onTap: () => toggleTaskWithReflection(context, ref, task),
               borderRadius: BorderRadius.circular(4),
               child: Padding(
-                padding: const EdgeInsets.all(2),
+                padding: const EdgeInsets.all(4),
                 child: Container(
-                  width: 18,
-                  height: 18,
+                  width: 16,
+                  height: 16,
                   decoration: BoxDecoration(
                     border: Border.all(color: palette.fg, width: 1.5),
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(3),
                   ),
                 ),
               ),
             ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                task.title.isEmpty ? '—' : task.title,
+                style: TextStyle(
+                  color: palette.fg,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (task.dueAt != null) ...[
+              const SizedBox(width: 8),
+              Text(
+                _shortDue(task.dueAt!),
+                style: TextStyle(
+                  color: overdue ? palette.fg : palette.muted,
+                  fontSize: 11,
+                  fontWeight:
+                      overdue ? FontWeight.w600 : FontWeight.w400,
+                ),
+              ),
+            ],
+            if (firstAxis != null) ...[
+              const SizedBox(width: 8),
+              Text(firstAxis.symbol,
+                  style: TextStyle(color: palette.fg, fontSize: 13)),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CompactEntryRow extends ConsumerWidget {
+  const _CompactEntryRow({
+    required this.entry,
+    required this.axesById,
+    required this.palette,
+  });
+
+  final Entry entry;
+  final Map<String, LifeAxis> axesById;
+  final NoeticaPalette palette;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final firstAxis =
+        entry.axisIds.isNotEmpty ? axesById[entry.axisIds.first] : null;
+    final isTask = entry.isTask;
+    return InkWell(
+      onTap: () => showEntryEditor(context, ref, existing: entry),
+      borderRadius: BorderRadius.circular(6),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Icon(
+                isTask
+                    ? (entry.isCompleted
+                        ? Icons.check_box_outlined
+                        : Icons.check_box_outline_blank)
+                    : Icons.short_text,
+                size: 14,
+                color: palette.muted,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    entry.title.isEmpty
+                        ? (entry.body.isEmpty ? '—' : entry.body)
+                        : entry.title,
+                    style: TextStyle(
+                      color: palette.fg,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    formatTimestamp(entry.createdAt),
+                    style: TextStyle(color: palette.muted, fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+            if (firstAxis != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(firstAxis.symbol,
+                    style: TextStyle(color: palette.muted, fontSize: 13)),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _shortDue(DateTime due) {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final dueDay = DateTime(due.year, due.month, due.day);
+  final delta = dueDay.difference(today).inDays;
+  final hh = due.hour.toString().padLeft(2, '0');
+  final mm = due.minute.toString().padLeft(2, '0');
+  if (delta == 0) return '$hh:$mm';
+  if (delta == 1) return 'завтра $hh:$mm';
+  if (delta == -1) return 'вчера $hh:$mm';
+  if (delta < 0) return '${-delta}д назад';
+  if (delta < 7) return 'через $delta д';
+  return '$dueDay'.substring(0, 10);
+}
+
+class _AllTasksLink extends StatelessWidget {
+  const _AllTasksLink({required this.label, required this.palette});
+
+  final String label;
+  final NoeticaPalette palette;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: TextButton(
+        style: TextButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          minimumSize: const Size(0, 28),
+          alignment: Alignment.centerLeft,
+        ),
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const TasksScreen()),
+        ),
+        child: Text(
+          '$label →',
+          style: TextStyle(color: palette.muted, fontSize: 12),
+        ),
+      ),
+    );
+  }
+}
+
+/// Hero "Пульс" block. Two large hero cards (стрик + XP) with a 7-day
+/// activity strip below, and a slim row of best-axis + deadline pills.
+/// Replaces the old 4-grid + thin strip combo, which felt cramped and
+/// didn't read at a glance.
+class _PulseSection extends StatelessWidget {
+  const _PulseSection({
+    required this.stats,
+    required this.axesById,
+    required this.palette,
+    this.onTapDeadline,
+  });
+
+  final _DashboardStats stats;
+  final Map<String, LifeAxis> axesById;
+  final NoeticaPalette palette;
+  final VoidCallback? onTapDeadline;
+
+  @override
+  Widget build(BuildContext context) {
+    final dl = stats.nextDeadline;
+    final dlValue = dl == null
+        ? '—'
+        : (dl.difference(DateTime.now()).inHours < 24
+            ? '${dl.difference(DateTime.now()).inHours}ч'
+            : '${dl.difference(DateTime.now()).inDays}д');
+    final dlHint = dl == null
+        ? 'нет дедлайнов'
+        : 'до ${formatTimestamp(dl)}';
+    final bestAxisName = stats.bestAxis != null
+        ? (axesById[stats.bestAxis!]?.name ?? '—')
+        : null;
+    final xpHint = bestAxisName != null
+        ? '+${stats.bestAxisXp} XP · $bestAxisName'
+        : '${stats.totalXpWeek} XP за неделю';
+
+    // Three equal-height cards on a single row. IntrinsicHeight forces
+    // them to share the tallest content's height, so the previous
+    // mismatch (sparkline card vs text card) is gone.
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: _StatCard(
+              palette: palette,
+              value: stats.streak.toString(),
+              label: 'СТРИК',
+              hint: stats.streak == 0
+                  ? 'начни сегодня'
+                  : _plural(stats.streak, 'день', 'дня', 'дней'),
+              footer: SizedBox(
+                height: 24,
+                child: _WeekBars(perDay: stats.perDay, palette: palette),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _StatCard(
+              palette: palette,
+              value: stats.totalXpToday.toString(),
+              label: 'XP СЕГОДНЯ',
+              hint: xpHint,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _StatCard(
+              palette: palette,
+              value: dlValue,
+              label: 'БЛИЖАЙШИЙ',
+              hint: dlHint,
+              onTap: onTapDeadline,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Compact stat card with a big value, an uppercase label, a single
+/// hint line, and an optional footer slot. Replaces the old wide
+/// `_HeroCard`-with-mismatched-children layout that looked awkward
+/// when one card had a sparkline and the other had two-line text.
+class _StatCard extends StatelessWidget {
+  const _StatCard({
+    required this.palette,
+    required this.value,
+    required this.label,
+    required this.hint,
+    this.footer,
+    this.onTap,
+  });
+
+  final NoeticaPalette palette;
+  final String value;
+  final String label;
+  final String hint;
+  final Widget? footer;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final card = Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: palette.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: palette.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: palette.muted,
+              fontSize: 10,
+              letterSpacing: 1.2,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: TextStyle(
+                color: palette.fg,
+                fontSize: 28,
+                fontWeight: FontWeight.w700,
+                height: 1.0,
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            hint,
+            style: TextStyle(color: palette.muted, fontSize: 11),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          if (footer != null) ...[
+            const SizedBox(height: 10),
+            footer!,
+          ],
+        ],
+      ),
+    );
+    if (onTap == null) return card;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: card,
+    );
+  }
+}
+
+class _WeekBars extends StatelessWidget {
+  const _WeekBars({required this.perDay, required this.palette});
+
+  final List<int> perDay;
+  final NoeticaPalette palette;
+
+  @override
+  Widget build(BuildContext context) {
+    final maxV = perDay.fold<int>(1, (a, b) => b > a ? b : a);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        for (final v in perDay) ...[
+          Expanded(
+            child: TweenAnimationBuilder<double>(
+              duration: const Duration(milliseconds: 450),
+              curve: Curves.easeOutCubic,
+              tween: Tween(begin: 0, end: v / maxV),
+              builder: (_, frac, __) {
+                return FractionallySizedBox(
+                  heightFactor: frac.clamp(0.04, 1.0),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: v == 0 ? palette.line : palette.fg,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(width: 3),
+        ],
+      ],
+    );
+  }
+}
+
+class _WeeklyBanner extends StatelessWidget {
+  const _WeeklyBanner({required this.palette, required this.onOpen});
+
+  final NoeticaPalette palette;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onOpen,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+        decoration: BoxDecoration(
+          color: palette.surface,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: palette.fg, width: 1.2),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.event_note_outlined, color: palette.fg, size: 22),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    task.title.isEmpty ? '—' : task.title,
+                    'Прошла неделя',
                     style: TextStyle(
                       color: palette.fg,
                       fontSize: 14,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w700,
                     ),
-                    overflow: TextOverflow.ellipsis,
                   ),
-                  if (task.dueAt != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Text(
-                        'до ${formatTimestamp(task.dueAt!)}',
-                        style: TextStyle(
-                          color: overdue ? palette.fg : palette.muted,
-                          fontSize: 11,
-                          fontWeight:
-                              overdue ? FontWeight.w600 : FontWeight.w400,
-                        ),
-                      ),
-                    ),
+                  Text(
+                    'Заглянем коротко на пройденное?',
+                    style: TextStyle(color: palette.muted, fontSize: 12),
+                  ),
                 ],
               ),
             ),
-            if (task.axisIds.isNotEmpty &&
-                axesById[task.axisIds.first] != null) ...[
-              const SizedBox(width: 8),
-              Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Text(
-                  axesById[task.axisIds.first]!.symbol,
-                  style: TextStyle(color: palette.fg, fontSize: 14),
-                ),
-              ),
-            ],
+            Icon(Icons.arrow_forward, color: palette.fg, size: 18),
           ],
         ),
       ),
@@ -562,25 +971,40 @@ class _DashboardStats {
     required this.todayCompleted,
     required this.weekCompleted,
     required this.perDay,
-    required this.firstDay,
+    required this.heatmap,
+    required this.totalXpToday,
+    required this.totalXpWeek,
+    required this.bestAxis,
+    required this.bestAxisXp,
+    required this.nextDeadline,
   });
 
   final int streak;
   final int todayCompleted;
   final int weekCompleted;
 
-  /// Last-7-days completion counts, oldest first.
+  /// Last 7 days of completed-task counts (oldest → today).
   final List<int> perDay;
 
-  /// First (oldest) day in [perDay].
-  final DateTime firstDay;
+  /// Last 91 days (13 weeks) of completed-task counts, oldest → today.
+  /// Used by the GitHub-style activity heatmap.
+  final List<int> heatmap;
+
+  final int totalXpToday;
+  final int totalXpWeek;
+
+  /// Axis ID with the highest XP earned in the past 7 days, or null when
+  /// nothing was completed.
+  final String? bestAxis;
+  final int bestAxisXp;
+
+  /// Earliest future due date among non-completed tasks, or null.
+  final DateTime? nextDeadline;
 
   factory _DashboardStats.from(List<Entry> entries) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final firstDay = DateTime(today.year, today.month, today.day - 6);
 
-    // Streak: consecutive days (back from today) with at least one entry.
     final activeDays = <DateTime>{};
     for (final e in entries) {
       activeDays.add(DateTime(
@@ -596,9 +1020,21 @@ class _DashboardStats {
       cursor = DateTime(cursor.year, cursor.month, cursor.day - 1);
     }
 
-    // Daily completion histogram for the last 7 days (oldest -> today).
+    const heatmapDays = 91;
     final perDay = List<int>.filled(7, 0);
+    final heatmap = List<int>.filled(heatmapDays, 0);
+    var totalXpToday = 0;
+    var totalXpWeek = 0;
+    final perAxisXpWeek = <String, int>{};
+    DateTime? nextDeadline;
+
     for (final e in entries) {
+      // Track upcoming deadline among open tasks.
+      if (e.isTask && !e.isCompleted && e.dueAt != null && e.dueAt!.isAfter(now)) {
+        if (nextDeadline == null || e.dueAt!.isBefore(nextDeadline)) {
+          nextDeadline = e.dueAt;
+        }
+      }
       final completedAt = e.completedAt;
       if (completedAt == null) continue;
       final day = DateTime(
@@ -610,14 +1046,357 @@ class _DashboardStats {
       if (diff >= 0 && diff < 7) {
         perDay[6 - diff] += 1;
       }
+      if (diff >= 0 && diff < heatmapDays) {
+        heatmap[heatmapDays - 1 - diff] += 1;
+      }
+      if (diff == 0) totalXpToday += e.xp;
+      if (diff >= 0 && diff < 7) {
+        totalXpWeek += e.xp;
+        // Naive even-split per axis for "best axis this week" display.
+        final ids = e.axisIds;
+        if (ids.isNotEmpty) {
+          final share = e.xp / ids.length;
+          for (final id in ids) {
+            perAxisXpWeek[id] =
+                (perAxisXpWeek[id] ?? 0) + share.round();
+          }
+        }
+      }
     }
+
+    String? bestAxis;
+    var bestAxisXp = 0;
+    perAxisXpWeek.forEach((k, v) {
+      if (v > bestAxisXp) {
+        bestAxis = k;
+        bestAxisXp = v;
+      }
+    });
 
     return _DashboardStats(
       streak: streak,
       todayCompleted: perDay[6],
       weekCompleted: perDay.fold(0, (a, b) => a + b),
       perDay: perDay,
-      firstDay: firstDay,
+      heatmap: heatmap,
+      totalXpToday: totalXpToday,
+      totalXpWeek: totalXpWeek,
+      bestAxis: bestAxis,
+      bestAxisXp: bestAxisXp,
+      nextDeadline: nextDeadline,
+    );
+  }
+}
+
+/// GitHub-style activity heatmap.
+///
+/// Layout matches GitHub closely: weekday labels on the left (Пн, Ср, Пт),
+/// month labels on top, columns are weeks, rows are days. Cell size caps
+/// at 14 px so on desktop the grid doesn't sprawl across the whole width.
+/// Bottom legend shows colour scale "меньше → больше" with 5 buckets.
+class _ActivityHeatmap extends StatelessWidget {
+  const _ActivityHeatmap({required this.values, required this.palette});
+
+  /// Day-of-completion counts, oldest first, length = 91 (13 weeks × 7).
+  final List<int> values;
+  final NoeticaPalette palette;
+
+  static const _weekdayLabels = ['Пн', '', 'Ср', '', 'Пт', '', ''];
+  static const _monthLabels = [
+    'янв', 'фев', 'мар', 'апр', 'май', 'июн',
+    'июл', 'авг', 'сен', 'окт', 'ноя', 'дек',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final maxV = values.fold<int>(0, (a, b) => b > a ? b : a);
+    const rows = 7;
+    const spacing = 3.0;
+    const labelGutter = 28.0;
+
+    // We want a true GitHub-style layout where row 0 = Monday and the
+    // rightmost column = the current calendar week, with today landing
+    // in its actual weekday row. Anchor everything to a Monday so the
+    // weekday label rail is correct.
+    final today = DateTime.now();
+    final todayD = DateTime(today.year, today.month, today.day);
+    // weekday: 1=Mon..7=Sun → 0..6 offset from Monday-of-this-week.
+    final mondayThisWeek = todayD.subtract(Duration(days: todayD.weekday - 1));
+    final cols = (values.length / rows).ceil();
+    final mondayFirstCol =
+        mondayThisWeek.subtract(Duration(days: (cols - 1) * 7));
+    // Window of dates we actually have data for (last 91 days, today
+    // inclusive). Cells outside this window are rendered blank.
+    final windowStart = todayD.subtract(Duration(days: values.length - 1));
+
+    // Map column → first month label visible for that column. Now keyed
+    // off `mondayFirstCol`, so labels actually line up with the calendar.
+    final monthMarkers = <int, String>{};
+    int? lastMonth;
+    for (var c = 0; c < cols; c++) {
+      final colStart = mondayFirstCol.add(Duration(days: c * 7));
+      if (lastMonth != colStart.month) {
+        monthMarkers[c] = _monthLabels[colStart.month - 1];
+        lastMonth = colStart.month;
+      }
+    }
+
+    // For a given (col, row) compute (a) the date that cell represents
+    // and (b) the count, indexing into `values` chronologically. Cells
+    // before the data window or after today are rendered blank.
+    int? cellValue(int c, int r) {
+      final date = mondayFirstCol.add(Duration(days: c * 7 + r));
+      if (date.isBefore(windowStart) || date.isAfter(todayD)) return null;
+      final idx = date.difference(windowStart).inDays;
+      if (idx < 0 || idx >= values.length) return null;
+      return values[idx];
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final available = constraints.maxWidth - labelGutter;
+        final raw = (available - (cols - 1) * spacing) / cols;
+        final cell = raw.clamp(8.0, 14.0).toDouble();
+        final gridWidth = cols * cell + (cols - 1) * spacing;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Month labels row.
+            SizedBox(
+              height: 14,
+              child: Row(
+                children: [
+                  const SizedBox(width: labelGutter),
+                  SizedBox(
+                    width: gridWidth,
+                    child: Stack(
+                      children: [
+                        for (final entry in monthMarkers.entries)
+                          Positioned(
+                            left: entry.key * (cell + spacing),
+                            child: Text(
+                              entry.value,
+                              style: TextStyle(
+                                color: palette.muted,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Day-of-week labels.
+                SizedBox(
+                  width: labelGutter,
+                  child: Column(
+                    children: [
+                      for (var r = 0; r < rows; r++) ...[
+                        SizedBox(
+                          height: cell,
+                          child: Text(
+                            _weekdayLabels[r],
+                            style: TextStyle(
+                              color: palette.muted,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ),
+                        if (r < rows - 1) const SizedBox(height: spacing),
+                      ],
+                    ],
+                  ),
+                ),
+                // The grid itself.
+                SizedBox(
+                  width: gridWidth,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (var c = 0; c < cols; c++) ...[
+                        Column(
+                          children: [
+                            for (var r = 0; r < rows; r++) ...[
+                              _buildCell(cellValue(c, r), cell, maxV),
+                              if (r < rows - 1)
+                                const SizedBox(height: spacing),
+                            ],
+                          ],
+                        ),
+                        if (c < cols - 1) const SizedBox(width: spacing),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            // Bottom legend.
+            Padding(
+              padding: const EdgeInsets.only(left: labelGutter),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('меньше',
+                      style: TextStyle(color: palette.muted, fontSize: 10)),
+                  const SizedBox(width: 6),
+                  for (final t in const [0.0, 0.25, 0.5, 0.75, 1.0]) ...[
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: _bucketColor(t),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(width: 3),
+                  ],
+                  const SizedBox(width: 3),
+                  Text('больше',
+                      style: TextStyle(color: palette.muted, fontSize: 10)),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildCell(int? value, double size, int maxV) {
+    if (value == null) {
+      // Out-of-window cell — completely transparent so the grid keeps
+      // its rectangular shape but the user sees we have no data there.
+      return SizedBox(width: size, height: size);
+    }
+    final t = maxV == 0 ? 0.0 : (value / maxV);
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: value == 0 ? palette.line.withOpacity(0.35) : _bucketColor(t),
+        borderRadius: BorderRadius.circular(2),
+      ),
+    );
+  }
+
+  Color _bucketColor(double t) {
+    if (t <= 0.001) return palette.line.withOpacity(0.35);
+    if (t < 0.34) return palette.fg.withOpacity(0.28);
+    if (t < 0.67) return palette.fg.withOpacity(0.55);
+    if (t < 0.99) return palette.fg.withOpacity(0.80);
+    return palette.fg;
+  }
+}
+
+/// Compact tappable Древо preview — small radar polygon plus axis-symbol
+/// strip and a hint. Animates entrance like the full one and routes to
+/// SelfScreen on tap.
+class _MiniTreeCard extends ConsumerWidget {
+  const _MiniTreeCard({required this.palette});
+
+  final NoeticaPalette palette;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scoresAsync = ref.watch(scoresProvider);
+    final levelStatsAsync = ref.watch(axisLevelStatsProvider);
+    return InkWell(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => const SelfScreen()),
+      ),
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+        decoration: BoxDecoration(
+          color: palette.surface,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: palette.line),
+        ),
+        child: scoresAsync.when(
+          loading: () => const SizedBox(height: 90),
+          error: (_, __) => const SizedBox(height: 0),
+          data: (scores) {
+            if (scores.isEmpty) {
+              return Text(
+                'Древо появится после первой ветви',
+                style: TextStyle(color: palette.muted, fontSize: 12),
+              );
+            }
+            final levels = levelStatsAsync.valueOrNull ?? const {};
+            final topAxis = scores.reduce(
+              (a, b) => a.value >= b.value ? a : b,
+            );
+            final topLevel = levels[topAxis.axis.id]?.level ?? 1;
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 96,
+                  height: 96,
+                  child: TweenAnimationBuilder<double>(
+                    duration: const Duration(milliseconds: 700),
+                    curve: Curves.easeOutCubic,
+                    tween: Tween(begin: 0, end: 1),
+                    builder: (_, t, __) => CustomPaint(
+                      painter: PentagonPainter(
+                        scores: scores,
+                        fg: palette.fg,
+                        muted: palette.muted,
+                        line: palette.line,
+                        bg: palette.bg,
+                        progress: t,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${scores.length} ветвей · L$topLevel ${topAxis.axis.name.toLowerCase()}',
+                        style: TextStyle(
+                          color: palette.fg,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        scores
+                            .map((s) =>
+                                '${s.axis.symbol} ${s.value.round()}')
+                            .join('  '),
+                        style: TextStyle(
+                          color: palette.muted,
+                          fontSize: 11,
+                          fontFamily: 'IBMPlexMono',
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'тап — посмотреть полностью',
+                        style: TextStyle(color: palette.muted, fontSize: 10),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
     );
   }
 }
@@ -628,19 +1407,4 @@ String _plural(int n, String one, String few, String many) {
   if (mod10 == 1 && mod100 != 11) return one;
   if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
   return many;
-}
-
-const _ruWeekdays = [
-  'пн',
-  'вт',
-  'ср',
-  'чт',
-  'пт',
-  'сб',
-  'вс',
-];
-
-String _weekdayLabel(DateTime d) {
-  // Dart: Monday=1..Sunday=7
-  return _ruWeekdays[d.weekday - 1];
 }

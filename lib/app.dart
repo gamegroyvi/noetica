@@ -5,7 +5,7 @@ import 'data/profile.dart';
 import 'features/auth/auth_gate_screen.dart';
 import 'features/home/home_shell.dart';
 import 'features/onboarding/onboarding_screen.dart';
-import 'features/onboarding/questionnaire_screen.dart';
+import 'features/onboarding/onboarding_chat_screen.dart';
 import 'providers.dart';
 import 'services/auth_service.dart';
 import 'theme/app_theme.dart';
@@ -80,7 +80,7 @@ class NoeticaApp extends ConsumerWidget {
     final profile = profileAsync.value;
     final onboarded = onboardedAsync.value ?? false;
     if (profile == null) {
-      return const QuestionnaireScreen(key: ValueKey('questionnaire'));
+      return const OnboardingChatScreen(key: ValueKey('onboarding-chat'));
     }
     if (!onboarded) {
       return OnboardingScreen(

@@ -9,7 +9,7 @@ import '../../providers.dart';
 import '../../services/notifications.dart';
 import '../../theme/app_theme.dart';
 import '../onboarding/onboarding_screen.dart';
-import '../onboarding/questionnaire_screen.dart';
+import '../onboarding/onboarding_chat_screen.dart';
 
 /// Single-screen settings: profile, notifications, axes, data, about.
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -45,6 +45,45 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Future<void> _toggleNotif(bool v) async {
     setState(() => _notifEnabled = v);
     await NotificationsService.instance.setEnabled(v);
+  }
+
+  Future<void> _testNow() async {
+    await NotificationsService.instance.showImmediate(
+      title: 'Тест: сейчас',
+      body: 'Если ты это видишь — сейчас уведомления работают.',
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Отправлено. Должно прилететь сразу.')),
+    );
+  }
+
+  Future<void> _testIn30() async {
+    await NotificationsService.instance.scheduleTest(
+      delay: const Duration(seconds: 30),
+      title: 'Тест: +30 сек',
+      body: 'Запланировано на 30 секунд назад. Можно сворачивать приложение.',
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Запланировано на через 30 секунд. Можно сворачивать.'),
+      ),
+    );
+  }
+
+  Future<void> _testIn5Min() async {
+    await NotificationsService.instance.scheduleTest(
+      delay: const Duration(minutes: 5),
+      title: 'Тест: +5 мин',
+      body: 'Запланировано пять минут назад. Если пришло — планировщик жив.',
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Запланировано через 5 минут. Закрывай приложение и жди.'),
+      ),
+    );
   }
 
   Future<void> _pickMorning() async {
@@ -153,12 +192,35 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final navigator = Navigator.of(context);
     await navigator.push(
       MaterialPageRoute(
-        builder: (_) => QuestionnaireScreen(
+        builder: (_) => OnboardingChatScreen(
           existing: profile,
           onDone: () => navigator.pop(),
         ),
       ),
     );
+  }
+
+  Future<void> _syncNow() async {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Синхронизация…')),
+    );
+    try {
+      final sync = await ref.read(syncServiceProvider.future);
+      await sync.pull();
+      await sync.pushPending();
+      if (!mounted) return;
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Готово. Данные подтянуты с облака.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        SnackBar(content: Text('Не удалось: $e')),
+      );
+    }
   }
 
   Future<void> _signOut() async {
@@ -209,7 +271,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         padding: const EdgeInsets.symmetric(vertical: 8),
         children: [
           const _SectionHeader(title: 'Аккаунт'),
-          if (session != null)
+          if (session != null) ...[
             ListTile(
               leading: const Icon(Icons.account_circle_outlined),
               title: Text(session.user.name.isNotEmpty
@@ -223,7 +285,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 onPressed: _signOut,
                 child: const Text('Выйти'),
               ),
-            )
+            ),
+            // Manual "force sync now" trigger — useful when the user
+            // logs in on a second device and wants to confirm their
+            // data actually pulls from the cloud, instead of waiting
+            // for the implicit bootstrap on next app launch.
+            ListTile(
+              leading: const Icon(Icons.cloud_sync_outlined),
+              title: const Text('Синхронизировать сейчас'),
+              subtitle: Text(
+                'Стянуть данные с облака и отправить локальные изменения',
+                style: TextStyle(color: palette.muted),
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: _syncNow,
+            ),
+          ]
           else
             ListTile(
               leading: const Icon(Icons.account_circle_outlined),
@@ -301,6 +378,35 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               child: Text(
                 NotificationsService.instance.platformNote,
                 style: TextStyle(color: palette.muted, fontSize: 12),
+              ),
+            ),
+            // Debug-grade test buttons. Useful for verifying that the
+            // platform actually delivers a notification (especially after
+            // first install on Windows where the user must accept the
+            // toast registration). All three slots use the same code path
+            // as production scheduling.
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: _notifEnabled ? _testNow : null,
+                    icon: const Icon(Icons.send, size: 16),
+                    label: const Text('Тест: сейчас'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: _notifEnabled ? _testIn30 : null,
+                    icon: const Icon(Icons.schedule, size: 16),
+                    label: const Text('Тест: +30 сек'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: _notifEnabled ? _testIn5Min : null,
+                    icon: const Icon(Icons.schedule, size: 16),
+                    label: const Text('Тест: +5 мин'),
+                  ),
+                ],
               ),
             ),
           ],
