@@ -28,6 +28,7 @@ class SelfScreen extends ConsumerWidget {
     final hasName = profile != null && profile.name.isNotEmpty;
 
     final canPop = Navigator.of(context).canPop();
+    final isMobile = MediaQuery.of(context).size.width < 900;
     return Scaffold(
       appBar: AppBar(
         // When pushed (e.g. tapped from the mini-Древо on the dashboard) we
@@ -53,17 +54,20 @@ class SelfScreen extends ConsumerWidget {
               );
             },
           ),
-          IconButton(
-            tooltip: 'Настройки',
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const SettingsScreen(),
-                ),
-              );
-            },
-          ),
+          // On desktop, Settings is a sidebar tab — no need to duplicate
+          // it in the AppBar. On mobile it's the primary way in.
+          if (isMobile)
+            IconButton(
+              tooltip: 'Настройки',
+              icon: const Icon(Icons.settings_outlined),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const SettingsScreen(),
+                  ),
+                );
+              },
+            ),
         ],
       ),
       body: scoresAsync.when(
@@ -368,6 +372,24 @@ class _AxisTile extends StatelessWidget {
                                   fontSize: 10,
                                   letterSpacing: 1.2,
                                   fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: palette.fg,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                'Э${epochFromXp(ls.totalXp)}',
+                                style: TextStyle(
+                                  color: palette.bg,
+                                  fontSize: 10,
+                                  letterSpacing: 1.2,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                             ),

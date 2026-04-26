@@ -4,12 +4,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models.dart';
 import '../../providers.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/subtask_utils.dart';
 import '../../utils/time_utils.dart';
 
 Future<void> showEntryEditor(
   BuildContext context,
   WidgetRef ref, {
   Entry? existing,
+  DateTime? initialDueAt,
+  EntryKind? initialKind,
 }) async {
   await showModalBottomSheet<void>(
     context: context,
@@ -22,14 +25,20 @@ Future<void> showEntryEditor(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(ctx).viewInsets.bottom,
       ),
-      child: _EntryEditor(existing: existing),
+      child: _EntryEditor(
+        existing: existing,
+        initialDueAt: initialDueAt,
+        initialKind: initialKind,
+      ),
     ),
   );
 }
 
 class _EntryEditor extends ConsumerStatefulWidget {
-  const _EntryEditor({this.existing});
+  const _EntryEditor({this.existing, this.initialDueAt, this.initialKind});
   final Entry? existing;
+  final DateTime? initialDueAt;
+  final EntryKind? initialKind;
 
   @override
   ConsumerState<_EntryEditor> createState() => _EntryEditorState();
@@ -50,9 +59,14 @@ class _EntryEditorState extends ConsumerState<_EntryEditor> {
     final e = widget.existing;
     _title = TextEditingController(text: e?.title ?? '');
     _body = TextEditingController(text: e?.body ?? '');
-    _kind = e?.kind ?? EntryKind.note;
+    // Editing an existing entry keeps its kind. Creating a new entry
+    // prefers the caller's hint (e.g. Calendar's "schedule task" CTA)
+    // otherwise defaults to a free-form note.
+    _kind = e?.kind ?? widget.initialKind ?? EntryKind.note;
     _selectedAxes = Set<String>.from(e?.axisIds ?? const <String>[]);
-    _due = e?.dueAt;
+    // Same idea for the due date: if the caller pre-populated one (e.g.
+    // we're scheduling a task for a given calendar day) we honour it.
+    _due = e?.dueAt ?? widget.initialDueAt;
     _xp = e?.xp ?? 10;
   }
 
@@ -191,6 +205,21 @@ class _EntryEditorState extends ConsumerState<_EntryEditor> {
             decoration: const InputDecoration(
               hintText: 'Что у тебя на уме?',
             ),
+            onChanged: (_) => setState(() {}),
+          ),
+          // Subtask preview: when the body has `- [ ] …` markdown the
+          // user can tick them right here and we'll rewrite the body
+          // transparently. Keeps the subtasks canonical (still markdown
+          // in the body field so they sync with the rest of the entry).
+          _SubtaskEditor(
+            body: _body.text,
+            onChanged: (next) {
+              setState(() {
+                _body.text = next;
+                _body.selection =
+                    TextSelection.collapsed(offset: next.length);
+              });
+            },
           ),
           const SizedBox(height: 16),
           Text(
@@ -429,6 +458,93 @@ class _AxisToggleChip extends StatelessWidget {
                 fontWeight: FontWeight.w500,
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Renders the body's `- [ ] …` lines as real tickable checkboxes. The
+/// source of truth is still the markdown text — we just edit it in place
+/// when the user taps a box. Hidden when the body has no checkboxes.
+class _SubtaskEditor extends StatelessWidget {
+  const _SubtaskEditor({required this.body, required this.onChanged});
+
+  final String body;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final subs = parseSubtasks(body);
+    if (subs.isEmpty) return const SizedBox.shrink();
+    final palette = context.palette;
+    final prog = subtaskProgress(body);
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+        decoration: BoxDecoration(
+          color: palette.surface,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: palette.line),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Подзадачи — ${prog.done}/${prog.total}',
+              style: TextStyle(
+                color: palette.muted,
+                fontSize: 11,
+                letterSpacing: 1.2,
+              ),
+            ),
+            const SizedBox(height: 6),
+            for (var i = 0; i < subs.length; i++)
+              InkWell(
+                onTap: () => onChanged(toggleSubtask(body, i)),
+                borderRadius: BorderRadius.circular(6),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 18,
+                        height: 18,
+                        margin: const EdgeInsets.only(top: 2, right: 10),
+                        decoration: BoxDecoration(
+                          border:
+                              Border.all(color: palette.line, width: 1.3),
+                          borderRadius: BorderRadius.circular(4),
+                          color: subs[i].checked
+                              ? palette.fg
+                              : Colors.transparent,
+                        ),
+                        child: subs[i].checked
+                            ? Icon(Icons.check,
+                                size: 12, color: palette.bg)
+                            : null,
+                      ),
+                      Expanded(
+                        child: Text(
+                          subs[i].text.isEmpty ? '—' : subs[i].text,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: subs[i].checked
+                                ? palette.muted
+                                : palette.fg,
+                            decoration: subs[i].checked
+                                ? TextDecoration.lineThrough
+                                : null,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
           ],
         ),
       ),

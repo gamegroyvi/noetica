@@ -314,15 +314,25 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
                       // leaves. Boundary margin lets pan go off-canvas.
                       minScale: 0.25,
                       maxScale: 4.0,
-                      boundaryMargin: const EdgeInsets.all(400),
+                      // Generous margin so when the user zooms in on an
+                      // edge card (common on phones) they can still pan
+                      // past the canvas without the view snapping back.
+                      boundaryMargin: const EdgeInsets.all(800),
                       child: SizedBox(
-                        // Oversized canvas so the radial layout has room
-                        // to spread (was getting clipped on phones).
-                        // 1.4× viewport works well on both mobile and
-                        // desktop without losing density at scale 1.0.
-                        width: MediaQuery.of(context).size.width * 1.4,
-                        height:
-                            (MediaQuery.of(context).size.height - 100) * 1.4,
+                        // Oversized, square-ish canvas so the radial
+                        // layout has room to breathe at any aspect
+                        // ratio. A single shortSide × 2.1 canvas means
+                        // leaves on the far edges never clip on phones
+                        // and the layout keeps its intended circular
+                        // shape even on ultra-wide desktop monitors.
+                        width: math.max(
+                          900,
+                          MediaQuery.of(context).size.shortestSide * 2.1,
+                        ),
+                        height: math.max(
+                          900,
+                          MediaQuery.of(context).size.shortestSide * 2.1,
+                        ),
                         child: _GraphCanvas(
                           knowledge: _knowledge!,
                           palette: palette,
@@ -617,8 +627,15 @@ class _GraphCanvas extends StatelessWidget {
           );
         }
 
-        // Build leaf positions per branch.
+        // Build leaf positions per branch. Each branch gets an angular
+        // slice of `2π / n` wide; we allocate at most 80 % of that
+        // slice to leaf spread so adjacent branches don't bleed into
+        // each other. Leaves are also staggered along two concentric
+        // radii (near / far) — zigzag — so same-branch cards can't sit
+        // right on top of each other regardless of angle.
         final leafPositions = <_Branch, List<Offset>>{};
+        final slice = (2 * math.pi) / n;
+        final maxSpread = slice * 0.8;
         for (var bi = 0; bi < branches.length; bi++) {
           final b = branches[bi];
           final items = _items(b);
@@ -627,26 +644,29 @@ class _GraphCanvas extends StatelessWidget {
             leafPositions[b] = pts;
             continue;
           }
-          final anchor = positions[b]!;
-          final base = -math.pi / 2 + bi * 2 * math.pi / n;
-          const spread = math.pi * 0.45;
+          final base = -math.pi / 2 + bi * slice;
+          // Scale spread with leaf count — a 1-leaf branch shouldn't
+          // open to 80° but a 6-leaf branch should fill the slice.
+          final spread = math.min(
+            maxSpread,
+            (items.length - 1) * 0.22 + 0.2,
+          );
           for (var li = 0; li < items.length; li++) {
             final t = items.length == 1
                 ? 0.5
                 : li / (items.length - 1);
             final theta = base + (t - 0.5) * spread;
+            // Alternate radii so labels on consecutive leaves can't
+            // collide even at a tight angular spacing.
+            final radiusJitter = (li.isEven ? 0.0 : branchRadius * 0.25);
+            final r = leafRadius + radiusJitter;
             final wobble = 3 *
                 math.sin(
                     (shimmer * 2 * math.pi) + bi * 0.7 + li * 1.7);
-            final p = Offset(
-              centre.dx + leafRadius * math.cos(theta),
-              centre.dy + leafRadius * math.sin(theta) + wobble,
-            );
-            pts.add(p);
-            // Used directly via list index alignment; anchor unused here.
-            // (kept anchor variable for clarity / future spline routing)
-            // ignore: unused_local_variable
-            anchor;
+            pts.add(Offset(
+              centre.dx + r * math.cos(theta),
+              centre.dy + r * math.sin(theta) + wobble,
+            ));
           }
           leafPositions[b] = pts;
         }

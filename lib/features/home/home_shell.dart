@@ -10,6 +10,7 @@ import '../knowledge/knowledge_graph_screen.dart';
 import '../notes/notes_screen.dart';
 import '../pomodoro/pomodoro_sheet.dart';
 import '../self/self_screen.dart';
+import '../settings/settings_screen.dart';
 import '../tasks/tasks_screen.dart';
 
 /// Layout breakpoints. Below `_kRailMin`: bottom navigation bar. Between
@@ -28,27 +29,30 @@ class HomeShell extends ConsumerStatefulWidget {
 class _HomeShellState extends ConsumerState<HomeShell> {
   int _index = 0;
 
-  // Page indices for "secondary" desktop-only sidebar entries — the
-  // mobile NavigationBar still only shows the primary 3, but desktop
-  // can navigate to these as proper tabs (no push, sidebar stays).
+  // Page indices. The first three are primary tabs (visible in the
+  // mobile bottom bar). The rest are "secondary" desktop-only entries
+  // reached from the sidebar; on mobile they push onto the navigator.
+  static const _tasksIndex = 1;
   static const _selfIndex = 2;
   static const _journalIndex = 3;
   static const _knowledgeIndex = 4;
   static const _calendarIndex = 5;
+  static const _settingsIndex = 6;
 
   // Pages must be built lazily so the dashboard can receive callbacks
   // bound to *this* state instance (`setState`).
   //
-  // `onOpenSelf` always switches to the "Я" tab — it's available in both
-  // desktop sidebar and mobile bottom-nav, so a tab switch is always the
-  // right behaviour (sidebar/bottom-bar stays visible).
+  // `onOpenSelf` / `onOpenTasks` always switch tabs — they exist in
+  // both desktop sidebar and mobile bottom-nav, so a tab switch is the
+  // correct behaviour everywhere (nav stays visible).
   //
-  // `onOpenJournal` switches to the journal tab on desktop (where the
-  // sidebar shows it). On mobile, where the bottom-nav has no journal
-  // entry, it pushes a route so the user gets a proper back button.
+  // `onOpenJournal` / `onOpenCalendar` switch the desktop tab when the
+  // sidebar is present; on mobile (where the bottom-nav has no journal
+  // or calendar entry) they push a route with a real back button.
   late final List<Widget> _pages = [
     DashboardScreen(
       onOpenSelf: () => setState(() => _index = _selfIndex),
+      onOpenTasks: () => setState(() => _index = _tasksIndex),
       onOpenJournal: _openJournal,
       onOpenCalendar: _openCalendar,
     ),
@@ -57,6 +61,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     const NotesScreen(),
     const KnowledgeGraphScreen(),
     const CalendarScreen(),
+    const SettingsScreen(),
   ];
 
   void _openJournal() {
@@ -159,6 +164,8 @@ class _HomeShellState extends ConsumerState<HomeShell> {
             // graph screen). It's now a proper sidebar tab — selects
             // page index 4 in the IndexedStack, sidebar stays visible.
             onKnowledge: () => setState(() => _index = _knowledgeIndex),
+            settingsSelected: _index == _settingsIndex,
+            onSettings: () => setState(() => _index = _settingsIndex),
             onPomodoro: () => PomodoroSheet.show(context),
             palette: palette,
           ),
@@ -196,6 +203,8 @@ class _DesktopSidebar extends StatelessWidget {
     required this.onKnowledge,
     required this.calendarSelected,
     required this.onCalendar,
+    required this.settingsSelected,
+    required this.onSettings,
     required this.onPomodoro,
     required this.palette,
   });
@@ -211,6 +220,8 @@ class _DesktopSidebar extends StatelessWidget {
   final VoidCallback onKnowledge;
   final bool calendarSelected;
   final VoidCallback onCalendar;
+  final bool settingsSelected;
+  final VoidCallback onSettings;
   final VoidCallback onPomodoro;
   final NoeticaPalette palette;
 
@@ -260,7 +271,8 @@ class _DesktopSidebar extends StatelessWidget {
                   selected: selectedIndex == i &&
                       !journalSelected &&
                       !knowledgeSelected &&
-                      !calendarSelected,
+                      !calendarSelected &&
+                      !settingsSelected,
                   extended: extended,
                   palette: palette,
                   onTap: () => onDestinationSelected(i),
@@ -308,6 +320,15 @@ class _DesktopSidebar extends StatelessWidget {
                 extended: extended,
                 palette: palette,
                 onTap: onPomodoro,
+              ),
+              _SidebarTile(
+                icon: Icons.settings_outlined,
+                selectedIcon: Icons.settings,
+                label: 'Настройки',
+                selected: settingsSelected,
+                extended: extended,
+                palette: palette,
+                onTap: onSettings,
               ),
               const SizedBox(height: 8),
               Padding(

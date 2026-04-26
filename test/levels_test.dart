@@ -51,4 +51,28 @@ void main() {
     expect(levelStatsFor(-50).level, 1);
     expect(levelStatsFor(-50).totalXp, 0);
   });
+
+  group('эпохи', () {
+    test('epoch starts at 1 for a freshly-created axis', () {
+      expect(epochFromXp(0), 1);
+      expect(epochFromXp(-10), 1);
+    });
+
+    test('advances once per kXpPerEpoch accumulated on an axis', () {
+      expect(epochFromXp(kXpPerEpoch - 1), 1);
+      expect(epochFromXp(kXpPerEpoch), 2);
+      expect(epochFromXp(kXpPerEpoch * 2 - 1), 2);
+      expect(epochFromXp(kXpPerEpoch * 2), 3);
+    });
+
+    test('xpToNextEpoch reports countdown to the next threshold', () {
+      // Right at the start of эпоха 2 → full kXpPerEpoch to reach эпоха 3.
+      expect(xpToNextEpoch(kXpPerEpoch), kXpPerEpoch);
+      // Halfway through эпоха 1 → half of kXpPerEpoch left.
+      expect(
+        xpToNextEpoch(kXpPerEpoch ~/ 2),
+        kXpPerEpoch - kXpPerEpoch ~/ 2,
+      );
+    });
+  });
 }

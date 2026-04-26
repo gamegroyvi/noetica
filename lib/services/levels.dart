@@ -58,6 +58,32 @@ int _spanForLevel(int level) {
   return 50 + level * 50;
 }
 
+/// How much XP one needs to accumulate on a single axis to advance its
+/// "эпоха" — a purely additive, permanent progression indicator that
+/// sits alongside the level system. Whereas `level` is a global stat
+/// based on lifetime XP, epoch is per-axis and tied to task output
+/// rather than the 30-day decay curve shown on the pentagon.
+/// Each epoch buys a visual upgrade (extra halo ring on the axis
+/// branch) without resetting anything, which is what makes filling
+/// the pentagon to 100 % still meaningful — you're now working toward
+/// the next эпоха on each axis.
+const int kXpPerEpoch = 500;
+
+/// Compute an axis' эпоха from its cumulative task XP. Starts at 1 so
+/// a brand-new axis reads "эпоха 1" (not 0).
+int epochFromXp(int axisTotalXp) {
+  if (axisTotalXp <= 0) return 1;
+  return 1 + (axisTotalXp ~/ kXpPerEpoch);
+}
+
+/// XP still required to push the axis into its next эпоха.
+int xpToNextEpoch(int axisTotalXp) {
+  final e = epochFromXp(axisTotalXp);
+  final cap = e * kXpPerEpoch;
+  final remaining = cap - axisTotalXp;
+  return remaining < 0 ? 0 : remaining;
+}
+
 LevelStats levelStatsFor(int totalXp) {
   if (totalXp < 0) totalXp = 0;
 
