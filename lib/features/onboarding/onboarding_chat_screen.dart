@@ -857,7 +857,9 @@ class _LevelsReply extends StatelessWidget {
     if (interests.isEmpty) return const SizedBox.shrink();
     final active = interests[activeIdx];
     final activeLevel = levels[active]; // null until first tap
-    final rated = levels.keys.where((k) => levels[k] != null).length;
+    // Count only current interests — the map can retain stale keys
+    // from sets the user cleared by editing step 2.
+    final rated = interests.where((i) => levels[i] != null).length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
