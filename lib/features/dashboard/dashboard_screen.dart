@@ -326,13 +326,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 onTrailingTap: _openTasks,
               ),
               const SizedBox(height: 4),
-              for (final e in entries
-                  .where((e) => e.isTask && e.isCompleted)
+              // `entries` is ordered by createdAt DESC; sort the
+              // completed-task subset by completion time before taking
+              // the top 4 so the header's "НЕДАВНО ЗАКРЫТО" promise
+              // actually holds (otherwise a task created long ago but
+              // just closed would be hidden behind recent creations).
+              for (final e in (entries
+                      .where((e) => e.isTask && e.isCompleted)
+                      .toList()
+                    ..sort((a, b) => (b.completedAt ?? b.updatedAt)
+                        .compareTo(a.completedAt ?? a.updatedAt)))
                   .take(4))
                 _CompactEntryRow(
                   entry: e,
                   axesById: axesById,
                   palette: palette,
+                  useCompletedAt: true,
                 ),
             ],
           );
@@ -661,11 +670,17 @@ class _CompactEntryRow extends ConsumerWidget {
     required this.entry,
     required this.axesById,
     required this.palette,
+    this.useCompletedAt = false,
   });
 
   final Entry entry;
   final Map<String, LifeAxis> axesById;
   final NoeticaPalette palette;
+
+  /// When true (e.g. in the "НЕДАВНО ЗАКРЫТО" strip) the row's subtitle
+  /// shows the task's completion time instead of creation time, which
+  /// is what the reader actually cares about in that context.
+  final bool useCompletedAt;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -710,7 +725,9 @@ class _CompactEntryRow extends ConsumerWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
-                    formatTimestamp(entry.createdAt),
+                    formatTimestamp(useCompletedAt
+                        ? (entry.completedAt ?? entry.createdAt)
+                        : entry.createdAt),
                     style: TextStyle(color: palette.muted, fontSize: 11),
                   ),
                 ],
