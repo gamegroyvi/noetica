@@ -7,6 +7,8 @@ import '../../theme/app_theme.dart';
 import '../../utils/time_utils.dart';
 import '../../widgets/brand_glyph.dart';
 import '../../services/weekly_reflection_service.dart';
+import '../calendar/calendar_screen.dart';
+import '../calendar/day_detail_sheet.dart';
 import '../entry/entry_editor_sheet.dart';
 import '../knowledge/knowledge_graph_screen.dart';
 import '../notes/notes_screen.dart';
@@ -35,10 +37,12 @@ class DashboardScreen extends ConsumerStatefulWidget {
     super.key,
     this.onOpenSelf,
     this.onOpenJournal,
+    this.onOpenCalendar,
   });
 
   final VoidCallback? onOpenSelf;
   final VoidCallback? onOpenJournal;
+  final VoidCallback? onOpenCalendar;
 
   @override
   ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
@@ -89,6 +93,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     } else {
       Navigator.of(context).push(
         MaterialPageRoute<void>(builder: (_) => const NotesScreen()),
+      );
+    }
+  }
+
+  void _openCalendar() {
+    final cb = widget.onOpenCalendar;
+    if (cb != null) {
+      cb();
+    } else {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => const CalendarScreen()),
       );
     }
   }
@@ -238,12 +253,29 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     : () => showEntryEditor(context, ref, existing: focus),
               ),
               const SizedBox(height: 22),
-              _SectionHeader(label: 'АКТИВНОСТЬ', palette: palette,
-                  trailing: '${stats.heatmap.fold(0, (a, b) => a + b)} закрыто за 90 дней'),
+              _SectionHeader(
+                label: 'АКТИВНОСТЬ',
+                palette: palette,
+                trailing: 'календарь →',
+                onTrailingTap: _openCalendar,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '${stats.heatmap.fold(0, (a, b) => a + b)} закрыто за 90 дней · тапни день',
+                style: TextStyle(color: palette.muted, fontSize: 11),
+              ),
               const SizedBox(height: 8),
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 720),
-                child: _ActivityHeatmap(values: stats.heatmap, palette: palette),
+                child: _ActivityHeatmap(
+                  values: stats.heatmap,
+                  palette: palette,
+                  onTapDay: (date) => showDayDetailSheet(
+                    context,
+                    date,
+                    onOpenCalendar: _openCalendar,
+                  ),
+                ),
               ),
               if (axes.length >= 3) ...[
                 const SizedBox(height: 22),
@@ -1160,11 +1192,20 @@ class _DashboardStats {
 /// at 14 px so on desktop the grid doesn't sprawl across the whole width.
 /// Bottom legend shows colour scale "меньше → больше" with 5 buckets.
 class _ActivityHeatmap extends StatelessWidget {
-  const _ActivityHeatmap({required this.values, required this.palette});
+  const _ActivityHeatmap({
+    required this.values,
+    required this.palette,
+    this.onTapDay,
+  });
 
   /// Day-of-completion counts, oldest first, length = 91 (13 weeks × 7).
   final List<int> values;
   final NoeticaPalette palette;
+
+  /// Tapped-day callback (date is midnight-aligned). Also receives hover
+  /// events via the cell's Tooltip on desktop. When null, cells are
+  /// non-interactive.
+  final ValueChanged<DateTime>? onTapDay;
 
   static const _weekdayLabels = ['Пн', '', 'Ср', '', 'Пт', '', ''];
   static const _monthLabels = [
@@ -1209,13 +1250,17 @@ class _ActivityHeatmap extends StatelessWidget {
     // For a given (col, row) compute (a) the date that cell represents
     // and (b) the count, indexing into `values` chronologically. Cells
     // before the data window or after today are rendered blank.
-    int? cellValue(int c, int r) {
+    ({DateTime date, int? value}) cellInfo(int c, int r) {
       final date = mondayFirstCol.add(Duration(days: c * 7 + r));
-      if (date.isBefore(windowStart) || date.isAfter(todayD)) return null;
+      if (date.isBefore(windowStart) || date.isAfter(todayD)) {
+        return (date: date, value: null);
+      }
       final idx = date.difference(windowStart).inDays;
-      if (idx < 0 || idx >= values.length) return null;
-      return values[idx];
+      if (idx < 0 || idx >= values.length) return (date: date, value: null);
+      return (date: date, value: values[idx]);
     }
+
+    String monthName(int m) => _monthLabels[m - 1];
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -1289,7 +1334,12 @@ class _ActivityHeatmap extends StatelessWidget {
                         Column(
                           children: [
                             for (var r = 0; r < rows; r++) ...[
-                              _buildCell(cellValue(c, r), cell, maxV),
+                              _buildCell(
+                                cellInfo(c, r),
+                                cell,
+                                maxV,
+                                monthName,
+                              ),
                               if (r < rows - 1)
                                 const SizedBox(height: spacing),
                             ],
@@ -1335,19 +1385,45 @@ class _ActivityHeatmap extends StatelessWidget {
     );
   }
 
-  Widget _buildCell(int? value, double size, int maxV) {
+  Widget _buildCell(
+    ({DateTime date, int? value}) info,
+    double size,
+    int maxV,
+    String Function(int) monthName,
+  ) {
+    final value = info.value;
     if (value == null) {
       // Out-of-window cell — completely transparent so the grid keeps
       // its rectangular shape but the user sees we have no data there.
       return SizedBox(width: size, height: size);
     }
     final t = maxV == 0 ? 0.0 : (value / maxV);
-    return Container(
+    final color =
+        value == 0 ? palette.line.withOpacity(0.35) : _bucketColor(t);
+    final label = value == 0
+        ? '${info.date.day} ${monthName(info.date.month)} · ничего'
+        : '${info.date.day} ${monthName(info.date.month)} · '
+            '$value ${value == 1 ? "задача" : "задач(и)"}';
+    final cell = Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: value == 0 ? palette.line.withOpacity(0.35) : _bucketColor(t),
+        color: color,
         borderRadius: BorderRadius.circular(2),
+      ),
+    );
+    final tooltipped = Tooltip(
+      message: label,
+      waitDuration: const Duration(milliseconds: 250),
+      child: cell,
+    );
+    if (onTapDay == null) return tooltipped;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => onTapDay!(info.date),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: tooltipped,
       ),
     );
   }
