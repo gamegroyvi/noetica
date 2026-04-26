@@ -26,7 +26,19 @@ import '../tasks/tasks_screen.dart';
 ///   4. «Пульс» — week bars + streak in one horizontal strip
 ///   5. «Последнее» — last 3 entries, link to Журнал
 class DashboardScreen extends ConsumerStatefulWidget {
-  const DashboardScreen({super.key});
+  /// Optional tab-switching callbacks. When the dashboard is hosted inside
+  /// `HomeShell`, these route taps on "Древо" / "Журнал" headers to the
+  /// matching tab in the IndexedStack instead of pushing a new route
+  /// (which would hide the sidebar/bottom-bar). When null, the dashboard
+  /// falls back to `Navigator.push` so it still works standalone.
+  const DashboardScreen({
+    super.key,
+    this.onOpenSelf,
+    this.onOpenJournal,
+  });
+
+  final VoidCallback? onOpenSelf;
+  final VoidCallback? onOpenJournal;
 
   @override
   ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
@@ -56,6 +68,31 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     _checkWeeklyPrompt();
   }
 
+  /// Open the "Я" tab. Prefers the host callback (in HomeShell — keeps
+  /// sidebar/bottom-bar visible). Falls back to a plain push when the
+  /// dashboard is hosted outside the shell.
+  void _openSelf() {
+    final cb = widget.onOpenSelf;
+    if (cb != null) {
+      cb();
+    } else {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => const SelfScreen()),
+      );
+    }
+  }
+
+  void _openJournal() {
+    final cb = widget.onOpenJournal;
+    if (cb != null) {
+      cb();
+    } else {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => const NotesScreen()),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
@@ -77,13 +114,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             IconButton(
               tooltip: 'Журнал',
               icon: const Icon(Icons.bookmark_border_outlined),
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const NotesScreen(),
-                  ),
-                );
-              },
+              onPressed: _openJournal,
             ),
           if (!isDesktop)
             IconButton(
@@ -220,23 +251,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   label: 'ДРЕВО',
                   palette: palette,
                   trailing: 'все →',
-                  onTrailingTap: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const SelfScreen(),
-                    ),
-                  ),
+                  onTrailingTap: _openSelf,
                 ),
                 const SizedBox(height: 8),
-                _MiniTreeCard(palette: palette),
+                _MiniTreeCard(palette: palette, onTap: _openSelf),
               ],
               const SizedBox(height: 22),
               _SectionHeader(
                 label: 'ПОСЛЕДНЕЕ',
                 palette: palette,
                 trailing: 'журнал →',
-                onTrailingTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(builder: (_) => const NotesScreen()),
-                ),
+                onTrailingTap: _openJournal,
               ),
               const SizedBox(height: 4),
               for (final e in entries.take(4))
@@ -683,10 +708,10 @@ class _AllTasksLink extends StatelessWidget {
   }
 }
 
-/// Hero "Пульс" block. Two large hero cards (стрик + XP) with a 7-day
-/// activity strip below, and a slim row of best-axis + deadline pills.
-/// Replaces the old 4-grid + thin strip combo, which felt cramped and
-/// didn't read at a glance.
+/// "Пульс" block — 4 stat cards summarising key signals. On narrow
+/// (mobile) viewports they wrap into a 2×2 grid; on wide (desktop) they
+/// span a single 1×4 row. Equal-height tiles via IntrinsicHeight inside
+/// each row, so the cards align cleanly regardless of content height.
 class _PulseSection extends StatelessWidget {
   const _PulseSection({
     required this.stats,
@@ -700,6 +725,8 @@ class _PulseSection extends StatelessWidget {
   final NoeticaPalette palette;
   final VoidCallback? onTapDeadline;
 
+  static const _kBreakpoint = 720.0;
+
   @override
   Widget build(BuildContext context) {
     final dl = stats.nextDeadline;
@@ -711,55 +738,93 @@ class _PulseSection extends StatelessWidget {
     final dlHint = dl == null
         ? 'нет дедлайнов'
         : 'до ${formatTimestamp(dl)}';
-    final bestAxisName = stats.bestAxis != null
-        ? (axesById[stats.bestAxis!]?.name ?? '—')
-        : null;
-    final xpHint = bestAxisName != null
-        ? '+${stats.bestAxisXp} XP · $bestAxisName'
-        : '${stats.totalXpWeek} XP за неделю';
+    final bestAxis =
+        stats.bestAxis != null ? axesById[stats.bestAxis!] : null;
+    final xpWeekHint = stats.totalXpWeek > 0
+        ? '${stats.totalXpWeek} за неделю'
+        : 'пока тихо';
 
-    // Three equal-height cards on a single row. IntrinsicHeight forces
-    // them to share the tallest content's height, so the previous
-    // mismatch (sparkline card vs text card) is gone.
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: _StatCard(
-              palette: palette,
-              value: stats.streak.toString(),
-              label: 'СТРИК',
-              hint: stats.streak == 0
-                  ? 'начни сегодня'
-                  : _plural(stats.streak, 'день', 'дня', 'дней'),
-              footer: SizedBox(
-                height: 24,
-                child: _WeekBars(perDay: stats.perDay, palette: palette),
+    final streak = _StatCard(
+      palette: palette,
+      value: stats.streak.toString(),
+      label: 'СТРИК',
+      hint: stats.streak == 0
+          ? 'начни сегодня'
+          : _plural(stats.streak, 'день', 'дня', 'дней'),
+      footer: SizedBox(
+        height: 24,
+        child: _WeekBars(perDay: stats.perDay, palette: palette),
+      ),
+    );
+    final xpToday = _StatCard(
+      palette: palette,
+      value: stats.totalXpToday.toString(),
+      label: 'XP СЕГОДНЯ',
+      hint: xpWeekHint,
+    );
+    final bestAxisCard = _StatCard(
+      palette: palette,
+      value: bestAxis?.symbol ?? '—',
+      label: 'ЛУЧШАЯ ОСЬ',
+      hint: bestAxis == null
+          ? 'нет данных'
+          : '${bestAxis.name} · +${stats.bestAxisXp} XP',
+    );
+    final deadlineCard = _StatCard(
+      palette: palette,
+      value: dlValue,
+      label: 'БЛИЖАЙШИЙ',
+      hint: dlHint,
+      onTap: onTapDeadline,
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wide = constraints.maxWidth >= _kBreakpoint;
+        if (wide) {
+          // Single 1×4 row — all four cards equal height.
+          return IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: streak),
+                const SizedBox(width: 10),
+                Expanded(child: xpToday),
+                const SizedBox(width: 10),
+                Expanded(child: bestAxisCard),
+                const SizedBox(width: 10),
+                Expanded(child: deadlineCard),
+              ],
+            ),
+          );
+        }
+        // 2×2 grid for mobile/narrow.
+        return Column(
+          children: [
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(child: streak),
+                  const SizedBox(width: 10),
+                  Expanded(child: xpToday),
+                ],
               ),
             ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _StatCard(
-              palette: palette,
-              value: stats.totalXpToday.toString(),
-              label: 'XP СЕГОДНЯ',
-              hint: xpHint,
+            const SizedBox(height: 10),
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(child: bestAxisCard),
+                  const SizedBox(width: 10),
+                  Expanded(child: deadlineCard),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _StatCard(
-              palette: palette,
-              value: dlValue,
-              label: 'БЛИЖАЙШИЙ',
-              hint: dlHint,
-              onTap: onTapDeadline,
-            ),
-          ),
-        ],
-      ),
+          ],
+        );
+      },
     );
   }
 }
@@ -1300,18 +1365,20 @@ class _ActivityHeatmap extends StatelessWidget {
 /// strip and a hint. Animates entrance like the full one and routes to
 /// SelfScreen on tap.
 class _MiniTreeCard extends ConsumerWidget {
-  const _MiniTreeCard({required this.palette});
+  const _MiniTreeCard({required this.palette, this.onTap});
 
   final NoeticaPalette palette;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scoresAsync = ref.watch(scoresProvider);
     final levelStatsAsync = ref.watch(axisLevelStatsProvider);
     return InkWell(
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute<void>(builder: (_) => const SelfScreen()),
-      ),
+      onTap: onTap ??
+          () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const SelfScreen()),
+              ),
       borderRadius: BorderRadius.circular(10),
       child: Container(
         padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),

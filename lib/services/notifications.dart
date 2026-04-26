@@ -182,22 +182,21 @@ class NotificationsService {
   /// Pomodoro to ring the user when a phase ends. Independent of the
   /// "enabled" flag because the user explicitly asked for the sound — if
   /// notifications are turned off in the OS, this just silently no-ops.
+  ///
+  /// Goes through the backend's `showNow` path which uses the plugin's
+  /// direct `show()` API on mobile (no exact-alarm permission required —
+  /// avoids `SecurityException` crashes on Android 12+ when the user
+  /// hasn't granted `SCHEDULE_EXACT_ALARM`).
   Future<void> showImmediate({
     required String title,
     required String body,
   }) async {
     if (!_supported) return;
     try {
-      // Schedule for "right now" — both backends handle a near-zero delta.
       final id = '${title}_${DateTime.now().microsecondsSinceEpoch}'
               .hashCode &
           0x7fffffff;
-      await _backend.schedule(
-        id: id,
-        when: DateTime.now().add(const Duration(milliseconds: 100)),
-        title: title,
-        body: body,
-      );
+      await _backend.showNow(id: id, title: title, body: body);
     } catch (e) {
       debugPrint('showImmediate failed: $e');
     }
@@ -332,6 +331,16 @@ abstract class _Backend {
     String? payload,
   });
 
+  /// Fire immediately, bypassing OS-level scheduling. Used for Pomodoro
+  /// phase-end cues so we never trip Android 12+ exact-alarm permission
+  /// requirements (which throw `SecurityException` and crash the app
+  /// when not granted).
+  Future<void> showNow({
+    required int id,
+    required String title,
+    required String body,
+  });
+
   Future<void> cancel(int id);
 
   Future<void> cancelAll();
@@ -351,6 +360,13 @@ class _NoopBackend implements _Backend {
   }) async {}
 
   @override
+  Future<void> showNow({
+    required int id,
+    required String title,
+    required String body,
+  }) async {}
+
+  @override
   Future<void> cancel(int id) async {}
 
   @override
@@ -365,6 +381,17 @@ class _MobileBackend implements _Backend {
   @override
   _BackendKind get kind => _BackendKind.mobile;
 
+  static const _details = NotificationDetails(
+    android: AndroidNotificationDetails(
+      _kAndroidChannelId,
+      _kAndroidChannelName,
+      channelDescription: _kAndroidChannelDescription,
+      importance: Importance.high,
+      priority: Priority.high,
+    ),
+    iOS: DarwinNotificationDetails(),
+  );
+
   @override
   Future<void> schedule({
     required int id,
@@ -374,26 +401,34 @@ class _MobileBackend implements _Backend {
     String? payload,
   }) async {
     final tzWhen = tz.TZDateTime.from(when, tz.local);
+    // Use `inexactAllowWhileIdle` instead of `exactAllowWhileIdle`. The
+    // exact variant requires the Android 12+ runtime SCHEDULE_EXACT_ALARM
+    // permission — if the user hasn't granted it, `zonedSchedule` throws
+    // `SecurityException` which crashes the Flutter activity. Inexact is
+    // good enough for our reminders (within ~10 min), works on every
+    // Android version, and never crashes.
     await _plugin.zonedSchedule(
       id,
       title,
       body,
       tzWhen,
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          _kAndroidChannelId,
-          _kAndroidChannelName,
-          channelDescription: _kAndroidChannelDescription,
-          importance: Importance.high,
-          priority: Priority.high,
-        ),
-        iOS: DarwinNotificationDetails(),
-      ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      _details,
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
       payload: payload,
     );
+  }
+
+  @override
+  Future<void> showNow({
+    required int id,
+    required String title,
+    required String body,
+  }) async {
+    // Direct `show()` — bypasses the OS scheduler entirely so we never
+    // need exact-alarm permission. Used by Pomodoro for phase-end cues.
+    await _plugin.show(id, title, body, _details);
   }
 
   @override
@@ -504,6 +539,20 @@ class _DesktopBackend implements _Backend {
     _timers.remove(id)?.cancel();
     _arm(id, when, title, body, payload);
     await _persist();
+  }
+
+  @override
+  Future<void> showNow({
+    required int id,
+    required String title,
+    required String body,
+  }) async {
+    try {
+      final notification = LocalNotification(title: title, body: body);
+      await notification.show();
+    } catch (e) {
+      debugPrint('Desktop showNow failed: $e');
+    }
   }
 
   @override

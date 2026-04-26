@@ -30,16 +30,41 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   // Page indices for "secondary" desktop-only sidebar entries — the
   // mobile NavigationBar still only shows the primary 3, but desktop
   // can navigate to these as proper tabs (no push, sidebar stays).
+  static const _selfIndex = 2;
   static const _journalIndex = 3;
   static const _knowledgeIndex = 4;
 
-  static const _pages = <Widget>[
-    DashboardScreen(),
-    TasksScreen(),
-    SelfScreen(),
-    NotesScreen(),
-    KnowledgeGraphScreen(),
+  // Pages must be built lazily so the dashboard can receive callbacks
+  // bound to *this* state instance (`setState`).
+  //
+  // `onOpenSelf` always switches to the "Я" tab — it's available in both
+  // desktop sidebar and mobile bottom-nav, so a tab switch is always the
+  // right behaviour (sidebar/bottom-bar stays visible).
+  //
+  // `onOpenJournal` switches to the journal tab on desktop (where the
+  // sidebar shows it). On mobile, where the bottom-nav has no journal
+  // entry, it pushes a route so the user gets a proper back button.
+  late final List<Widget> _pages = [
+    DashboardScreen(
+      onOpenSelf: () => setState(() => _index = _selfIndex),
+      onOpenJournal: _openJournal,
+    ),
+    const TasksScreen(),
+    const SelfScreen(),
+    const NotesScreen(),
+    const KnowledgeGraphScreen(),
   ];
+
+  void _openJournal() {
+    final wide = MediaQuery.of(context).size.width >= _kRailMin;
+    if (wide) {
+      setState(() => _index = _journalIndex);
+    } else {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => const NotesScreen()),
+      );
+    }
+  }
 
   static const _destinations = <_Destination>[
     _Destination(
