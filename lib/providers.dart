@@ -66,8 +66,16 @@ Future<void> markOnboarded() async {
 
 final profileServiceProvider = Provider<ProfileService>((_) => ProfileService());
 
-final profileProvider = FutureProvider<UserProfile?>((ref) async {
-  return ref.watch(profileServiceProvider).load();
+/// Streams the user profile. The initial value comes from
+/// [ProfileService.load] (SharedPreferences); every subsequent
+/// `ProfileService.save` / `clear` broadcasts on `ProfileService.changes`
+/// so *all* watchers — scoresProvider, the self-screen overlay, the
+/// header — see a fresh value without any call site having to remember
+/// `ref.invalidate(profileProvider)`.
+final profileProvider = StreamProvider<UserProfile?>((ref) async* {
+  final svc = ref.watch(profileServiceProvider);
+  yield await svc.load();
+  yield* ProfileService.changes;
 });
 
 final roadmapApiProvider = Provider<RoadmapApi>((ref) {
