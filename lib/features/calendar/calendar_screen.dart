@@ -101,6 +101,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               palette: palette,
             );
             if (wide) {
+              // Both columns scroll independently so a day with many
+              // entries on the right doesn't overflow, and a tall grid
+              // never clips the detail panel.
               return Padding(
                 padding: const EdgeInsets.all(16),
                 child: Row(
@@ -110,11 +113,14 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                       flex: 3,
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 560),
-                        child: grid,
+                        child: SingleChildScrollView(child: grid),
                       ),
                     ),
                     const SizedBox(width: 24),
-                    Expanded(flex: 4, child: detail),
+                    Expanded(
+                      flex: 4,
+                      child: SingleChildScrollView(child: detail),
+                    ),
                   ],
                 ),
               );
