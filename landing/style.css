@@ -31,6 +31,13 @@ body {
   overflow-x: hidden;
 }
 
+/* ── pentagon network background ── */
+.pentagon-bg {
+  position: fixed; inset: 0; z-index: -1;
+  pointer-events: none;
+  opacity: 0.035;
+}
+
 a { color: inherit; text-decoration: none; }
 em { font-style: italic; }
 img { display: block; max-width: 100%; }
@@ -211,28 +218,55 @@ img { display: block; max-width: 100%; }
 }
 .device--desktop img { width: 100%; }
 
-/* Phone device */
+/* Phone device — proper iPhone proportions */
 .device--phone {
-  width: 240px;
+  width: 220px;
   background: #111;
   border: 2px solid #2a2a2a;
   border-radius: 32px;
-  padding: 12px 8px 16px;
+  padding: 14px 10px 18px;
   position: relative;
   flex-shrink: 0;
-  box-shadow: 0 24px 64px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.03);
+  box-shadow: 0 32px 80px rgba(0,0,0,.6), inset 0 0 0 1px rgba(255,255,255,.04);
 }
 
 .device__notch {
-  width: 80px; height: 6px;
-  background: #222;
-  border-radius: 4px;
-  margin: 0 auto 8px;
+  width: 72px; height: 22px;
+  background: #111;
+  border: 1px solid #222;
+  border-radius: 12px;
+  margin: -4px auto 6px;
+  position: relative;
+}
+.device__notch::after {
+  content: '';
+  position: absolute;
+  top: 8px; left: 50%; transform: translateX(-50%);
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #1a1a1a;
 }
 
-.device--phone img {
+.device--phone .device__screen {
   width: 100%;
+  aspect-ratio: 9 / 19.5;
   border-radius: 16px;
+  overflow: hidden;
+  background: #000;
+  position: relative;
+}
+
+.device--phone .device__screen img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  object-position: top;
+}
+
+.device__home-ind {
+  width: 40%; height: 4px;
+  background: #2a2a2a;
+  border-radius: 2px;
+  margin: 8px auto 0;
 }
 
 /* Duo layout: phone + text side by side */
@@ -267,7 +301,7 @@ img { display: block; max-width: 100%; }
     text-align: center;
     gap: 32px;
   }
-  .device--phone { width: 200px; }
+  .device--phone { width: 180px; }
 }
 
 /* ═══════════ FEATURES ═══════════ */
