@@ -110,7 +110,7 @@ class Entry {
 
   /// XP awarded to each linked axis on completion. 1..100. May be
   /// adjusted by the post-completion reflection (easy/normal/hard/
-  /// blocked → 0.7×/1.0×/1.2×/0.5×). Always derived from [baseXp] so
+  /// blocked → 0.8×/1.0×/1.2×/0.5×). Always derived from [baseXp] so
   /// re-completing a task doesn't compound the multiplier.
   final int xp;
 
