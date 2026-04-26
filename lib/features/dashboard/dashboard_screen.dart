@@ -7,6 +7,8 @@ import '../../theme/app_theme.dart';
 import '../../utils/time_utils.dart';
 import '../../widgets/brand_glyph.dart';
 import '../../services/weekly_reflection_service.dart';
+import '../calendar/calendar_screen.dart';
+import '../calendar/day_detail_sheet.dart';
 import '../entry/entry_editor_sheet.dart';
 import '../knowledge/knowledge_graph_screen.dart';
 import '../notes/notes_screen.dart';
@@ -26,7 +28,21 @@ import '../tasks/tasks_screen.dart';
 ///   4. «Пульс» — week bars + streak in one horizontal strip
 ///   5. «Последнее» — last 3 entries, link to Журнал
 class DashboardScreen extends ConsumerStatefulWidget {
-  const DashboardScreen({super.key});
+  /// Optional tab-switching callbacks. When the dashboard is hosted inside
+  /// `HomeShell`, these route taps on "Древо" / "Журнал" headers to the
+  /// matching tab in the IndexedStack instead of pushing a new route
+  /// (which would hide the sidebar/bottom-bar). When null, the dashboard
+  /// falls back to `Navigator.push` so it still works standalone.
+  const DashboardScreen({
+    super.key,
+    this.onOpenSelf,
+    this.onOpenJournal,
+    this.onOpenCalendar,
+  });
+
+  final VoidCallback? onOpenSelf;
+  final VoidCallback? onOpenJournal;
+  final VoidCallback? onOpenCalendar;
 
   @override
   ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
@@ -56,6 +72,42 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     _checkWeeklyPrompt();
   }
 
+  /// Open the "Я" tab. Prefers the host callback (in HomeShell — keeps
+  /// sidebar/bottom-bar visible). Falls back to a plain push when the
+  /// dashboard is hosted outside the shell.
+  void _openSelf() {
+    final cb = widget.onOpenSelf;
+    if (cb != null) {
+      cb();
+    } else {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => const SelfScreen()),
+      );
+    }
+  }
+
+  void _openJournal() {
+    final cb = widget.onOpenJournal;
+    if (cb != null) {
+      cb();
+    } else {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => const NotesScreen()),
+      );
+    }
+  }
+
+  void _openCalendar() {
+    final cb = widget.onOpenCalendar;
+    if (cb != null) {
+      cb();
+    } else {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => const CalendarScreen()),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
@@ -77,13 +129,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             IconButton(
               tooltip: 'Журнал',
               icon: const Icon(Icons.bookmark_border_outlined),
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const NotesScreen(),
-                  ),
-                );
-              },
+              onPressed: _openJournal,
             ),
           if (!isDesktop)
             IconButton(
@@ -207,12 +253,29 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     : () => showEntryEditor(context, ref, existing: focus),
               ),
               const SizedBox(height: 22),
-              _SectionHeader(label: 'АКТИВНОСТЬ', palette: palette,
-                  trailing: '${stats.heatmap.fold(0, (a, b) => a + b)} закрыто за 90 дней'),
+              _SectionHeader(
+                label: 'АКТИВНОСТЬ',
+                palette: palette,
+                trailing: 'календарь →',
+                onTrailingTap: _openCalendar,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '${stats.heatmap.fold(0, (a, b) => a + b)} закрыто за 90 дней · тапни день',
+                style: TextStyle(color: palette.muted, fontSize: 11),
+              ),
               const SizedBox(height: 8),
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 720),
-                child: _ActivityHeatmap(values: stats.heatmap, palette: palette),
+                child: _ActivityHeatmap(
+                  values: stats.heatmap,
+                  palette: palette,
+                  onTapDay: (date) => showDayDetailSheet(
+                    context,
+                    date,
+                    onOpenCalendar: _openCalendar,
+                  ),
+                ),
               ),
               if (axes.length >= 3) ...[
                 const SizedBox(height: 22),
@@ -220,23 +283,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   label: 'ДРЕВО',
                   palette: palette,
                   trailing: 'все →',
-                  onTrailingTap: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const SelfScreen(),
-                    ),
-                  ),
+                  onTrailingTap: _openSelf,
                 ),
                 const SizedBox(height: 8),
-                _MiniTreeCard(palette: palette),
+                _MiniTreeCard(palette: palette, onTap: _openSelf),
               ],
               const SizedBox(height: 22),
               _SectionHeader(
                 label: 'ПОСЛЕДНЕЕ',
                 palette: palette,
                 trailing: 'журнал →',
-                onTrailingTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(builder: (_) => const NotesScreen()),
-                ),
+                onTrailingTap: _openJournal,
               ),
               const SizedBox(height: 4),
               for (final e in entries.take(4))
@@ -683,10 +740,10 @@ class _AllTasksLink extends StatelessWidget {
   }
 }
 
-/// Hero "Пульс" block. Two large hero cards (стрик + XP) with a 7-day
-/// activity strip below, and a slim row of best-axis + deadline pills.
-/// Replaces the old 4-grid + thin strip combo, which felt cramped and
-/// didn't read at a glance.
+/// "Пульс" block — 4 stat cards summarising key signals. On narrow
+/// (mobile) viewports they wrap into a 2×2 grid; on wide (desktop) they
+/// span a single 1×4 row. Equal-height tiles via IntrinsicHeight inside
+/// each row, so the cards align cleanly regardless of content height.
 class _PulseSection extends StatelessWidget {
   const _PulseSection({
     required this.stats,
@@ -700,6 +757,8 @@ class _PulseSection extends StatelessWidget {
   final NoeticaPalette palette;
   final VoidCallback? onTapDeadline;
 
+  static const _kBreakpoint = 720.0;
+
   @override
   Widget build(BuildContext context) {
     final dl = stats.nextDeadline;
@@ -711,55 +770,93 @@ class _PulseSection extends StatelessWidget {
     final dlHint = dl == null
         ? 'нет дедлайнов'
         : 'до ${formatTimestamp(dl)}';
-    final bestAxisName = stats.bestAxis != null
-        ? (axesById[stats.bestAxis!]?.name ?? '—')
-        : null;
-    final xpHint = bestAxisName != null
-        ? '+${stats.bestAxisXp} XP · $bestAxisName'
-        : '${stats.totalXpWeek} XP за неделю';
+    final bestAxis =
+        stats.bestAxis != null ? axesById[stats.bestAxis!] : null;
+    final xpWeekHint = stats.totalXpWeek > 0
+        ? '${stats.totalXpWeek} за неделю'
+        : 'пока тихо';
 
-    // Three equal-height cards on a single row. IntrinsicHeight forces
-    // them to share the tallest content's height, so the previous
-    // mismatch (sparkline card vs text card) is gone.
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: _StatCard(
-              palette: palette,
-              value: stats.streak.toString(),
-              label: 'СТРИК',
-              hint: stats.streak == 0
-                  ? 'начни сегодня'
-                  : _plural(stats.streak, 'день', 'дня', 'дней'),
-              footer: SizedBox(
-                height: 24,
-                child: _WeekBars(perDay: stats.perDay, palette: palette),
+    final streak = _StatCard(
+      palette: palette,
+      value: stats.streak.toString(),
+      label: 'СТРИК',
+      hint: stats.streak == 0
+          ? 'начни сегодня'
+          : _plural(stats.streak, 'день', 'дня', 'дней'),
+      footer: SizedBox(
+        height: 24,
+        child: _WeekBars(perDay: stats.perDay, palette: palette),
+      ),
+    );
+    final xpToday = _StatCard(
+      palette: palette,
+      value: stats.totalXpToday.toString(),
+      label: 'XP СЕГОДНЯ',
+      hint: xpWeekHint,
+    );
+    final bestAxisCard = _StatCard(
+      palette: palette,
+      value: bestAxis?.symbol ?? '—',
+      label: 'ЛУЧШАЯ ОСЬ',
+      hint: bestAxis == null
+          ? 'нет данных'
+          : '${bestAxis.name} · +${stats.bestAxisXp} XP',
+    );
+    final deadlineCard = _StatCard(
+      palette: palette,
+      value: dlValue,
+      label: 'БЛИЖАЙШИЙ',
+      hint: dlHint,
+      onTap: onTapDeadline,
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wide = constraints.maxWidth >= _kBreakpoint;
+        if (wide) {
+          // Single 1×4 row — all four cards equal height.
+          return IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: streak),
+                const SizedBox(width: 10),
+                Expanded(child: xpToday),
+                const SizedBox(width: 10),
+                Expanded(child: bestAxisCard),
+                const SizedBox(width: 10),
+                Expanded(child: deadlineCard),
+              ],
+            ),
+          );
+        }
+        // 2×2 grid for mobile/narrow.
+        return Column(
+          children: [
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(child: streak),
+                  const SizedBox(width: 10),
+                  Expanded(child: xpToday),
+                ],
               ),
             ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _StatCard(
-              palette: palette,
-              value: stats.totalXpToday.toString(),
-              label: 'XP СЕГОДНЯ',
-              hint: xpHint,
+            const SizedBox(height: 10),
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(child: bestAxisCard),
+                  const SizedBox(width: 10),
+                  Expanded(child: deadlineCard),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _StatCard(
-              palette: palette,
-              value: dlValue,
-              label: 'БЛИЖАЙШИЙ',
-              hint: dlHint,
-              onTap: onTapDeadline,
-            ),
-          ),
-        ],
-      ),
+          ],
+        );
+      },
     );
   }
 }
@@ -1095,11 +1192,20 @@ class _DashboardStats {
 /// at 14 px so on desktop the grid doesn't sprawl across the whole width.
 /// Bottom legend shows colour scale "меньше → больше" with 5 buckets.
 class _ActivityHeatmap extends StatelessWidget {
-  const _ActivityHeatmap({required this.values, required this.palette});
+  const _ActivityHeatmap({
+    required this.values,
+    required this.palette,
+    this.onTapDay,
+  });
 
   /// Day-of-completion counts, oldest first, length = 91 (13 weeks × 7).
   final List<int> values;
   final NoeticaPalette palette;
+
+  /// Tapped-day callback (date is midnight-aligned). Also receives hover
+  /// events via the cell's Tooltip on desktop. When null, cells are
+  /// non-interactive.
+  final ValueChanged<DateTime>? onTapDay;
 
   static const _weekdayLabels = ['Пн', '', 'Ср', '', 'Пт', '', ''];
   static const _monthLabels = [
@@ -1144,13 +1250,17 @@ class _ActivityHeatmap extends StatelessWidget {
     // For a given (col, row) compute (a) the date that cell represents
     // and (b) the count, indexing into `values` chronologically. Cells
     // before the data window or after today are rendered blank.
-    int? cellValue(int c, int r) {
+    ({DateTime date, int? value}) cellInfo(int c, int r) {
       final date = mondayFirstCol.add(Duration(days: c * 7 + r));
-      if (date.isBefore(windowStart) || date.isAfter(todayD)) return null;
+      if (date.isBefore(windowStart) || date.isAfter(todayD)) {
+        return (date: date, value: null);
+      }
       final idx = date.difference(windowStart).inDays;
-      if (idx < 0 || idx >= values.length) return null;
-      return values[idx];
+      if (idx < 0 || idx >= values.length) return (date: date, value: null);
+      return (date: date, value: values[idx]);
     }
+
+    String monthName(int m) => _monthLabels[m - 1];
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -1224,7 +1334,12 @@ class _ActivityHeatmap extends StatelessWidget {
                         Column(
                           children: [
                             for (var r = 0; r < rows; r++) ...[
-                              _buildCell(cellValue(c, r), cell, maxV),
+                              _buildCell(
+                                cellInfo(c, r),
+                                cell,
+                                maxV,
+                                monthName,
+                              ),
                               if (r < rows - 1)
                                 const SizedBox(height: spacing),
                             ],
@@ -1270,19 +1385,45 @@ class _ActivityHeatmap extends StatelessWidget {
     );
   }
 
-  Widget _buildCell(int? value, double size, int maxV) {
+  Widget _buildCell(
+    ({DateTime date, int? value}) info,
+    double size,
+    int maxV,
+    String Function(int) monthName,
+  ) {
+    final value = info.value;
     if (value == null) {
       // Out-of-window cell — completely transparent so the grid keeps
       // its rectangular shape but the user sees we have no data there.
       return SizedBox(width: size, height: size);
     }
     final t = maxV == 0 ? 0.0 : (value / maxV);
-    return Container(
+    final color =
+        value == 0 ? palette.line.withOpacity(0.35) : _bucketColor(t);
+    final label = value == 0
+        ? '${info.date.day} ${monthName(info.date.month)} · ничего'
+        : '${info.date.day} ${monthName(info.date.month)} · '
+            '$value ${_plural(value, "задача", "задачи", "задач")}';
+    final cell = Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: value == 0 ? palette.line.withOpacity(0.35) : _bucketColor(t),
+        color: color,
         borderRadius: BorderRadius.circular(2),
+      ),
+    );
+    final tooltipped = Tooltip(
+      message: label,
+      waitDuration: const Duration(milliseconds: 250),
+      child: cell,
+    );
+    if (onTapDay == null) return tooltipped;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => onTapDay!(info.date),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: tooltipped,
       ),
     );
   }
@@ -1300,18 +1441,20 @@ class _ActivityHeatmap extends StatelessWidget {
 /// strip and a hint. Animates entrance like the full one and routes to
 /// SelfScreen on tap.
 class _MiniTreeCard extends ConsumerWidget {
-  const _MiniTreeCard({required this.palette});
+  const _MiniTreeCard({required this.palette, this.onTap});
 
   final NoeticaPalette palette;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scoresAsync = ref.watch(scoresProvider);
     final levelStatsAsync = ref.watch(axisLevelStatsProvider);
     return InkWell(
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute<void>(builder: (_) => const SelfScreen()),
-      ),
+      onTap: onTap ??
+          () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const SelfScreen()),
+              ),
       borderRadius: BorderRadius.circular(10),
       child: Container(
         padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),

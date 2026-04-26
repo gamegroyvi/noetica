@@ -81,6 +81,28 @@ async def healthz() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/healthz/llm")
+async def healthz_llm() -> dict[str, object]:
+    """Diagnostic — reports whether the LLM client can initialise.
+
+    Intentionally does NOT return the API key itself, just whether a
+    backend is selected and what model/provider is in use.
+    """
+    from .llm import LlmClient, LlmConfigError
+    try:
+        client = LlmClient()
+    except LlmConfigError as exc:
+        return {"ok": False, "error": str(exc)}
+    return {
+        "ok": True,
+        "provider": "deepseek"
+        if "deepseek" in (client.base_url or "")
+        else "other",
+        "model": client.model,
+        "base_url": client.base_url,
+    }
+
+
 class GoogleAuthRequest(BaseModel):
     id_token: str
 

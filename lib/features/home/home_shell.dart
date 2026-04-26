@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../theme/app_theme.dart';
 import '../../widgets/brand_glyph.dart';
+import '../calendar/calendar_screen.dart';
 import '../dashboard/dashboard_screen.dart';
 import '../entry/entry_editor_sheet.dart';
 import '../knowledge/knowledge_graph_screen.dart';
@@ -30,16 +31,55 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   // Page indices for "secondary" desktop-only sidebar entries — the
   // mobile NavigationBar still only shows the primary 3, but desktop
   // can navigate to these as proper tabs (no push, sidebar stays).
+  static const _selfIndex = 2;
   static const _journalIndex = 3;
   static const _knowledgeIndex = 4;
+  static const _calendarIndex = 5;
 
-  static const _pages = <Widget>[
-    DashboardScreen(),
-    TasksScreen(),
-    SelfScreen(),
-    NotesScreen(),
-    KnowledgeGraphScreen(),
+  // Pages must be built lazily so the dashboard can receive callbacks
+  // bound to *this* state instance (`setState`).
+  //
+  // `onOpenSelf` always switches to the "Я" tab — it's available in both
+  // desktop sidebar and mobile bottom-nav, so a tab switch is always the
+  // right behaviour (sidebar/bottom-bar stays visible).
+  //
+  // `onOpenJournal` switches to the journal tab on desktop (where the
+  // sidebar shows it). On mobile, where the bottom-nav has no journal
+  // entry, it pushes a route so the user gets a proper back button.
+  late final List<Widget> _pages = [
+    DashboardScreen(
+      onOpenSelf: () => setState(() => _index = _selfIndex),
+      onOpenJournal: _openJournal,
+      onOpenCalendar: _openCalendar,
+    ),
+    const TasksScreen(),
+    const SelfScreen(),
+    const NotesScreen(),
+    const KnowledgeGraphScreen(),
+    const CalendarScreen(),
   ];
+
+  void _openJournal() {
+    final wide = MediaQuery.of(context).size.width >= _kRailMin;
+    if (wide) {
+      setState(() => _index = _journalIndex);
+    } else {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => const NotesScreen()),
+      );
+    }
+  }
+
+  void _openCalendar() {
+    final wide = MediaQuery.of(context).size.width >= _kRailMin;
+    if (wide) {
+      setState(() => _index = _calendarIndex);
+    } else {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => const CalendarScreen()),
+      );
+    }
+  }
 
   static const _destinations = <_Destination>[
     _Destination(
@@ -112,6 +152,8 @@ class _HomeShellState extends ConsumerState<HomeShell> {
             journalSelected: _index == _journalIndex,
             onJournal: () => setState(() => _index = _journalIndex),
             knowledgeSelected: _index == _knowledgeIndex,
+            calendarSelected: _index == _calendarIndex,
+            onCalendar: () => setState(() => _index = _calendarIndex),
             // Knowledge graph used to push a new route, which hid the
             // sidebar and trapped the user (no back button on the
             // graph screen). It's now a proper sidebar tab — selects
@@ -152,6 +194,8 @@ class _DesktopSidebar extends StatelessWidget {
     required this.onJournal,
     required this.knowledgeSelected,
     required this.onKnowledge,
+    required this.calendarSelected,
+    required this.onCalendar,
     required this.onPomodoro,
     required this.palette,
   });
@@ -165,6 +209,8 @@ class _DesktopSidebar extends StatelessWidget {
   final VoidCallback onJournal;
   final bool knowledgeSelected;
   final VoidCallback onKnowledge;
+  final bool calendarSelected;
+  final VoidCallback onCalendar;
   final VoidCallback onPomodoro;
   final NoeticaPalette palette;
 
@@ -213,7 +259,8 @@ class _DesktopSidebar extends StatelessWidget {
                   label: destinations[i].label,
                   selected: selectedIndex == i &&
                       !journalSelected &&
-                      !knowledgeSelected,
+                      !knowledgeSelected &&
+                      !calendarSelected,
                   extended: extended,
                   palette: palette,
                   onTap: () => onDestinationSelected(i),
@@ -225,6 +272,15 @@ class _DesktopSidebar extends StatelessWidget {
                   vertical: 4,
                 ),
                 child: Divider(color: palette.line, height: 1),
+              ),
+              _SidebarTile(
+                icon: Icons.calendar_month_outlined,
+                selectedIcon: Icons.calendar_month,
+                label: 'Календарь',
+                selected: calendarSelected,
+                extended: extended,
+                palette: palette,
+                onTap: onCalendar,
               ),
               _SidebarTile(
                 icon: Icons.bookmark_border_outlined,
