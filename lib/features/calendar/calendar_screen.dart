@@ -424,6 +424,34 @@ class _DayDetail extends ConsumerWidget {
             _summaryLine(completed.length, xpSum, dueOpen.length, createdNotes.length),
             style: TextStyle(color: palette.muted, fontSize: 12),
           ),
+          const SizedBox(height: 10),
+          // CTA: start composing a task scheduled for this day. We
+          // pre-populate dueAt with 09:00 local so the user usually just
+          // has to type the title and hit "Сохранить" — the calendar
+          // stream picks up the new task on the spot.
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                final due = DateTime(day.year, day.month, day.day, 9, 0);
+                showEntryEditor(
+                  context,
+                  ref,
+                  initialDueAt: due,
+                  initialKind: EntryKind.task,
+                );
+              },
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Запланировать на этот день'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: palette.fg,
+                side: BorderSide(color: palette.line),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+          ),
           const SizedBox(height: 12),
           if (completed.isEmpty && dueOpen.isEmpty && createdNotes.isEmpty)
             _EmptyDay(palette: palette)

@@ -102,6 +102,41 @@ class _DayDetailSheet extends ConsumerWidget {
                   _summaryLine(completed.length, xpSum, dueOpen.length),
                   style: TextStyle(color: palette.muted, fontSize: 12),
                 ),
+                const SizedBox(height: 10),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      // Capture the Navigator's own context *before*
+                      // popping — using `context` from this sheet
+                      // after pop would reference a deactivated
+                      // widget and could assert in debug / misbehave
+                      // in release.
+                      final nav = Navigator.of(context);
+                      final rootCtx = nav.context;
+                      final due = DateTime(
+                        day.year,
+                        day.month,
+                        day.day,
+                        9,
+                        0,
+                      );
+                      nav.pop();
+                      showEntryEditor(
+                        rootCtx,
+                        ref,
+                        initialDueAt: due,
+                        initialKind: EntryKind.task,
+                      );
+                    },
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Запланировать задачу'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: palette.fg,
+                      side: BorderSide(color: palette.line),
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 12),
                 if (completed.isEmpty && dueOpen.isEmpty)
                   Padding(
@@ -231,8 +266,10 @@ class _EntryTile extends ConsumerWidget {
         .toList();
     return InkWell(
       onTap: () {
-        Navigator.of(context).pop();
-        showEntryEditor(context, ref, existing: entry);
+        final nav = Navigator.of(context);
+        final rootCtx = nav.context;
+        nav.pop();
+        showEntryEditor(rootCtx, ref, existing: entry);
       },
       borderRadius: BorderRadius.circular(8),
       child: Padding(

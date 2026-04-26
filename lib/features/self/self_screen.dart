@@ -12,13 +12,21 @@ import '../roadmap/roadmap_screen.dart';
 import '../settings/settings_screen.dart';
 import 'axes_editor_screen.dart';
 import 'axis_detail_sheet.dart';
+import 'epoch_ceremony.dart';
 import 'pentagon_painter.dart';
 
-class SelfScreen extends ConsumerWidget {
+class SelfScreen extends ConsumerStatefulWidget {
   const SelfScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SelfScreen> createState() => _SelfScreenState();
+}
+
+class _SelfScreenState extends ConsumerState<SelfScreen> {
+  bool _rearmInFlight = false;
+
+  @override
+  Widget build(BuildContext context) {
     final palette = context.palette;
     final scoresAsync = ref.watch(scoresProvider);
     final profile = ref.watch(profileProvider).valueOrNull;
@@ -27,7 +35,30 @@ class SelfScreen extends ConsumerWidget {
     final axisLevelsAsync = ref.watch(axisLevelStatsProvider);
     final hasName = profile != null && profile.name.isNotEmpty;
 
+    // Re-arm logic only — the ceremony itself is no longer a modal.
+    // The inline overlay decides on its own whether to be visible
+    // based on (pentagonFull && epochAckedAt == null). What we still
+    // need to do here is *clear* the ack once any axis dips below 95
+    // again, so the next refill re-arms the overlay naturally.
+    final scores = scoresAsync.valueOrNull;
+    if (profile != null && scores != null && scores.length >= 3) {
+      final isFull = EpochCeremony.pentagonFull(scores);
+      if (!isFull && profile.epochAckedAt != null && !_rearmInFlight) {
+        _rearmInFlight = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
+          if (!mounted) return;
+          final svc = ref.read(profileServiceProvider);
+          await svc.save(profile.copyWith(
+            clearEpochAckedAt: true,
+            updatedAt: DateTime.now(),
+          ));
+          if (mounted) _rearmInFlight = false;
+        });
+      }
+    }
+
     final canPop = Navigator.of(context).canPop();
+    final isMobile = MediaQuery.of(context).size.width < 900;
     return Scaffold(
       appBar: AppBar(
         // When pushed (e.g. tapped from the mini-Древо on the dashboard) we
@@ -53,17 +84,20 @@ class SelfScreen extends ConsumerWidget {
               );
             },
           ),
-          IconButton(
-            tooltip: 'Настройки',
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const SettingsScreen(),
-                ),
-              );
-            },
-          ),
+          // On desktop, Settings is a sidebar tab — no need to duplicate
+          // it in the AppBar. On mobile it's the primary way in.
+          if (isMobile)
+            IconButton(
+              tooltip: 'Настройки',
+              icon: const Icon(Icons.settings_outlined),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const SettingsScreen(),
+                  ),
+                );
+              },
+            ),
         ],
       ),
       body: scoresAsync.when(
@@ -77,14 +111,50 @@ class SelfScreen extends ConsumerWidget {
                 level: levelAsync.valueOrNull,
                 streak: streakAsync.valueOrNull ?? 0,
                 aspiration: profile?.aspiration ?? '',
+                epoch: profile?.currentEpoch ?? 1,
+                tier: profile?.epochTier ?? 1,
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
+              if (profile != null &&
+                  scores.length >= 3 &&
+                  EpochCeremony.pentagonFull(scores) &&
+                  profile.epochAckedAt != null)
+                _TransitionReadyBanner(
+                  palette: palette,
+                  onTap: () async {
+                    // Re-open the overlay by clearing the ack — the
+                    // EpochOverlay visibility switches on the next
+                    // rebuild.
+                    final svc = ref.read(profileServiceProvider);
+                    await svc.save(profile.copyWith(
+                      clearEpochAckedAt: true,
+                      updatedAt: DateTime.now(),
+                    ));
+                  },
+                ),
+              const SizedBox(height: 8),
               if (scores.length < 3)
                 _EmptyAxes()
               else ...[
                 SizedBox(
                   height: 320,
-                  child: _DrevoCanvas(scores: scores),
+                  child: profile == null
+                      ? _DrevoCanvas(scores: scores)
+                      : EpochOverlay(
+                          profile: profile,
+                          visible: EpochCeremony.pentagonFull(scores) &&
+                              profile.epochAckedAt == null,
+                          onDismissed: () async {
+                            if (profile.epochAckedAt != null) return;
+                            final svc =
+                                ref.read(profileServiceProvider);
+                            await svc.save(profile.copyWith(
+                              epochAckedAt: DateTime.now(),
+                              updatedAt: DateTime.now(),
+                            ));
+                          },
+                          child: _DrevoCanvas(scores: scores),
+                        ),
                 ),
                 const SizedBox(height: 24),
                 Text(
@@ -139,11 +209,15 @@ class _ProfileHeader extends StatelessWidget {
     required this.level,
     required this.streak,
     required this.aspiration,
+    required this.epoch,
+    this.tier = 1,
   });
 
   final LevelStats? level;
   final int streak;
   final String aspiration;
+  final int epoch;
+  final int tier;
 
   @override
   Widget build(BuildContext context) {
@@ -163,15 +237,20 @@ class _ProfileHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               _BigNumber(
+                label: 'ЭПОХА',
+                value: tier > 1 ? 'Э$epoch.$tier' : 'Э$epoch',
+              ),
+              const SizedBox(width: 20),
+              _BigNumber(
                 label: 'УРОВЕНЬ',
                 value: l == null ? '—' : 'L${l.level}',
               ),
-              const SizedBox(width: 24),
+              const SizedBox(width: 20),
               _BigNumber(
                 label: 'XP',
                 value: l == null ? '—' : '${l.totalXp}',
               ),
-              const SizedBox(width: 24),
+              const SizedBox(width: 20),
               _BigNumber(
                 label: 'СТРИК',
                 value: streak == 0 ? '—' : '$streak д.',
@@ -246,6 +325,49 @@ class _BigNumber extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Small tappable banner that surfaces after the user dismissed the
+/// overlay once. It gently indicates "you've got a transition waiting"
+/// and re-opens the overlay on tap — no autoreopening on every build,
+/// no autohiding either.
+class _TransitionReadyBanner extends StatelessWidget {
+  const _TransitionReadyBanner({required this.palette, required this.onTap});
+  final NoeticaPalette palette;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+        decoration: BoxDecoration(
+          color: palette.surface,
+          border: Border.all(color: palette.fg, width: 1.2),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.auto_awesome, size: 18, color: palette.fg),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Готов к переходу — тапни, чтобы открыть',
+                style: TextStyle(
+                  color: palette.fg,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            Icon(Icons.chevron_right, size: 18, color: palette.fg),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -368,6 +490,24 @@ class _AxisTile extends StatelessWidget {
                                   fontSize: 10,
                                   letterSpacing: 1.2,
                                   fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: palette.fg,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                'Э${epochFromXp(ls.totalXp)}',
+                                style: TextStyle(
+                                  color: palette.bg,
+                                  fontSize: 10,
+                                  letterSpacing: 1.2,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                             ),
@@ -541,6 +681,9 @@ class _DrevoCanvasState extends ConsumerState<_DrevoCanvas>
                   bg: palette.bg,
                   progress: progress.toDouble(),
                   highlightedAxisIndex: _highlight,
+                  bloomedAxes:
+                      EpochCeremony.bloomedAxes(widget.scores),
+                  bloomPulse: _breath.value,
                 ),
                 child: const SizedBox.expand(),
               );

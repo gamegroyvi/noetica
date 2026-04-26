@@ -170,8 +170,13 @@ class _OnboardingChatScreenState
       case 2:
         return _interests.length >= 3;
       case 3:
-        return _interests.every(
-            (i) => kInterestLevels.contains(_interestLevels[i] ?? 'novice'));
+        // Require each interest to have an explicit level picked.
+        // Before, this silently defaulted to 'novice' which meant the
+        // grade step could be skipped without the user realising —
+        // producing bad roadmap calibration downstream.
+        return _interests.isNotEmpty &&
+            _interests.every((i) =>
+                kInterestLevels.contains(_interestLevels[i]));
       case 4:
         return true;
       case 5:
@@ -840,58 +845,249 @@ class _LevelsReply extends StatelessWidget {
     'confident': 'Уверенно',
     'expert': 'Эксперт',
   };
+  static const _levelHints = <String, String>{
+    'novice': 'только начинаю',
+    'learning': 'в процессе',
+    'confident': 'уверенно справляюсь',
+    'expert': 'давно в теме',
+  };
 
   @override
   Widget build(BuildContext context) {
-    if (interests.isEmpty) {
-      return const SizedBox.shrink();
-    }
+    if (interests.isEmpty) return const SizedBox.shrink();
+    // Clamp against the current interests length — the user can
+    // shrink the list by going back to step 2 and removing entries,
+    // leaving `activeIdx` pointing past the tail. Without this,
+    // `interests[activeIdx]` would throw RangeError and crash the
+    // onboarding flow.
+    final clampedIdx = activeIdx.clamp(0, interests.length - 1);
+    final active = interests[clampedIdx];
+    final activeLevel = levels[active]; // null until first tap
+    // Count only current interests — the map can retain stale keys
+    // from sets the user cleared by editing step 2.
+    final rated = interests.where((i) => levels[i] != null).length;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // Step hint — explicit instruction so the 2-step flow isn't
+        // confusing. Previously both rows looked like identical chips
+        // and users didn't understand they had to pick a sphere first.
+        Text(
+          'Шаг 1 — выбери сферу (вверху).  Шаг 2 — поставь грейд (внизу).',
+          style: TextStyle(color: palette.muted, fontSize: 12),
+        ),
+        const SizedBox(height: 12),
+        // Interests as bigger pill cards with a checkmark when rated.
         SizedBox(
-          height: 38,
+          height: 44,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemBuilder: (_, i) {
               final interest = interests[i];
-              return _Chip(
+              final isActive = i == clampedIdx;
+              final isRated = levels[interest] != null;
+              return _InterestPill(
                 label: interest,
-                selected: i == activeIdx,
+                active: isActive,
+                rated: isRated,
                 onTap: () => onActive(i),
                 palette: palette,
               );
             },
-            separatorBuilder: (_, __) => const SizedBox(width: 6),
+            separatorBuilder: (_, __) => const SizedBox(width: 8),
             itemCount: interests.length,
           ),
         ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
+        const SizedBox(height: 10),
+        Text(
+          'оценено $rated/${interests.length}',
+          style: TextStyle(color: palette.muted, fontSize: 11),
+        ),
+        const SizedBox(height: 18),
+        // Level section now explicitly names the active interest so
+        // the coupling between rows is obvious.
+        Text(
+          'Твой уровень в «$active»',
+          style: TextStyle(
+            color: palette.fg,
+            fontWeight: FontWeight.w700,
+            fontSize: 14,
+          ),
+        ),
+        const SizedBox(height: 10),
+        // Level options rendered as distinct cards (not chips), each
+        // with a label + short explanation. The visual difference
+        // from the top row makes the two-step flow obvious.
+        Column(
           children: [
-            for (final level in kInterestLevels)
-              _Chip(
+            for (final level in kInterestLevels) ...[
+              _LevelCard(
                 label: _levelLabels[level] ?? level,
-                selected:
-                    (levels[interests[activeIdx]] ?? 'novice') == level,
-                onTap: () => onLevel(interests[activeIdx], level),
+                hint: _levelHints[level] ?? '',
+                selected: activeLevel == level,
+                onTap: () => onLevel(active, level),
                 palette: palette,
               ),
+              const SizedBox(height: 6),
+            ],
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
         FilledButton(
           onPressed: onSubmit,
           style: FilledButton.styleFrom(
             backgroundColor: palette.fg,
             foregroundColor: palette.bg,
-            padding: const EdgeInsets.symmetric(vertical: 12),
+            padding: const EdgeInsets.symmetric(vertical: 14),
           ),
-          child: const Text('Далее'),
+          child: Text(
+            onSubmit == null
+                ? 'Оцени все ${interests.length} сфер'
+                : 'Далее',
+          ),
         ),
       ],
+    );
+  }
+}
+
+class _InterestPill extends StatelessWidget {
+  const _InterestPill({
+    required this.label,
+    required this.active,
+    required this.rated,
+    required this.onTap,
+    required this.palette,
+  });
+
+  final String label;
+  final bool active;
+  final bool rated;
+  final VoidCallback onTap;
+  final NoeticaPalette palette;
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = active ? palette.fg : palette.surface;
+    final fg = active ? palette.bg : palette.fg;
+    final borderColor = active ? palette.fg : palette.line;
+    return Material(
+      color: bg,
+      shape: StadiumBorder(
+        side: BorderSide(color: borderColor, width: active ? 2 : 1),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const StadiumBorder(),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (rated) ...[
+                Icon(Icons.check, size: 14, color: fg),
+                const SizedBox(width: 6),
+              ],
+              Text(
+                label,
+                style: TextStyle(
+                  color: fg,
+                  fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LevelCard extends StatelessWidget {
+  const _LevelCard({
+    required this.label,
+    required this.hint,
+    required this.selected,
+    required this.onTap,
+    required this.palette,
+  });
+
+  final String label;
+  final String hint;
+  final bool selected;
+  final VoidCallback onTap;
+  final NoeticaPalette palette;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? palette.fg.withOpacity(0.08) : palette.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(
+          color: selected ? palette.fg : palette.line,
+          width: selected ? 2 : 1,
+        ),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              // Radio indicator makes the "pick one" semantics explicit.
+              Container(
+                width: 18,
+                height: 18,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: selected ? palette.fg : palette.line,
+                    width: 2,
+                  ),
+                ),
+                child: selected
+                    ? Center(
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: palette.fg,
+                          ),
+                        ),
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: TextStyle(
+                        color: palette.fg,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
+                    ),
+                    if (hint.isNotEmpty)
+                      Text(
+                        hint,
+                        style:
+                            TextStyle(color: palette.muted, fontSize: 12),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

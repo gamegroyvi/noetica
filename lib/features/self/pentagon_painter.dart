@@ -19,6 +19,8 @@ class PentagonPainter extends CustomPainter {
     required this.bg,
     this.progress = 1.0,
     this.highlightedAxisIndex,
+    this.bloomedAxes = const <int>{},
+    this.bloomPulse = 0.0,
   });
 
   final List<AxisScore> scores;
@@ -34,6 +36,16 @@ class PentagonPainter extends CustomPainter {
   /// If set, the spoke + label for this axis are drawn with extra weight
   /// to mark the user's tap. Other axes stay normal.
   final int? highlightedAxisIndex;
+
+  /// Axes whose value has crossed the bloom threshold (≥95). Painted
+  /// with a thicker spoke + a halo around the label so the pentagon
+  /// reads "this branch is at the peak".
+  final Set<int> bloomedAxes;
+
+  /// 0..1 — value of the continuous breathing/pulse animation. Used to
+  /// modulate the bloom halo so it shimmers gently rather than sitting
+  /// still.
+  final double bloomPulse;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -79,20 +91,49 @@ class PentagonPainter extends CustomPainter {
       canvas.drawPath(path, ringPaint);
     }
 
-    // spokes — highlight the tapped axis with a thicker stroke.
+    // spokes — highlight the tapped axis with a thicker stroke, and
+    // bloom (axis ≥95%) with a thicker, brighter version so the
+    // pentagon visually flags "this branch is at the peak".
     for (var i = 0; i < n; i++) {
       final p = _vertex(center, radius, i, n);
       final highlight = i == highlightedAxisIndex;
-      canvas.drawLine(
-        center,
-        p,
-        highlight
-            ? (Paint()
-              ..style = PaintingStyle.stroke
-              ..color = fg
-              ..strokeWidth = 1.5)
-            : spokePaint,
-      );
+      final bloom = bloomedAxes.contains(i);
+      Paint paint;
+      if (bloom) {
+        paint = Paint()
+          ..style = PaintingStyle.stroke
+          ..color = fg
+          ..strokeWidth = 2.2;
+      } else if (highlight) {
+        paint = Paint()
+          ..style = PaintingStyle.stroke
+          ..color = fg
+          ..strokeWidth = 1.5;
+      } else {
+        paint = spokePaint;
+      }
+      canvas.drawLine(center, p, paint);
+    }
+
+    // Cross-link: when 2+ axes are bloomed simultaneously, draw soft
+    // connectors between every pair of bloomed vertices (through the
+    // pentagon's interior, not via the center). The line shimmers
+    // with [bloomPulse] so it doesn't sit static.
+    if (bloomedAxes.length >= 2) {
+      final list = bloomedAxes.toList()..sort();
+      final shimmer = 0.45 + 0.35 * (0.5 + 0.5 *
+          math.sin(bloomPulse * 2 * math.pi));
+      final connector = Paint()
+        ..style = PaintingStyle.stroke
+        ..color = fg.withOpacity(shimmer)
+        ..strokeWidth = 1.0;
+      for (var a = 0; a < list.length; a++) {
+        for (var b = a + 1; b < list.length; b++) {
+          final pa = _vertex(center, radius * 0.96, list[a], n);
+          final pb = _vertex(center, radius * 0.96, list[b], n);
+          canvas.drawLine(pa, pb, connector);
+        }
+      }
     }
 
     // current state polygon (animated outward via [progress])
@@ -120,11 +161,25 @@ class PentagonPainter extends CustomPainter {
       canvas.drawCircle(p, highlight ? 5.0 : 3.5, dotPaint);
     }
 
-    // axis labels (symbol). The tapped axis gets a small ring around it
-    // so the user can see what they touched.
+    // axis labels (symbol). The tapped axis gets a small ring around
+    // it; bloomed (≥95%) axes get a softer halo that breathes with
+    // the pulse animation.
     for (var i = 0; i < n; i++) {
       final p = _vertex(center, radius + 18, i, n);
       final highlight = i == highlightedAxisIndex;
+      final bloom = bloomedAxes.contains(i);
+      if (bloom) {
+        final breath = 0.55 + 0.35 * (0.5 + 0.5 *
+            math.sin(bloomPulse * 2 * math.pi));
+        canvas.drawCircle(
+          p,
+          16 + 3 * breath,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..color = fg.withOpacity(breath)
+            ..strokeWidth = 1.4,
+        );
+      }
       if (highlight) {
         canvas.drawCircle(
           p,
@@ -189,5 +244,7 @@ class PentagonPainter extends CustomPainter {
       oldDelegate.line != line ||
       oldDelegate.bg != bg ||
       oldDelegate.progress != progress ||
-      oldDelegate.highlightedAxisIndex != highlightedAxisIndex;
+      oldDelegate.highlightedAxisIndex != highlightedAxisIndex ||
+      oldDelegate.bloomedAxes != bloomedAxes ||
+      oldDelegate.bloomPulse != bloomPulse;
 }

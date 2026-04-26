@@ -17,6 +17,7 @@ import '../reflection/reflection_sheet.dart';
 import '../reflection/weekly_reflection_sheet.dart';
 import '../self/pentagon_painter.dart';
 import '../self/self_screen.dart';
+import '../settings/settings_screen.dart';
 import '../tasks/tasks_screen.dart';
 
 /// "Сейчас" tab — focused dashboard.
@@ -36,11 +37,13 @@ class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({
     super.key,
     this.onOpenSelf,
+    this.onOpenTasks,
     this.onOpenJournal,
     this.onOpenCalendar,
   });
 
   final VoidCallback? onOpenSelf;
+  final VoidCallback? onOpenTasks;
   final VoidCallback? onOpenJournal;
   final VoidCallback? onOpenCalendar;
 
@@ -97,6 +100,26 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
   }
 
+  /// Tasks live in the primary-tab rail (index 1 in HomeShell), so a tab
+  /// switch works everywhere. We still fall back to a push when the
+  /// dashboard is hosted outside the shell.
+  void _openTasks() {
+    final cb = widget.onOpenTasks;
+    if (cb != null) {
+      cb();
+    } else {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => const TasksScreen()),
+      );
+    }
+  }
+
+  void _openSettings() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
+    );
+  }
+
   void _openCalendar() {
     final cb = widget.onOpenCalendar;
     if (cb != null) {
@@ -146,6 +169,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             icon: const Icon(Icons.timer_outlined),
             onPressed: () => PomodoroSheet.show(context),
           ),
+          if (!isDesktop)
+            IconButton(
+              tooltip: 'Настройки',
+              icon: const Icon(Icons.settings_outlined),
+              onPressed: _openSettings,
+            ),
           const SizedBox(width: 4),
         ],
       ),
@@ -259,22 +288,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 trailing: 'календарь →',
                 onTrailingTap: _openCalendar,
               ),
-              const SizedBox(height: 4),
-              Text(
-                '${stats.heatmap.fold(0, (a, b) => a + b)} закрыто за 90 дней · тапни день',
-                style: TextStyle(color: palette.muted, fontSize: 11),
-              ),
               const SizedBox(height: 8),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 720),
-                child: _ActivityHeatmap(
-                  values: stats.heatmap,
-                  palette: palette,
-                  onTapDay: (date) => showDayDetailSheet(
-                    context,
-                    date,
-                    onOpenCalendar: _openCalendar,
-                  ),
+              // No width cap: the heatmap stretches to the card width on
+              // desktop and becomes horizontally scrollable on narrow
+              // viewports, matching GitHub's behaviour.
+              _ActivityHeatmap(
+                entries: entries,
+                palette: palette,
+                onTapDay: (date) => showDayDetailSheet(
+                  context,
+                  date,
+                  onOpenCalendar: _openCalendar,
                 ),
               ),
               if (axes.length >= 3) ...[
@@ -290,17 +314,34 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ],
               const SizedBox(height: 22),
               _SectionHeader(
-                label: 'ПОСЛЕДНЕЕ',
+                // Previously this block was labelled "ПОСЛЕДНЕЕ" and routed
+                // to the journal, but the journal is for notes only —
+                // jumping there from a list of mixed entries felt broken.
+                // The dashboard's own "СЕГОДНЯ" block already covers tasks
+                // due today; this tail strip now shows the last few
+                // closed tasks and links to the full Tasks tab.
+                label: 'НЕДАВНО ЗАКРЫТО',
                 palette: palette,
-                trailing: 'журнал →',
-                onTrailingTap: _openJournal,
+                trailing: 'задачи →',
+                onTrailingTap: _openTasks,
               ),
               const SizedBox(height: 4),
-              for (final e in entries.take(4))
+              // `entries` is ordered by createdAt DESC; sort the
+              // completed-task subset by completion time before taking
+              // the top 4 so the header's "НЕДАВНО ЗАКРЫТО" promise
+              // actually holds (otherwise a task created long ago but
+              // just closed would be hidden behind recent creations).
+              for (final e in (entries
+                      .where((e) => e.isTask && e.isCompleted)
+                      .toList()
+                    ..sort((a, b) => (b.completedAt ?? b.updatedAt)
+                        .compareTo(a.completedAt ?? a.updatedAt)))
+                  .take(4))
                 _CompactEntryRow(
                   entry: e,
                   axesById: axesById,
                   palette: palette,
+                  useCompletedAt: true,
                 ),
             ],
           );
@@ -509,13 +550,20 @@ class _NowFocusCard extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 14),
+            // Primary: mark as done. Secondary: snooze the deadline in
+            // case the user is acting on the task but not ready to
+            // finish yet ("иду в качалку — дай ещё час"). Pomodoro /
+            // focus timer is reachable from the AppBar icon; baking
+            // it into the card as a primary CTA made no sense for the
+            // majority of tasks (physical, chores, errands).
             Row(
               children: [
                 Expanded(
                   child: FilledButton.icon(
-                    onPressed: () => PomodoroSheet.show(context),
-                    icon: const Icon(Icons.play_arrow_rounded, size: 18),
-                    label: const Text('Фокус'),
+                    onPressed: () =>
+                        toggleTaskWithReflection(context, ref, t),
+                    icon: const Icon(Icons.check_rounded, size: 18),
+                    label: const Text('Готово'),
                     style: FilledButton.styleFrom(
                       padding:
                           const EdgeInsets.symmetric(vertical: 10),
@@ -527,10 +575,9 @@ class _NowFocusCard extends ConsumerWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () =>
-                        toggleTaskWithReflection(context, ref, t),
-                    icon: const Icon(Icons.check_rounded, size: 18),
-                    label: const Text('Готово'),
+                    onPressed: () => _snoozeTask(context, ref, t),
+                    icon: const Icon(Icons.schedule_rounded, size: 18),
+                    label: const Text('Отложить'),
                     style: OutlinedButton.styleFrom(
                       padding:
                           const EdgeInsets.symmetric(vertical: 10),
@@ -539,12 +586,79 @@ class _NowFocusCard extends ConsumerWidget {
                     ),
                   ),
                 ),
+                const SizedBox(width: 4),
+                IconButton(
+                  tooltip: 'Запустить таймер фокуса',
+                  onPressed: () => PomodoroSheet.show(context),
+                  icon: const Icon(Icons.timer_outlined, size: 18),
+                  color: palette.muted,
+                ),
               ],
             ),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _snoozeTask(
+    BuildContext context,
+    WidgetRef ref,
+    Entry t,
+  ) async {
+    final palette = this.palette;
+    final choice = await showModalBottomSheet<Duration>(
+      context: context,
+      backgroundColor: palette.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+      ),
+      builder: (context) {
+        Widget opt(String label, Duration d) {
+          return ListTile(
+            dense: true,
+            title: Text(label, style: TextStyle(color: palette.fg)),
+            onTap: () => Navigator.of(context).pop(d),
+          );
+        }
+        return SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'ОТЛОЖИТЬ НА',
+                    style: TextStyle(
+                      color: palette.muted,
+                      fontSize: 11,
+                      letterSpacing: 2.4,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+              opt('+15 мин', const Duration(minutes: 15)),
+              opt('+1 час', const Duration(hours: 1)),
+              opt('+1 день', const Duration(days: 1)),
+              opt('+3 дня', const Duration(days: 3)),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+    if (choice == null) return;
+    final base = t.dueAt ?? DateTime.now();
+    final next = t.copyWith(
+      dueAt: base.add(choice),
+      updatedAt: DateTime.now(),
+    );
+    final repo = await ref.read(repositoryProvider.future);
+    await repo.upsertEntry(next);
   }
 }
 
@@ -629,11 +743,17 @@ class _CompactEntryRow extends ConsumerWidget {
     required this.entry,
     required this.axesById,
     required this.palette,
+    this.useCompletedAt = false,
   });
 
   final Entry entry;
   final Map<String, LifeAxis> axesById;
   final NoeticaPalette palette;
+
+  /// When true (e.g. in the "НЕДАВНО ЗАКРЫТО" strip) the row's subtitle
+  /// shows the task's completion time instead of creation time, which
+  /// is what the reader actually cares about in that context.
+  final bool useCompletedAt;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -678,7 +798,9 @@ class _CompactEntryRow extends ConsumerWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
-                    formatTimestamp(entry.createdAt),
+                    formatTimestamp(useCompletedAt
+                        ? (entry.completedAt ?? entry.createdAt)
+                        : entry.createdAt),
                     style: TextStyle(color: palette.muted, fontSize: 11),
                   ),
                 ],
@@ -1185,27 +1307,35 @@ class _DashboardStats {
   }
 }
 
-/// GitHub-style activity heatmap.
+/// GitHub-style activity heatmap, full calendar year.
 ///
-/// Layout matches GitHub closely: weekday labels on the left (Пн, Ср, Пт),
-/// month labels on top, columns are weeks, rows are days. Cell size caps
-/// at 14 px so on desktop the grid doesn't sprawl across the whole width.
-/// Bottom legend shows colour scale "меньше → больше" with 5 buckets.
-class _ActivityHeatmap extends StatelessWidget {
+/// Renders a Jan-1..Dec-31 grid (or up to today when viewing the current
+/// year), 7 rows × ~53 columns, Mondays on top. When the card is wide
+/// enough the grid stretches to fill the available width; on narrow
+/// viewports it keeps a comfortable cell size and becomes horizontally
+/// scrollable. Year-selector chips above the grid span from the year of
+/// the earliest entry (registration) through the current year.
+class _ActivityHeatmap extends StatefulWidget {
   const _ActivityHeatmap({
-    required this.values,
+    required this.entries,
     required this.palette,
     this.onTapDay,
   });
 
-  /// Day-of-completion counts, oldest first, length = 91 (13 weeks × 7).
-  final List<int> values;
+  /// All entries in the user's journal. The widget derives both the
+  /// per-day completion counts and the minimum year from them.
+  final List<Entry> entries;
   final NoeticaPalette palette;
-
-  /// Tapped-day callback (date is midnight-aligned). Also receives hover
-  /// events via the cell's Tooltip on desktop. When null, cells are
-  /// non-interactive.
   final ValueChanged<DateTime>? onTapDay;
+
+  @override
+  State<_ActivityHeatmap> createState() => _ActivityHeatmapState();
+}
+
+class _ActivityHeatmapState extends State<_ActivityHeatmap> {
+  int? _selectedYear;
+  final ScrollController _scroll = ScrollController();
+  int _lastYearRendered = 0;
 
   static const _weekdayLabels = ['Пн', '', 'Ср', '', 'Пт', '', ''];
   static const _monthLabels = [
@@ -1213,196 +1343,336 @@ class _ActivityHeatmap extends StatelessWidget {
     'июл', 'авг', 'сен', 'окт', 'ноя', 'дек',
   ];
 
+  // Fixed cell geometry — always renders a full-year strip (53 weeks /
+  // 12 months). If the viewport is too narrow, the strip scrolls
+  // horizontally. On first render we pin the scroll on the current
+  // month so the user sees today on the right edge, like github.
+  static const double _cellPx = 13;
+  static const double _spacingPx = 3;
+  static const double _labelGutter = 28;
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final maxV = values.fold<int>(0, (a, b) => b > a ? b : a);
-    const rows = 7;
-    const spacing = 3.0;
-    const labelGutter = 28.0;
-
-    // We want a true GitHub-style layout where row 0 = Monday and the
-    // rightmost column = the current calendar week, with today landing
-    // in its actual weekday row. Anchor everything to a Monday so the
-    // weekday label rail is correct.
+    final palette = widget.palette;
     final today = DateTime.now();
     final todayD = DateTime(today.year, today.month, today.day);
-    // weekday: 1=Mon..7=Sun → 0..6 offset from Monday-of-this-week.
-    final mondayThisWeek = todayD.subtract(Duration(days: todayD.weekday - 1));
-    final cols = (values.length / rows).ceil();
-    final mondayFirstCol =
-        mondayThisWeek.subtract(Duration(days: (cols - 1) * 7));
-    // Window of dates we actually have data for (last 91 days, today
-    // inclusive). Cells outside this window are rendered blank.
-    final windowStart = todayD.subtract(Duration(days: values.length - 1));
 
-    // Map column → first month label visible for that column. Now keyed
-    // off `mondayFirstCol`, so labels actually line up with the calendar.
+    // Determine min year from entries — any entry counts (creation or
+    // completion). Fallback to current year when there are none yet.
+    int minYear = todayD.year;
+    for (final e in widget.entries) {
+      final years = <int>[e.createdAt.year];
+      if (e.completedAt != null) years.add(e.completedAt!.year);
+      for (final y in years) {
+        if (y < minYear) minYear = y;
+      }
+    }
+    final maxYear = todayD.year;
+    final year = _selectedYear ?? maxYear;
+
+    // Build day-of-year count map for the selected year.
+    final counts = <DateTime, int>{};
+    var maxCount = 0;
+    for (final e in widget.entries) {
+      final c = e.completedAt;
+      if (c == null) continue;
+      if (c.year != year) continue;
+      final d = DateTime(c.year, c.month, c.day);
+      final v = (counts[d] ?? 0) + 1;
+      counts[d] = v;
+      if (v > maxCount) maxCount = v;
+    }
+
+    // Grid spans from the Monday of the week containing Jan 1 → the
+    // Sunday of the week containing Dec 31 (or today, for the current
+    // year).
+    final yearStart = DateTime(year, 1, 1);
+    final yearEndCap = year == todayD.year ? todayD : DateTime(year, 12, 31);
+    final firstCol = yearStart.subtract(Duration(days: yearStart.weekday - 1));
+    final lastCol = yearEndCap
+        .add(Duration(days: DateTime.sunday - yearEndCap.weekday));
+    final cols = (lastCol.difference(firstCol).inDays + 1) ~/ 7;
+
+    // Month markers: at each column whose Monday lands in a new month,
+    // emit the label for that month.
     final monthMarkers = <int, String>{};
     int? lastMonth;
     for (var c = 0; c < cols; c++) {
-      final colStart = mondayFirstCol.add(Duration(days: c * 7));
-      if (lastMonth != colStart.month) {
-        monthMarkers[c] = _monthLabels[colStart.month - 1];
-        lastMonth = colStart.month;
+      final d = firstCol.add(Duration(days: c * 7));
+      if (d.year != year) continue;
+      if (d.month != lastMonth) {
+        monthMarkers[c] = _monthLabels[d.month - 1];
+        lastMonth = d.month;
       }
-    }
-
-    // For a given (col, row) compute (a) the date that cell represents
-    // and (b) the count, indexing into `values` chronologically. Cells
-    // before the data window or after today are rendered blank.
-    ({DateTime date, int? value}) cellInfo(int c, int r) {
-      final date = mondayFirstCol.add(Duration(days: c * 7 + r));
-      if (date.isBefore(windowStart) || date.isAfter(todayD)) {
-        return (date: date, value: null);
-      }
-      final idx = date.difference(windowStart).inDays;
-      if (idx < 0 || idx >= values.length) return (date: date, value: null);
-      return (date: date, value: values[idx]);
     }
 
     String monthName(int m) => _monthLabels[m - 1];
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final available = constraints.maxWidth - labelGutter;
-        final raw = (available - (cols - 1) * spacing) / cols;
-        final cell = raw.clamp(8.0, 14.0).toDouble();
-        final gridWidth = cols * cell + (cols - 1) * spacing;
+    final total = counts.values.fold<int>(0, (a, b) => a + b);
 
-        return Column(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Year selector — chips from registration year through current.
+        if (maxYear > minYear || widget.entries.isNotEmpty)
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (var y = maxYear; y >= minYear; y--) ...[
+                  _YearChip(
+                    year: y,
+                    selected: y == year,
+                    palette: palette,
+                    onTap: () => setState(() => _selectedYear = y),
+                  ),
+                  const SizedBox(width: 6),
+                ],
+              ],
+            ),
+          ),
+        const SizedBox(height: 6),
+        Text(
+          total == 0
+              ? 'в $year году пока пусто'
+              : '$total ${_plural(total, "задача", "задачи", "задач")} закрыто в $year — тапни день',
+          style: TextStyle(color: palette.muted, fontSize: 11),
+        ),
+        const SizedBox(height: 8),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            const rows = 7;
+            const spacing = _spacingPx;
+            const labelGutter = _labelGutter;
+
+            // Decide cell size: if there's enough horizontal room to
+            // show the whole year without scrolling, stretch cells to
+            // fill the container (github does this on wide screens);
+            // otherwise keep the compact 13 px cell and scroll.
+            final available = constraints.maxWidth - labelGutter;
+            final fitCellPx =
+                (available - (cols - 1) * spacing) / cols;
+            final cell = fitCellPx >= _cellPx
+                ? fitCellPx.clamp(_cellPx.toDouble(), 22.0)
+                : _cellPx.toDouble();
+            final gridWidth = cols * cell + (cols - 1) * spacing;
+
+            // Compute the "anchor" column we want visible on first
+            // render — today (when viewing current year) or Dec 31
+            // (past years). Applied via post-frame callback so the
+            // ScrollController is attached to its viewport.
+            final nowCol = ((todayD.isBefore(firstCol)
+                        ? 0
+                        : todayD.difference(firstCol).inDays) /
+                    7)
+                .floor();
+            final anchorCol = year == todayD.year ? nowCol : cols - 1;
+            final anchorPx = anchorCol * (cell + spacing);
+
+            if (_lastYearRendered != year) {
+              _lastYearRendered = year;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted || !_scroll.hasClients) return;
+                final max = _scroll.position.maxScrollExtent;
+                final viewport = _scroll.position.viewportDimension;
+                if (max <= 0) return; // fits without scrolling
+                // Right-edge anchor with ~8 columns of breathing room
+                // to the right of today (matches github's layout).
+                final desired =
+                    (anchorPx - viewport + 8 * (cell + spacing))
+                        .clamp(0.0, max);
+                _scroll.jumpTo(desired);
+              });
+            }
+
+            final grid = _buildGrid(
+              cols: cols,
+              rows: rows,
+              cell: cell,
+              spacing: spacing,
+              firstCol: firstCol,
+              year: year,
+              todayD: todayD,
+              counts: counts,
+              maxCount: maxCount,
+              monthMarkers: monthMarkers,
+              gridWidth: gridWidth,
+              labelGutter: labelGutter,
+              palette: palette,
+              monthName: monthName,
+            );
+
+            return SingleChildScrollView(
+              controller: _scroll,
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              child: grid,
+            );
+          },
+        ),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.only(left: 28),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('меньше',
+                  style: TextStyle(color: palette.muted, fontSize: 10)),
+              const SizedBox(width: 6),
+              for (final t in const [0.0, 0.25, 0.5, 0.75, 1.0]) ...[
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: _bucketColor(t),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: 3),
+              ],
+              const SizedBox(width: 3),
+              Text('больше',
+                  style: TextStyle(color: palette.muted, fontSize: 10)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGrid({
+    required int cols,
+    required int rows,
+    required double cell,
+    required double spacing,
+    required DateTime firstCol,
+    required int year,
+    required DateTime todayD,
+    required Map<DateTime, int> counts,
+    required int maxCount,
+    required Map<int, String> monthMarkers,
+    required double gridWidth,
+    required double labelGutter,
+    required NoeticaPalette palette,
+    required String Function(int) monthName,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          height: 14,
+          child: Row(
+            children: [
+              SizedBox(width: labelGutter),
+              SizedBox(
+                width: gridWidth,
+                child: Stack(
+                  children: [
+                    for (final entry in monthMarkers.entries)
+                      Positioned(
+                        left: entry.key * (cell + spacing),
+                        child: Text(
+                          entry.value,
+                          style: TextStyle(
+                            color: palette.muted,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 4),
+        Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Month labels row.
             SizedBox(
-              height: 14,
-              child: Row(
+              width: labelGutter,
+              child: Column(
                 children: [
-                  const SizedBox(width: labelGutter),
-                  SizedBox(
-                    width: gridWidth,
-                    child: Stack(
-                      children: [
-                        for (final entry in monthMarkers.entries)
-                          Positioned(
-                            left: entry.key * (cell + spacing),
-                            child: Text(
-                              entry.value,
-                              style: TextStyle(
-                                color: palette.muted,
-                                fontSize: 10,
-                              ),
-                            ),
-                          ),
-                      ],
+                  for (var r = 0; r < rows; r++) ...[
+                    SizedBox(
+                      height: cell,
+                      child: Text(
+                        _weekdayLabels[r],
+                        style: TextStyle(
+                          color: palette.muted,
+                          fontSize: 10,
+                        ),
+                      ),
                     ),
-                  ),
+                    if (r < rows - 1) SizedBox(height: spacing),
+                  ],
                 ],
               ),
             ),
-            const SizedBox(height: 4),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Day-of-week labels.
-                SizedBox(
-                  width: labelGutter,
-                  child: Column(
-                    children: [
-                      for (var r = 0; r < rows; r++) ...[
-                        SizedBox(
-                          height: cell,
-                          child: Text(
-                            _weekdayLabels[r],
-                            style: TextStyle(
-                              color: palette.muted,
-                              fontSize: 10,
-                            ),
-                          ),
-                        ),
-                        if (r < rows - 1) const SizedBox(height: spacing),
-                      ],
-                    ],
-                  ),
-                ),
-                // The grid itself.
-                SizedBox(
-                  width: gridWidth,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      for (var c = 0; c < cols; c++) ...[
-                        Column(
-                          children: [
-                            for (var r = 0; r < rows; r++) ...[
-                              _buildCell(
-                                cellInfo(c, r),
-                                cell,
-                                maxV,
-                                monthName,
-                              ),
-                              if (r < rows - 1)
-                                const SizedBox(height: spacing),
-                            ],
-                          ],
-                        ),
-                        if (c < cols - 1) const SizedBox(width: spacing),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            // Bottom legend.
-            Padding(
-              padding: const EdgeInsets.only(left: labelGutter),
+            SizedBox(
+              width: gridWidth,
               child: Row(
-                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('меньше',
-                      style: TextStyle(color: palette.muted, fontSize: 10)),
-                  const SizedBox(width: 6),
-                  for (final t in const [0.0, 0.25, 0.5, 0.75, 1.0]) ...[
-                    Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        color: _bucketColor(t),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
+                  for (var c = 0; c < cols; c++) ...[
+                    Column(
+                      children: [
+                        for (var r = 0; r < rows; r++) ...[
+                          _buildCell(
+                            firstCol.add(Duration(days: c * 7 + r)),
+                            year,
+                            todayD,
+                            counts,
+                            maxCount,
+                            cell,
+                            monthName,
+                            palette,
+                          ),
+                          if (r < rows - 1) SizedBox(height: spacing),
+                        ],
+                      ],
                     ),
-                    const SizedBox(width: 3),
+                    if (c < cols - 1) SizedBox(width: spacing),
                   ],
-                  const SizedBox(width: 3),
-                  Text('больше',
-                      style: TextStyle(color: palette.muted, fontSize: 10)),
                 ],
               ),
             ),
           ],
-        );
-      },
+        ),
+      ],
     );
   }
 
   Widget _buildCell(
-    ({DateTime date, int? value}) info,
+    DateTime date,
+    int year,
+    DateTime todayD,
+    Map<DateTime, int> counts,
+    int maxCount,
     double size,
-    int maxV,
     String Function(int) monthName,
+    NoeticaPalette palette,
   ) {
-    final value = info.value;
-    if (value == null) {
-      // Out-of-window cell — completely transparent so the grid keeps
-      // its rectangular shape but the user sees we have no data there.
+    // Cells outside the selected year or in the future are rendered as
+    // transparent placeholders — they keep the grid rectangular without
+    // suggesting they're "empty data" days.
+    if (date.year != year || date.isAfter(todayD)) {
       return SizedBox(width: size, height: size);
     }
-    final t = maxV == 0 ? 0.0 : (value / maxV);
+    final key = DateTime(date.year, date.month, date.day);
+    final value = counts[key] ?? 0;
+    final t = maxCount == 0 ? 0.0 : (value / maxCount);
     final color =
         value == 0 ? palette.line.withOpacity(0.35) : _bucketColor(t);
     final label = value == 0
-        ? '${info.date.day} ${monthName(info.date.month)} · ничего'
-        : '${info.date.day} ${monthName(info.date.month)} · '
+        ? '${date.day} ${monthName(date.month)} $year · ничего'
+        : '${date.day} ${monthName(date.month)} $year · '
             '$value ${_plural(value, "задача", "задачи", "задач")}';
     final cell = Container(
       width: size,
@@ -1417,10 +1687,10 @@ class _ActivityHeatmap extends StatelessWidget {
       waitDuration: const Duration(milliseconds: 250),
       child: cell,
     );
-    if (onTapDay == null) return tooltipped;
+    if (widget.onTapDay == null) return tooltipped;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => onTapDay!(info.date),
+      onTap: () => widget.onTapDay!(key),
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
         child: tooltipped,
@@ -1429,6 +1699,7 @@ class _ActivityHeatmap extends StatelessWidget {
   }
 
   Color _bucketColor(double t) {
+    final palette = widget.palette;
     if (t <= 0.001) return palette.line.withOpacity(0.35);
     if (t < 0.34) return palette.fg.withOpacity(0.28);
     if (t < 0.67) return palette.fg.withOpacity(0.55);
@@ -1437,9 +1708,53 @@ class _ActivityHeatmap extends StatelessWidget {
   }
 }
 
-/// Compact tappable Древо preview — small radar polygon plus axis-symbol
-/// strip and a hint. Animates entrance like the full one and routes to
-/// SelfScreen on tap.
+class _YearChip extends StatelessWidget {
+  const _YearChip({
+    required this.year,
+    required this.selected,
+    required this.palette,
+    required this.onTap,
+  });
+
+  final int year;
+  final bool selected;
+  final NoeticaPalette palette;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? palette.fg : palette.bg,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: palette.line),
+        ),
+        child: Text(
+          '$year',
+          style: TextStyle(
+            color: selected ? palette.bg : palette.fg,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            fontSize: 12,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Mini-Древо card on the dashboard.
+///
+/// Previously the pentagon was crammed into a 96×96 box alongside a
+/// text column — at 6–7 axes you literally couldn't tell branches
+/// apart. This version gives the pentagon the whole card (up to
+/// 220 px on desktop, 180 on mobile), lays axis chips around it
+/// listing each branch with its symbol, name and level, and keeps
+/// the radar properly readable.
 class _MiniTreeCard extends ConsumerWidget {
   const _MiniTreeCard({required this.palette, this.onTap});
 
@@ -1450,6 +1765,8 @@ class _MiniTreeCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final scoresAsync = ref.watch(scoresProvider);
     final levelStatsAsync = ref.watch(axisLevelStatsProvider);
+    final isDesktop = MediaQuery.of(context).size.width >= 900;
+    final radarSize = isDesktop ? 220.0 : 180.0;
     return InkWell(
       onTap: onTap ??
           () => Navigator.of(context).push(
@@ -1457,15 +1774,15 @@ class _MiniTreeCard extends ConsumerWidget {
               ),
       borderRadius: BorderRadius.circular(10),
       child: Container(
-        padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
         decoration: BoxDecoration(
           color: palette.surface,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: palette.line),
         ),
         child: scoresAsync.when(
-          loading: () => const SizedBox(height: 90),
-          error: (_, __) => const SizedBox(height: 0),
+          loading: () => SizedBox(height: radarSize + 40),
+          error: (_, __) => const SizedBox.shrink(),
           data: (scores) {
             if (scores.isEmpty) {
               return Text(
@@ -1478,67 +1795,130 @@ class _MiniTreeCard extends ConsumerWidget {
               (a, b) => a.value >= b.value ? a : b,
             );
             final topLevel = levels[topAxis.axis.id]?.level ?? 1;
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
+            final totalXp =
+                levels.values.fold<int>(0, (acc, s) => acc + s.totalXp);
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(
-                  width: 96,
-                  height: 96,
-                  child: TweenAnimationBuilder<double>(
-                    duration: const Duration(milliseconds: 700),
-                    curve: Curves.easeOutCubic,
-                    tween: Tween(begin: 0, end: 1),
-                    builder: (_, t, __) => CustomPaint(
-                      painter: PentagonPainter(
-                        scores: scores,
-                        fg: palette.fg,
-                        muted: palette.muted,
-                        line: palette.line,
-                        bg: palette.bg,
-                        progress: t,
+                Row(
+                  children: [
+                    Text(
+                      '${scores.length} '
+                      '${_plural(scores.length, "ветвь", "ветви", "ветвей")}',
+                      style: TextStyle(
+                        color: palette.fg,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      '  ·  лучшая: ${topAxis.axis.symbol} '
+                      '${topAxis.axis.name.toLowerCase()} · L$topLevel',
+                      style: TextStyle(
+                        color: palette.muted,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Center(
+                  child: SizedBox(
+                    width: radarSize,
+                    height: radarSize,
+                    child: TweenAnimationBuilder<double>(
+                      duration: const Duration(milliseconds: 700),
+                      curve: Curves.easeOutCubic,
+                      tween: Tween(begin: 0, end: 1),
+                      builder: (_, t, __) => CustomPaint(
+                        painter: PentagonPainter(
+                          scores: scores,
+                          fg: palette.fg,
+                          muted: palette.muted,
+                          line: palette.line,
+                          bg: palette.bg,
+                          progress: t,
+                        ),
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${scores.length} ветвей · L$topLevel ${topAxis.axis.name.toLowerCase()}',
-                        style: TextStyle(
-                          color: palette.fg,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
+                const SizedBox(height: 12),
+                // Per-axis chips — symbol + short name + current level.
+                // Laid out in a Wrap so they adapt to card width and
+                // number of axes (works cleanly at 3 and at 8).
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final s in scores)
+                      _AxisChip(
+                        axis: s.axis,
+                        level: levels[s.axis.id]?.level ?? 1,
+                        palette: palette,
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        scores
-                            .map((s) =>
-                                '${s.axis.symbol} ${s.value.round()}')
-                            .join('  '),
-                        style: TextStyle(
-                          color: palette.muted,
-                          fontSize: 11,
-                          fontFamily: 'IBMPlexMono',
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'тап — посмотреть полностью',
-                        style: TextStyle(color: palette.muted, fontSize: 10),
-                      ),
-                    ],
-                  ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'всего $totalXp XP · тап — древо целиком',
+                  style: TextStyle(color: palette.muted, fontSize: 11),
                 ),
               ],
             );
           },
         ),
+      ),
+    );
+  }
+}
+
+class _AxisChip extends StatelessWidget {
+  const _AxisChip({
+    required this.axis,
+    required this.level,
+    required this.palette,
+  });
+
+  final LifeAxis axis;
+  final int level;
+  final NoeticaPalette palette;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: palette.bg,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: palette.line),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            axis.symbol,
+            style: TextStyle(
+              color: palette.fg,
+              fontSize: 13,
+              fontFamily: 'IBMPlexMono',
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            axis.name,
+            style: TextStyle(
+              color: palette.fg,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            'L$level',
+            style: TextStyle(color: palette.muted, fontSize: 11),
+          ),
+        ],
       ),
     );
   }

@@ -84,7 +84,7 @@ class _AxisDetailSheet extends ConsumerWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                if (ls != null)
+                if (ls != null) ...[
                   Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 8, vertical: 4),
@@ -101,6 +101,24 @@ class _AxisDetailSheet extends ConsumerWidget {
                       ),
                     ),
                   ),
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: palette.fg,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      'Э${epochFromXp(ls.totalXp)}',
+                      style: TextStyle(
+                        color: palette.bg,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
             const SizedBox(height: 16),
@@ -121,18 +139,31 @@ class _AxisDetailSheet extends ConsumerWidget {
                 const SizedBox(width: 24),
                 if (ls != null)
                   _Stat(
-                    label: 'ДО L${ls.level + 1}',
-                    value: '${ls.xpAtNextLevel - ls.totalXp}',
+                    label: 'ДО Э${epochFromXp(ls.totalXp) + 1}',
+                    value: '${xpToNextEpoch(ls.totalXp)}',
                     palette: palette,
                   ),
               ],
             ),
             if (ls != null) ...[
+              const SizedBox(height: 6),
+              Text(
+                'Уровень L${ls.level} — от всех закрытых задач. '
+                'Эпоха Э${epochFromXp(ls.totalXp)} — от XP именно этой оси, '
+                'растёт и после того как древо заполнено на 100 %.',
+                style: TextStyle(color: palette.muted, fontSize: 11),
+              ),
+            ],
+            if (ls != null) ...[
               const SizedBox(height: 12),
+              // Progress bar now tracks the same metric as the adjacent
+              // "ДО Э…" stat — эпоха progress — so the numbers can't
+              // drift against the bar. 0..1 of the current эпоха.
               ClipRRect(
                 borderRadius: BorderRadius.circular(2),
                 child: LinearProgressIndicator(
-                  value: ls.progress,
+                  value: ((ls.totalXp % kXpPerEpoch) / kXpPerEpoch)
+                      .clamp(0.0, 1.0),
                   minHeight: 4,
                   backgroundColor: palette.line,
                   valueColor: AlwaysStoppedAnimation<Color>(palette.fg),

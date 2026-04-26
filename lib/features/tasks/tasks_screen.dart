@@ -4,10 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models.dart';
 import '../../providers.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/subtask_utils.dart';
 import '../../utils/time_utils.dart';
 import '../../widgets/brand_glyph.dart';
 import '../entry/entry_editor_sheet.dart';
 import '../reflection/reflection_sheet.dart';
+import '../settings/settings_screen.dart';
 
 /// Status filter applied to the visible task list.
 enum _StatusFilter { all, open, overdue, done }
@@ -65,6 +67,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
     final palette = context.palette;
     final entriesAsync = ref.watch(entriesProvider);
     final axesAsync = ref.watch(axesProvider);
+    final isMobile = MediaQuery.of(context).size.width < 900;
 
     return Scaffold(
       appBar: AppBar(
@@ -88,6 +91,16 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                 ),
             ],
           ),
+          if (isMobile)
+            IconButton(
+              tooltip: 'Настройки',
+              icon: const Icon(Icons.settings_outlined),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const SettingsScreen(),
+                ),
+              ),
+            ),
         ],
       ),
       body: entriesAsync.when(
@@ -148,7 +161,10 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
   int _compareTasks(Entry a, Entry b) {
     switch (_sort) {
       case _SortMode.smart:
-        // Active first (by due asc, then created desc), then completed.
+        // Active first (by due asc, then subtask-bearing, then created
+        // desc), then completed. Subtask-bearing tasks are lifted above
+        // plain ones: they've usually been planned explicitly by the
+        // roadmap LLM and are more actionable.
         if (a.isCompleted != b.isCompleted) {
           return a.isCompleted ? 1 : -1;
         }
@@ -157,7 +173,13 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
           final bd = b.dueAt;
           if (ad == null && bd != null) return 1;
           if (ad != null && bd == null) return -1;
-          if (ad != null && bd != null) return ad.compareTo(bd);
+          if (ad != null && bd != null) {
+            final c = ad.compareTo(bd);
+            if (c != 0) return c;
+          }
+          final aHas = hasSubtasks(a.body);
+          final bHas = hasSubtasks(b.body);
+          if (aHas != bHas) return aHas ? -1 : 1;
           return b.createdAt.compareTo(a.createdAt);
         }
         return (b.completedAt ?? b.updatedAt)
@@ -287,12 +309,24 @@ class _TaskTile extends ConsumerWidget {
   final Entry task;
   final Map<String, LifeAxis> axesById;
 
+  Future<void> _toggleSubtask(WidgetRef ref, int index) async {
+    final repo = await ref.read(repositoryProvider.future);
+    final next = toggleSubtask(task.body, index);
+    if (next == task.body) return;
+    await repo.upsertEntry(
+      task.copyWith(body: next, updatedAt: DateTime.now()),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final palette = context.palette;
     final overdue = !task.isCompleted &&
         task.dueAt != null &&
         task.dueAt!.isBefore(DateTime.now());
+    final subtasks = parseSubtasks(task.body);
+    final prose = stripSubtasks(task.body);
+    final prog = subtaskProgress(task.body);
     return InkWell(
       onTap: () => showEntryEditor(context, ref, existing: task),
       borderRadius: BorderRadius.circular(8),
@@ -327,10 +361,10 @@ class _TaskTile extends ConsumerWidget {
                               : palette.fg,
                         ),
                   ),
-                  if (task.body.isNotEmpty) ...[
+                  if (prose.isNotEmpty) ...[
                     const SizedBox(height: 4),
                     Text(
-                      task.body,
+                      prose,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context)
@@ -338,6 +372,15 @@ class _TaskTile extends ConsumerWidget {
                           .bodyMedium
                           ?.copyWith(color: palette.muted),
                     ),
+                  ],
+                  if (subtasks.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    for (var i = 0; i < subtasks.length; i++)
+                      _SubtaskRow(
+                        subtask: subtasks[i],
+                        palette: palette,
+                        onToggle: () => _toggleSubtask(ref, i),
+                      ),
                   ],
                   const SizedBox(height: 6),
                   Wrap(
@@ -349,6 +392,12 @@ class _TaskTile extends ConsumerWidget {
                         palette: palette,
                         emphasised: true,
                       ),
+                      if (subtasks.isNotEmpty)
+                        _Pill(
+                          text: '☑ ${prog.done}/${prog.total}',
+                          palette: palette,
+                          emphasised: prog.done == prog.total,
+                        ),
                       for (final id in task.axisIds)
                         if (axesById[id] != null)
                           _Pill(
@@ -365,6 +414,61 @@ class _TaskTile extends ConsumerWidget {
                     ],
                   ),
                 ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SubtaskRow extends StatelessWidget {
+  const _SubtaskRow({
+    required this.subtask,
+    required this.palette,
+    required this.onToggle,
+  });
+
+  final Subtask subtask;
+  final NoeticaPalette palette;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onToggle,
+      borderRadius: BorderRadius.circular(6),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Compact checkbox — slightly smaller than the main task
+            // checkbox so hierarchy is visually obvious.
+            Container(
+              width: 16,
+              height: 16,
+              margin: const EdgeInsets.only(top: 2, right: 8),
+              decoration: BoxDecoration(
+                border: Border.all(color: palette.line, width: 1.2),
+                borderRadius: BorderRadius.circular(4),
+                color: subtask.checked ? palette.fg : Colors.transparent,
+              ),
+              child: subtask.checked
+                  ? Icon(Icons.check, size: 11, color: palette.bg)
+                  : null,
+            ),
+            Expanded(
+              child: Text(
+                subtask.text.isEmpty ? '—' : subtask.text,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: subtask.checked ? palette.muted : palette.fg,
+                  decoration: subtask.checked
+                      ? TextDecoration.lineThrough
+                      : null,
+                ),
               ),
             ),
           ],

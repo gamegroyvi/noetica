@@ -35,11 +35,15 @@ final entriesProvider = StreamProvider<List<Entry>>((ref) async* {
 });
 
 final scoresProvider = FutureProvider<List<AxisScore>>((ref) async {
-  // Recompute whenever entries change.
+  // Recompute whenever entries, axes, or the эпоха tier change.
   ref.watch(entriesProvider);
   ref.watch(axesProvider);
+  // Profile is the source for `epochRefreshedAt` — re-run on every
+  // change so tapping «Углубиться» produces an immediate visible
+  // pentagon reset without waiting for the decay window to roll.
+  final profile = ref.watch(profileProvider).valueOrNull;
   final repo = await ref.watch(repositoryProvider.future);
-  return repo.computeScores();
+  return repo.computeScores(baselineCutoff: profile?.epochRefreshedAt);
 });
 
 final onboardedProvider = FutureProvider<bool>((ref) async {
@@ -62,8 +66,16 @@ Future<void> markOnboarded() async {
 
 final profileServiceProvider = Provider<ProfileService>((_) => ProfileService());
 
-final profileProvider = FutureProvider<UserProfile?>((ref) async {
-  return ref.watch(profileServiceProvider).load();
+/// Streams the user profile. The initial value comes from
+/// [ProfileService.load] (SharedPreferences); every subsequent
+/// `ProfileService.save` / `clear` broadcasts on `ProfileService.changes`
+/// so *all* watchers — scoresProvider, the self-screen overlay, the
+/// header — see a fresh value without any call site having to remember
+/// `ref.invalidate(profileProvider)`.
+final profileProvider = StreamProvider<UserProfile?>((ref) async* {
+  final svc = ref.watch(profileServiceProvider);
+  yield await svc.load();
+  yield* ProfileService.changes;
 });
 
 final roadmapApiProvider = Provider<RoadmapApi>((ref) {

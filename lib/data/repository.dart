@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
@@ -611,11 +612,24 @@ class NoeticaRepository {
   /// this is exactly an even 1/N split, which is the deterministic
   /// "fair share" the user asked for. LLM-generated tasks ship explicit
   /// weights; manual tasks fall through to the even split.
-  Future<List<m.AxisScore>> computeScores() async {
+  /// Computes per-axis scores from the rolling XP-decay window.
+  ///
+  /// [baselineCutoff] is an optional override that shifts the window's
+  /// earliest contribution forward. Callers pass it when the user
+  /// taps «Углубиться» on the эпоха-overlay — that timestamp gets
+  /// stored on the profile and fed back here, which effectively
+  /// resets the pentagon without deleting any history.
+  Future<List<m.AxisScore>> computeScores({
+    DateTime? baselineCutoff,
+  }) async {
     final axes = await listAxes();
     if (axes.isEmpty) return const [];
     final now = DateTime.now();
-    final cutoff = now.subtract(_xpDecayWindow).millisecondsSinceEpoch;
+    final defaultCutoff =
+        now.subtract(_xpDecayWindow).millisecondsSinceEpoch;
+    final cutoff = baselineCutoff != null
+        ? math.max(defaultCutoff, baselineCutoff.millisecondsSinceEpoch)
+        : defaultCutoff;
     final rows = await _db.raw.rawQuery(
       '''
       SELECT ea.entry_id AS entry_id,
