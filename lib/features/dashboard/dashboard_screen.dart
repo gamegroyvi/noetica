@@ -550,13 +550,20 @@ class _NowFocusCard extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 14),
+            // Primary: mark as done. Secondary: snooze the deadline in
+            // case the user is acting on the task but not ready to
+            // finish yet ("иду в качалку — дай ещё час"). Pomodoro /
+            // focus timer is reachable from the AppBar icon; baking
+            // it into the card as a primary CTA made no sense for the
+            // majority of tasks (physical, chores, errands).
             Row(
               children: [
                 Expanded(
                   child: FilledButton.icon(
-                    onPressed: () => PomodoroSheet.show(context),
-                    icon: const Icon(Icons.play_arrow_rounded, size: 18),
-                    label: const Text('Фокус'),
+                    onPressed: () =>
+                        toggleTaskWithReflection(context, ref, t),
+                    icon: const Icon(Icons.check_rounded, size: 18),
+                    label: const Text('Готово'),
                     style: FilledButton.styleFrom(
                       padding:
                           const EdgeInsets.symmetric(vertical: 10),
@@ -568,10 +575,9 @@ class _NowFocusCard extends ConsumerWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () =>
-                        toggleTaskWithReflection(context, ref, t),
-                    icon: const Icon(Icons.check_rounded, size: 18),
-                    label: const Text('Готово'),
+                    onPressed: () => _snoozeTask(context, ref, t),
+                    icon: const Icon(Icons.schedule_rounded, size: 18),
+                    label: const Text('Отложить'),
                     style: OutlinedButton.styleFrom(
                       padding:
                           const EdgeInsets.symmetric(vertical: 10),
@@ -580,12 +586,79 @@ class _NowFocusCard extends ConsumerWidget {
                     ),
                   ),
                 ),
+                const SizedBox(width: 4),
+                IconButton(
+                  tooltip: 'Запустить таймер фокуса',
+                  onPressed: () => PomodoroSheet.show(context),
+                  icon: const Icon(Icons.timer_outlined, size: 18),
+                  color: palette.muted,
+                ),
               ],
             ),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _snoozeTask(
+    BuildContext context,
+    WidgetRef ref,
+    Entry t,
+  ) async {
+    final palette = this.palette;
+    final choice = await showModalBottomSheet<Duration>(
+      context: context,
+      backgroundColor: palette.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+      ),
+      builder: (context) {
+        Widget opt(String label, Duration d) {
+          return ListTile(
+            dense: true,
+            title: Text(label, style: TextStyle(color: palette.fg)),
+            onTap: () => Navigator.of(context).pop(d),
+          );
+        }
+        return SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'ОТЛОЖИТЬ НА',
+                    style: TextStyle(
+                      color: palette.muted,
+                      fontSize: 11,
+                      letterSpacing: 2.4,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+              opt('+15 мин', const Duration(minutes: 15)),
+              opt('+1 час', const Duration(hours: 1)),
+              opt('+1 день', const Duration(days: 1)),
+              opt('+3 дня', const Duration(days: 3)),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+    if (choice == null) return;
+    final base = t.dueAt ?? DateTime.now();
+    final next = t.copyWith(
+      dueAt: base.add(choice),
+      updatedAt: DateTime.now(),
+    );
+    final repo = await ref.read(repositoryProvider.future);
+    await repo.upsertEntry(next);
   }
 }
 
@@ -1261,12 +1334,28 @@ class _ActivityHeatmap extends StatefulWidget {
 
 class _ActivityHeatmapState extends State<_ActivityHeatmap> {
   int? _selectedYear;
+  final ScrollController _scroll = ScrollController();
+  int _lastYearRendered = 0;
 
   static const _weekdayLabels = ['Пн', '', 'Ср', '', 'Пт', '', ''];
   static const _monthLabels = [
     'янв', 'фев', 'мар', 'апр', 'май', 'июн',
     'июл', 'авг', 'сен', 'окт', 'ноя', 'дек',
   ];
+
+  // Fixed cell geometry — always renders a full-year strip (53 weeks /
+  // 12 months). If the viewport is too narrow, the strip scrolls
+  // horizontally. On first render we pin the scroll on the current
+  // month so the user sees today on the right edge, like github.
+  static const double _cellPx = 13;
+  static const double _spacingPx = 3;
+  static const double _labelGutter = 28;
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1359,24 +1448,37 @@ class _ActivityHeatmapState extends State<_ActivityHeatmap> {
         LayoutBuilder(
           builder: (context, constraints) {
             const rows = 7;
-            const spacing = 3.0;
-            const labelGutter = 28.0;
-            final available = constraints.maxWidth - labelGutter;
-            // Prefer stretching cells to fill width up to a max of
-            // 16 px per cell. If even the min cell (11 px) doesn't fit,
-            // we fall back to horizontal scrolling with a fixed 12 px
-            // cell — just like GitHub's behaviour on narrow screens.
-            final raw = (available - (cols - 1) * spacing) / cols;
-            double cell;
-            bool scroll;
-            if (raw < 11) {
-              cell = 12;
-              scroll = true;
-            } else {
-              cell = raw.clamp(11.0, 16.0).toDouble();
-              scroll = false;
-            }
+            const cell = _cellPx;
+            const spacing = _spacingPx;
+            const labelGutter = _labelGutter;
             final gridWidth = cols * cell + (cols - 1) * spacing;
+
+            // Compute the "anchor" column we want visible on first
+            // render — today (when viewing current year) or Dec 31
+            // (past years). Applied via post-frame callback so the
+            // ScrollController is attached to its viewport.
+            final nowCol = ((todayD.isBefore(firstCol)
+                        ? 0
+                        : todayD.difference(firstCol).inDays) /
+                    7)
+                .floor();
+            final anchorCol = year == todayD.year ? nowCol : cols - 1;
+            final anchorPx = anchorCol * (cell + spacing);
+
+            if (_lastYearRendered != year) {
+              _lastYearRendered = year;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted || !_scroll.hasClients) return;
+                final max = _scroll.position.maxScrollExtent;
+                final viewport = _scroll.position.viewportDimension;
+                // Right-edge anchor with ~8 columns of breathing room
+                // to the right of today (matches github's layout).
+                final desired =
+                    (anchorPx - viewport + 8 * (cell + spacing))
+                        .clamp(0.0, max);
+                _scroll.jumpTo(desired);
+              });
+            }
 
             final grid = _buildGrid(
               cols: cols,
@@ -1395,12 +1497,12 @@ class _ActivityHeatmapState extends State<_ActivityHeatmap> {
               monthName: monthName,
             );
 
-            return scroll
-                ? SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: grid,
-                  )
-                : grid;
+            return SingleChildScrollView(
+              controller: _scroll,
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              child: grid,
+            );
           },
         ),
         const SizedBox(height: 8),

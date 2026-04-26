@@ -56,6 +56,9 @@ class UserProfile {
     required this.weeklyHours,
     required this.updatedAt,
     this.birthdate,
+    this.currentEpoch = 1,
+    this.epochStartedAt,
+    this.epochAckedAt,
   });
 
   final String name;
@@ -73,6 +76,18 @@ class UserProfile {
   final int weeklyHours;
   final DateTime updatedAt;
 
+  /// Which "эпоха" the user is currently living in. Starts at 1; bumps
+  /// each time the user accepts the "Начать новую эпоху" ceremony
+  /// after filling the pentagon to 100 %. Persists so the ceremony
+  /// runs at most once per epoch.
+  final int currentEpoch;
+  final DateTime? epochStartedAt;
+
+  /// Last moment the user acknowledged the "пентагон заполнен" dialog
+  /// for the *current* epoch. Used to stop nagging them every time
+  /// they reopen the self screen while already fully decorated.
+  final DateTime? epochAckedAt;
+
   Map<String, dynamic> toJson() => {
         'name': name,
         if (birthdate != null) 'birthdate': birthdate!.toIso8601String(),
@@ -82,6 +97,11 @@ class UserProfile {
         'painPoint': painPoint,
         'weeklyHours': weeklyHours,
         'updatedAt': updatedAt.toIso8601String(),
+        'currentEpoch': currentEpoch,
+        if (epochStartedAt != null)
+          'epochStartedAt': epochStartedAt!.toIso8601String(),
+        if (epochAckedAt != null)
+          'epochAckedAt': epochAckedAt!.toIso8601String(),
       };
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
@@ -112,6 +132,13 @@ class UserProfile {
       weeklyHours: (json['weeklyHours'] as num?)?.toInt() ?? 5,
       updatedAt: DateTime.tryParse((json['updatedAt'] as String?) ?? '') ??
           DateTime.now(),
+      currentEpoch: (json['currentEpoch'] as num?)?.toInt() ?? 1,
+      epochStartedAt: (json['epochStartedAt'] as String?) != null
+          ? DateTime.tryParse(json['epochStartedAt'] as String)
+          : null,
+      epochAckedAt: (json['epochAckedAt'] as String?) != null
+          ? DateTime.tryParse(json['epochAckedAt'] as String)
+          : null,
     );
   }
 
@@ -125,6 +152,11 @@ class UserProfile {
     String? painPoint,
     int? weeklyHours,
     DateTime? updatedAt,
+    int? currentEpoch,
+    DateTime? epochStartedAt,
+    bool clearEpochStartedAt = false,
+    DateTime? epochAckedAt,
+    bool clearEpochAckedAt = false,
   }) {
     return UserProfile(
       name: name ?? this.name,
@@ -135,6 +167,12 @@ class UserProfile {
       painPoint: painPoint ?? this.painPoint,
       weeklyHours: weeklyHours ?? this.weeklyHours,
       updatedAt: updatedAt ?? this.updatedAt,
+      currentEpoch: currentEpoch ?? this.currentEpoch,
+      epochStartedAt: clearEpochStartedAt
+          ? null
+          : (epochStartedAt ?? this.epochStartedAt),
+      epochAckedAt:
+          clearEpochAckedAt ? null : (epochAckedAt ?? this.epochAckedAt),
     );
   }
 }

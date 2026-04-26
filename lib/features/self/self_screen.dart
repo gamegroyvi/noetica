@@ -12,13 +12,21 @@ import '../roadmap/roadmap_screen.dart';
 import '../settings/settings_screen.dart';
 import 'axes_editor_screen.dart';
 import 'axis_detail_sheet.dart';
+import 'epoch_ceremony.dart';
 import 'pentagon_painter.dart';
 
-class SelfScreen extends ConsumerWidget {
+class SelfScreen extends ConsumerStatefulWidget {
   const SelfScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SelfScreen> createState() => _SelfScreenState();
+}
+
+class _SelfScreenState extends ConsumerState<SelfScreen> {
+  bool _ceremonyShown = false;
+
+  @override
+  Widget build(BuildContext context) {
     final palette = context.palette;
     final scoresAsync = ref.watch(scoresProvider);
     final profile = ref.watch(profileProvider).valueOrNull;
@@ -26,6 +34,22 @@ class SelfScreen extends ConsumerWidget {
     final levelAsync = ref.watch(levelStatsProvider);
     final axisLevelsAsync = ref.watch(axisLevelStatsProvider);
     final hasName = profile != null && profile.name.isNotEmpty;
+
+    // Fire the эпоха ceremony once per app-foreground when pentagon
+    // tips over "full" and the user hasn't yet acknowledged the
+    // current epoch.
+    final scores = scoresAsync.valueOrNull;
+    if (!_ceremonyShown &&
+        profile != null &&
+        scores != null &&
+        EpochCeremony.pentagonFull(scores) &&
+        profile.epochAckedAt == null) {
+      _ceremonyShown = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        EpochCeremony.show(context, ref, profile: profile);
+      });
+    }
 
     final canPop = Navigator.of(context).canPop();
     final isMobile = MediaQuery.of(context).size.width < 900;
@@ -81,6 +105,7 @@ class SelfScreen extends ConsumerWidget {
                 level: levelAsync.valueOrNull,
                 streak: streakAsync.valueOrNull ?? 0,
                 aspiration: profile?.aspiration ?? '',
+                epoch: profile?.currentEpoch ?? 1,
               ),
               const SizedBox(height: 24),
               if (scores.length < 3)
@@ -143,11 +168,13 @@ class _ProfileHeader extends StatelessWidget {
     required this.level,
     required this.streak,
     required this.aspiration,
+    required this.epoch,
   });
 
   final LevelStats? level;
   final int streak;
   final String aspiration;
+  final int epoch;
 
   @override
   Widget build(BuildContext context) {
@@ -167,15 +194,20 @@ class _ProfileHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               _BigNumber(
+                label: 'ЭПОХА',
+                value: 'Э$epoch',
+              ),
+              const SizedBox(width: 20),
+              _BigNumber(
                 label: 'УРОВЕНЬ',
                 value: l == null ? '—' : 'L${l.level}',
               ),
-              const SizedBox(width: 24),
+              const SizedBox(width: 20),
               _BigNumber(
                 label: 'XP',
                 value: l == null ? '—' : '${l.totalXp}',
               ),
-              const SizedBox(width: 24),
+              const SizedBox(width: 20),
               _BigNumber(
                 label: 'СТРИК',
                 value: streak == 0 ? '—' : '$streak д.',
