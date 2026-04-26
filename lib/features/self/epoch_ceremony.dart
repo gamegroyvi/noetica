@@ -84,13 +84,17 @@ class EpochCeremony {
     // re-open the dialog on the next rebuild.
     final now = DateTime.now();
     if (startNew == true) {
-      // Clear epochAckedAt on entering the new epoch so the ceremony
-      // can fire again once the pentagon is refilled in эпоха N+1 —
-      // otherwise the dialog would be a once-per-lifetime event.
+      // Stamp epochAckedAt now so the ceremony doesn't re-fire on the
+      // next app launch — pentagon scores use a 30-day decay window
+      // that doesn't know anything about эпохи, so they stay ≥95 even
+      // after an epoch bump. The ceremony re-arms naturally when any
+      // axis score later drops below the threshold (see rearm logic
+      // in SelfScreen), which mirrors how users actually cycle
+      // through эпохи in practice.
       final updated = profile.copyWith(
         currentEpoch: nextEpoch,
         epochStartedAt: now,
-        clearEpochAckedAt: true,
+        epochAckedAt: now,
         updatedAt: now,
       );
       await ref.read(profileServiceProvider).save(updated);

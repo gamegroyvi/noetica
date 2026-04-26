@@ -855,7 +855,13 @@ class _LevelsReply extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (interests.isEmpty) return const SizedBox.shrink();
-    final active = interests[activeIdx];
+    // Clamp against the current interests length — the user can
+    // shrink the list by going back to step 2 and removing entries,
+    // leaving `activeIdx` pointing past the tail. Without this,
+    // `interests[activeIdx]` would throw RangeError and crash the
+    // onboarding flow.
+    final clampedIdx = activeIdx.clamp(0, interests.length - 1);
+    final active = interests[clampedIdx];
     final activeLevel = levels[active]; // null until first tap
     // Count only current interests — the map can retain stale keys
     // from sets the user cleared by editing step 2.
@@ -879,7 +885,7 @@ class _LevelsReply extends StatelessWidget {
             scrollDirection: Axis.horizontal,
             itemBuilder: (_, i) {
               final interest = interests[i];
-              final isActive = i == activeIdx;
+              final isActive = i == clampedIdx;
               final isRated = levels[interest] != null;
               return _InterestPill(
                 label: interest,

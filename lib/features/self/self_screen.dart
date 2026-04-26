@@ -24,6 +24,7 @@ class SelfScreen extends ConsumerStatefulWidget {
 
 class _SelfScreenState extends ConsumerState<SelfScreen> {
   bool _ceremonyShown = false;
+  bool _rearmInFlight = false;
 
   @override
   Widget build(BuildContext context) {
@@ -35,20 +36,41 @@ class _SelfScreenState extends ConsumerState<SelfScreen> {
     final axisLevelsAsync = ref.watch(axisLevelStatsProvider);
     final hasName = profile != null && profile.name.isNotEmpty;
 
-    // Fire the эпоха ceremony once per app-foreground when pentagon
-    // tips over "full" and the user hasn't yet acknowledged the
-    // current epoch.
+    // Эпоха-ceremony trigger. Two cases:
+    //  1. Pentagon currently full AND the current эпоха has never been
+    //     acknowledged (`epochAckedAt == null`) → fire ceremony.
+    //  2. Pentagon currently NOT full but a previous ack is stored →
+    //     clear the ack so that next time scores refill we fire again.
+    //     Scores use a 30-day decay window and no longer reference
+    //     эпохи, so this "dip + refill" is the natural rearm signal.
     final scores = scoresAsync.valueOrNull;
-    if (!_ceremonyShown &&
-        profile != null &&
-        scores != null &&
-        EpochCeremony.pentagonFull(scores) &&
-        profile.epochAckedAt == null) {
-      _ceremonyShown = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        EpochCeremony.show(context, ref, profile: profile);
-      });
+    if (profile != null && scores != null && scores.length >= 3) {
+      final isFull = EpochCeremony.pentagonFull(scores);
+      if (!_ceremonyShown &&
+          isFull &&
+          profile.epochAckedAt == null) {
+        _ceremonyShown = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          EpochCeremony.show(context, ref, profile: profile);
+        });
+      } else if (!isFull &&
+          profile.epochAckedAt != null &&
+          !_rearmInFlight) {
+        _rearmInFlight = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
+          if (!mounted) return;
+          final svc = ref.read(profileServiceProvider);
+          await svc.save(profile.copyWith(
+            clearEpochAckedAt: true,
+            updatedAt: DateTime.now(),
+          ));
+          if (mounted) {
+            _rearmInFlight = false;
+            _ceremonyShown = false;
+          }
+        });
+      }
     }
 
     final canPop = Navigator.of(context).canPop();
