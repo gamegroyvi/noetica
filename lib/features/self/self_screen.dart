@@ -27,13 +27,19 @@ class SelfScreen extends ConsumerWidget {
     final axisLevelsAsync = ref.watch(axisLevelStatsProvider);
     final hasName = profile != null && profile.name.isNotEmpty;
 
+    final canPop = Navigator.of(context).canPop();
     return Scaffold(
       appBar: AppBar(
-        leading: const Padding(
-          padding: EdgeInsets.only(left: 16, top: 12, bottom: 12),
-          child: BrandGlyph(size: 24),
-        ),
-        leadingWidth: 48,
+        // When pushed (e.g. tapped from the mini-Древо on the dashboard) we
+        // want a real back button so the user isn't stranded — don't paint
+        // the brand glyph in that case, AppBar will auto-imply the leading.
+        leading: canPop
+            ? null
+            : const Padding(
+                padding: EdgeInsets.only(left: 16, top: 12, bottom: 12),
+                child: BrandGlyph(size: 24),
+              ),
+        leadingWidth: canPop ? null : 48,
         title: Text(hasName ? profile.name : 'Я'),
         actions: [
           IconButton(

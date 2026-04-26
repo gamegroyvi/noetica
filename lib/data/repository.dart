@@ -120,13 +120,18 @@ class NoeticaRepository {
     final now = DateTime.now();
     await _db.raw.transaction((txn) async {
       // Soft-delete everything that isn't in the new list, then upsert the
-      // new set. We don't hard-delete because the tombstones need to sync to
-      // other devices.
+      // new set. We don't hard-delete because the tombstones need to sync
+      // to other devices.
       final existing = await txn.query('axes', columns: ['id']);
       final keepIds = axes.map((a) => a.id).toSet();
+      final existingIds = <String>{};
       for (final r in existing) {
         final id = r['id']! as String;
+        existingIds.add(id);
         if (!keepIds.contains(id)) {
+          // Soft-delete: mark deleted_at, do NOT physically remove the
+          // row. Physical DELETE would cascade through entry_axes
+          // (ON DELETE CASCADE) and orphan all completed-task XP.
           await txn.update(
             'axes',
             {
@@ -140,11 +145,23 @@ class NoeticaRepository {
       }
       for (final a in axes) {
         final touched = a.copyWith(updatedAt: now, clearDeleted: true);
-        await txn.insert(
-          'axes',
-          touched.toMap(),
-          conflictAlgorithm: ConflictAlgorithm.replace,
-        );
+        // CRITICAL: do NOT use ConflictAlgorithm.replace here — REPLACE
+        // is implemented as DELETE+INSERT which trips the
+        // entry_axes(axis_id) ON DELETE CASCADE foreign key and wipes
+        // every link from completed tasks to this axis. That's exactly
+        // the bug where reordering axes makes the Древо forget all XP.
+        // Instead branch on existence: UPDATE for known IDs, INSERT
+        // otherwise.
+        if (existingIds.contains(a.id)) {
+          await txn.update(
+            'axes',
+            touched.toMap(),
+            where: 'id = ?',
+            whereArgs: [a.id],
+          );
+        } else {
+          await txn.insert('axes', touched.toMap());
+        }
       }
     });
     await _emitAxes();
@@ -180,6 +197,7 @@ class NoeticaRepository {
     await replaceAxes(newAxes);
     if (mapping.isEmpty) return 0;
     var migrated = 0;
+    final touchedEntryIds = <String>{};
     await _db.raw.transaction((txn) async {
       for (final pair in mapping.entries) {
         if (pair.key == pair.value) continue;
@@ -195,11 +213,25 @@ class NoeticaRepository {
           [pair.key, pair.value],
         );
         for (final r in dupes) {
+          touchedEntryIds.add(r['entry_id']! as String);
           await txn.delete(
             'entry_axes',
             where: 'entry_id = ? AND axis_id = ?',
             whereArgs: [r['entry_id'], pair.key],
           );
+        }
+        // Capture which entries we're about to remap so we can bump
+        // their `updated_at` and let the sync layer push the migrated
+        // axisIds upstream — otherwise the next pull from the server
+        // would resurrect the old axis IDs and re-orphan the XP.
+        final affected = await txn.query(
+          'entry_axes',
+          columns: ['entry_id'],
+          where: 'axis_id = ?',
+          whereArgs: [pair.key],
+        );
+        for (final r in affected) {
+          touchedEntryIds.add(r['entry_id']! as String);
         }
         final n = await txn.update(
           'entry_axes',
@@ -208,6 +240,16 @@ class NoeticaRepository {
           whereArgs: [pair.key],
         );
         migrated += n;
+      }
+      if (touchedEntryIds.isNotEmpty) {
+        final nowMs = DateTime.now().millisecondsSinceEpoch;
+        await txn.update(
+          'entries',
+          {'updated_at': nowMs},
+          where:
+              'id IN (${List.filled(touchedEntryIds.length, '?').join(',')})',
+          whereArgs: touchedEntryIds.toList(),
+        );
       }
     });
     await _emitAxes();
@@ -477,6 +519,12 @@ class NoeticaRepository {
   }
 
   /// Apply a remote axis row using Last-Writer-Wins. Returns true if accepted.
+  ///
+  /// CRITICAL: this used to use `INSERT OR REPLACE`, but REPLACE on
+  /// existing rows trips the entry_axes(axis_id) ON DELETE CASCADE
+  /// foreign key and wipes every link from completed tasks to the axis
+  /// — silently zeroing the Древо on every sync pull. We now branch on
+  /// existence: UPDATE for known IDs, INSERT otherwise.
   Future<bool> mergeRemoteAxis(m.LifeAxis remote) async {
     final existing = await _db.raw.query(
       'axes',
@@ -490,12 +538,15 @@ class NoeticaRepository {
       if (localUpdated >= remote.updatedAt.millisecondsSinceEpoch) {
         return false;
       }
+      await _db.raw.update(
+        'axes',
+        remote.toMap(),
+        where: 'id = ?',
+        whereArgs: [remote.id],
+      );
+    } else {
+      await _db.raw.insert('axes', remote.toMap());
     }
-    await _db.raw.insert(
-      'axes',
-      remote.toMap(),
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
     return true;
   }
 

@@ -198,7 +198,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               const SizedBox(height: 22),
               _SectionHeader(label: 'ПУЛЬС', palette: palette),
               const SizedBox(height: 8),
-              _StatsTiles(
+              _PulseSection(
                 stats: stats,
                 axesById: axesById,
                 palette: palette,
@@ -206,13 +206,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ? null
                     : () => showEntryEditor(context, ref, existing: focus),
               ),
-              const SizedBox(height: 12),
-              _PulseStrip(stats: stats, palette: palette),
               const SizedBox(height: 22),
               _SectionHeader(label: 'АКТИВНОСТЬ', palette: palette,
                   trailing: '${stats.heatmap.fold(0, (a, b) => a + b)} закрыто за 90 дней'),
               const SizedBox(height: 8),
-              _ActivityHeatmap(values: stats.heatmap, palette: palette),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 720),
+                child: _ActivityHeatmap(values: stats.heatmap, palette: palette),
+              ),
               if (axes.length >= 3) ...[
                 const SizedBox(height: 22),
                 _SectionHeader(
@@ -682,11 +683,166 @@ class _AllTasksLink extends StatelessWidget {
   }
 }
 
-class _PulseStrip extends StatelessWidget {
-  const _PulseStrip({required this.stats, required this.palette});
+/// Hero "Пульс" block. Two large hero cards (стрик + XP) with a 7-day
+/// activity strip below, and a slim row of best-axis + deadline pills.
+/// Replaces the old 4-grid + thin strip combo, which felt cramped and
+/// didn't read at a glance.
+class _PulseSection extends StatelessWidget {
+  const _PulseSection({
+    required this.stats,
+    required this.axesById,
+    required this.palette,
+    this.onTapDeadline,
+  });
 
   final _DashboardStats stats;
+  final Map<String, LifeAxis> axesById;
   final NoeticaPalette palette;
+  final VoidCallback? onTapDeadline;
+
+  @override
+  Widget build(BuildContext context) {
+    final dl = stats.nextDeadline;
+    final dlLabel = dl == null
+        ? '—'
+        : (dl.difference(DateTime.now()).inHours < 24
+            ? '${dl.difference(DateTime.now()).inHours}ч'
+            : '${dl.difference(DateTime.now()).inDays}д');
+    final bestAxisName = stats.bestAxis != null
+        ? (axesById[stats.bestAxis!]?.name ?? '—')
+        : null;
+    final bestAxisSym = stats.bestAxis != null
+        ? (axesById[stats.bestAxis!]?.symbol ?? '·')
+        : '·';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: _HeroCard(
+                palette: palette,
+                value: stats.streak.toString(),
+                label: 'стрик',
+                hint: stats.streak == 0
+                    ? 'начни сегодня'
+                    : _plural(stats.streak, 'день', 'дня', 'дней'),
+                child: SizedBox(
+                  height: 28,
+                  child: _WeekBars(
+                    perDay: stats.perDay,
+                    palette: palette,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _HeroCard(
+                palette: palette,
+                value: stats.totalXpToday.toString(),
+                label: 'XP сегодня',
+                hint: '${stats.totalXpWeek} XP за неделю',
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      bestAxisSym,
+                      style: TextStyle(
+                        color: palette.fg,
+                        fontSize: 20,
+                        height: 1.0,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        bestAxisName == null
+                            ? 'нет XP за неделю'
+                            : '+${stats.bestAxisXp} XP · $bestAxisName',
+                        style: TextStyle(
+                          color: palette.muted,
+                          fontSize: 11,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        InkWell(
+          onTap: onTapDeadline,
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+            decoration: BoxDecoration(
+              color: palette.surface,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: palette.line),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.event_outlined, color: palette.muted, size: 16),
+                const SizedBox(width: 8),
+                Text(
+                  'дедлайн',
+                  style: TextStyle(color: palette.muted, fontSize: 12),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  dlLabel,
+                  style: TextStyle(
+                    color: palette.fg,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    dl == null
+                        ? 'нет ближайших задач'
+                        : 'до ${formatTimestamp(dl)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: palette.muted, fontSize: 12),
+                  ),
+                ),
+                if (onTapDeadline != null)
+                  Icon(Icons.arrow_forward, color: palette.muted, size: 14),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Tall hero card used inside [_PulseSection]: a big number on top, a
+/// small label, a hint, and an optional `child` slot at the bottom for
+/// a sparkline / extra context.
+class _HeroCard extends StatelessWidget {
+  const _HeroCard({
+    required this.palette,
+    required this.value,
+    required this.label,
+    required this.hint,
+    required this.child,
+  });
+
+  final NoeticaPalette palette;
+  final String value;
+  final String label;
+  final String hint;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
@@ -697,58 +853,45 @@ class _PulseStrip extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: palette.line),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Streak block.
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                stats.streak.toString(),
+                value,
                 style: TextStyle(
                   color: palette.fg,
-                  fontSize: 28,
+                  fontSize: 32,
                   fontWeight: FontWeight.w700,
                   height: 1.0,
                 ),
               ),
-              const SizedBox(height: 2),
-              Text(
-                'стрик',
-                style: TextStyle(color: palette.muted, fontSize: 11),
+              const SizedBox(width: 8),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: palette.muted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ],
           ),
-          const SizedBox(width: 18),
-          Container(
-            width: 1,
-            height: 36,
-            color: palette.line,
+          const SizedBox(height: 4),
+          Text(
+            hint,
+            style: TextStyle(color: palette.muted, fontSize: 11),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(width: 14),
-          // Week bars.
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  height: 32,
-                  child: _WeekBars(
-                    perDay: stats.perDay,
-                    palette: palette,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${stats.weekCompleted} за неделю · ${stats.todayCompleted} сегодня',
-                  style: TextStyle(color: palette.muted, fontSize: 11),
-                ),
-              ],
-            ),
-          ),
+          const SizedBox(height: 10),
+          child,
         ],
       ),
     );
@@ -999,187 +1142,160 @@ class _DashboardStats {
   }
 }
 
-class _StatsTiles extends StatelessWidget {
-  const _StatsTiles({
-    required this.stats,
-    required this.axesById,
-    required this.palette,
-    this.onTapDeadline,
-  });
-
-  final _DashboardStats stats;
-  final Map<String, LifeAxis> axesById;
-  final NoeticaPalette palette;
-  final VoidCallback? onTapDeadline;
-
-  @override
-  Widget build(BuildContext context) {
-    final bestAxisName = stats.bestAxis != null
-        ? (axesById[stats.bestAxis!]?.name ?? '—')
-        : '—';
-    final bestAxisSym = stats.bestAxis != null
-        ? (axesById[stats.bestAxis!]?.symbol ?? '·')
-        : '·';
-    final dl = stats.nextDeadline;
-    final dlLabel = dl == null
-        ? '—'
-        : (dl.difference(DateTime.now()).inHours < 24
-            ? '${dl.difference(DateTime.now()).inHours}ч'
-            : '${dl.difference(DateTime.now()).inDays}д');
-
-    return GridView.count(
-      crossAxisCount: 4,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 8,
-      crossAxisSpacing: 8,
-      childAspectRatio: 1.05,
-      children: [
-        _StatTile(
-          value: '${stats.streak}',
-          label: 'стрик',
-          hint: stats.streak == 0
-              ? 'начни сегодня'
-              : _plural(stats.streak, 'день', 'дня', 'дней'),
-          palette: palette,
-        ),
-        _StatTile(
-          value: '${stats.totalXpToday}',
-          label: 'XP сегодня',
-          hint: '${stats.totalXpWeek} за неделю',
-          palette: palette,
-        ),
-        _StatTile(
-          value: bestAxisSym,
-          label: bestAxisName,
-          hint: stats.bestAxisXp == 0 ? '—' : '+${stats.bestAxisXp} XP',
-          monoBig: true,
-          palette: palette,
-        ),
-        _StatTile(
-          value: dlLabel,
-          label: 'дедлайн',
-          hint: dl == null
-              ? 'нет ближайших'
-              : 'до ${formatTimestamp(dl)}',
-          palette: palette,
-          onTap: onTapDeadline,
-        ),
-      ],
-    );
-  }
-}
-
-class _StatTile extends StatelessWidget {
-  const _StatTile({
-    required this.value,
-    required this.label,
-    required this.hint,
-    required this.palette,
-    this.onTap,
-    this.monoBig = false,
-  });
-
-  final String value;
-  final String label;
-  final String hint;
-  final NoeticaPalette palette;
-  final VoidCallback? onTap;
-  final bool monoBig;
-
-  @override
-  Widget build(BuildContext context) {
-    final body = Container(
-      padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
-      decoration: BoxDecoration(
-        color: palette.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: palette.line),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            value,
-            style: TextStyle(
-              color: palette.fg,
-              fontSize: monoBig ? 22 : 22,
-              fontWeight: FontWeight.w700,
-              height: 1.0,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  color: palette.fg,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              Text(
-                hint,
-                style: TextStyle(color: palette.muted, fontSize: 10),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-    if (onTap == null) return body;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: body,
-    );
-  }
-}
-
-/// 13-week × 7-day GitHub-style activity grid. Cell intensity is bucketed
-/// 0..3 against the heatmap max so even small samples get visible contrast.
+/// GitHub-style activity heatmap.
+///
+/// Layout matches GitHub closely: weekday labels on the left (Пн, Ср, Пт),
+/// month labels on top, columns are weeks, rows are days. Cell size caps
+/// at 14 px so on desktop the grid doesn't sprawl across the whole width.
+/// Bottom legend shows colour scale "меньше → больше" with 5 buckets.
 class _ActivityHeatmap extends StatelessWidget {
   const _ActivityHeatmap({required this.values, required this.palette});
 
+  /// Day-of-completion counts, oldest first, length = 91 (13 weeks × 7).
   final List<int> values;
   final NoeticaPalette palette;
+
+  static const _weekdayLabels = ['Пн', '', 'Ср', '', 'Пт', '', ''];
+  static const _monthLabels = [
+    'янв', 'фев', 'мар', 'апр', 'май', 'июн',
+    'июл', 'авг', 'сен', 'окт', 'ноя', 'дек',
+  ];
 
   @override
   Widget build(BuildContext context) {
     final maxV = values.fold<int>(0, (a, b) => b > a ? b : a);
+    const rows = 7;
+    final cols = (values.length / rows).ceil();
+    const spacing = 3.0;
+    const labelGutter = 28.0;
+
+    // Map column → first month label visible for that column. Each
+    // column corresponds to a week starting (today - (cols-1-c)*7 days).
+    final today = DateTime.now();
+    final firstDay = today.subtract(Duration(days: cols * rows - 1));
+    final monthMarkers = <int, String>{};
+    int? lastMonth;
+    for (var c = 0; c < cols; c++) {
+      final colStart = firstDay.add(Duration(days: c * rows));
+      if (lastMonth != colStart.month) {
+        monthMarkers[c] = _monthLabels[colStart.month - 1];
+        lastMonth = colStart.month;
+      }
+    }
+
     return LayoutBuilder(
       builder: (context, constraints) {
-        const rows = 7;
-        final cols = (values.length / rows).ceil();
-        const spacing = 2.0;
-        final cell =
-            (constraints.maxWidth - (cols - 1) * spacing) / cols;
-        return SizedBox(
-          height: rows * cell + (rows - 1) * spacing,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (var c = 0; c < cols; c++) ...[
-                Column(
-                  children: [
-                    for (var r = 0; r < rows; r++) ...[
-                      _heatCell(c, r, cell, maxV),
-                      if (r < rows - 1) const SizedBox(height: spacing),
+        final available = constraints.maxWidth - labelGutter;
+        final raw = (available - (cols - 1) * spacing) / cols;
+        final cell = raw.clamp(8.0, 14.0).toDouble();
+        final gridWidth = cols * cell + (cols - 1) * spacing;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Month labels row.
+            SizedBox(
+              height: 14,
+              child: Row(
+                children: [
+                  const SizedBox(width: labelGutter),
+                  SizedBox(
+                    width: gridWidth,
+                    child: Stack(
+                      children: [
+                        for (final entry in monthMarkers.entries)
+                          Positioned(
+                            left: entry.key * (cell + spacing),
+                            child: Text(
+                              entry.value,
+                              style: TextStyle(
+                                color: palette.muted,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Day-of-week labels.
+                SizedBox(
+                  width: labelGutter,
+                  child: Column(
+                    children: [
+                      for (var r = 0; r < rows; r++) ...[
+                        SizedBox(
+                          height: cell,
+                          child: Text(
+                            _weekdayLabels[r],
+                            style: TextStyle(
+                              color: palette.muted,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ),
+                        if (r < rows - 1) const SizedBox(height: spacing),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-                if (c < cols - 1) const SizedBox(width: spacing),
+                // The grid itself.
+                SizedBox(
+                  width: gridWidth,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (var c = 0; c < cols; c++) ...[
+                        Column(
+                          children: [
+                            for (var r = 0; r < rows; r++) ...[
+                              _heatCell(c, r, cell, maxV),
+                              if (r < rows - 1)
+                                const SizedBox(height: spacing),
+                            ],
+                          ],
+                        ),
+                        if (c < cols - 1) const SizedBox(width: spacing),
+                      ],
+                    ],
+                  ),
+                ),
               ],
-            ],
-          ),
+            ),
+            const SizedBox(height: 8),
+            // Bottom legend.
+            Padding(
+              padding: const EdgeInsets.only(left: labelGutter),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('меньше',
+                      style: TextStyle(color: palette.muted, fontSize: 10)),
+                  const SizedBox(width: 6),
+                  for (final t in const [0.0, 0.25, 0.5, 0.75, 1.0]) ...[
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: _bucketColor(t),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(width: 3),
+                  ],
+                  const SizedBox(width: 3),
+                  Text('больше',
+                      style: TextStyle(color: palette.muted, fontSize: 10)),
+                ],
+              ),
+            ),
+          ],
         );
       },
     );
@@ -1189,24 +1305,22 @@ class _ActivityHeatmap extends StatelessWidget {
     final idx = c * 7 + r;
     final v = idx < values.length ? values[idx] : 0;
     final t = maxV == 0 ? 0.0 : (v / maxV);
-    Color color;
-    if (v == 0) {
-      color = palette.line.withOpacity(0.45);
-    } else if (t < 0.34) {
-      color = palette.fg.withOpacity(0.30);
-    } else if (t < 0.67) {
-      color = palette.fg.withOpacity(0.60);
-    } else {
-      color = palette.fg;
-    }
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: color,
+        color: v == 0 ? palette.line.withOpacity(0.35) : _bucketColor(t),
         borderRadius: BorderRadius.circular(2),
       ),
     );
+  }
+
+  Color _bucketColor(double t) {
+    if (t <= 0.001) return palette.line.withOpacity(0.35);
+    if (t < 0.34) return palette.fg.withOpacity(0.28);
+    if (t < 0.67) return palette.fg.withOpacity(0.55);
+    if (t < 0.99) return palette.fg.withOpacity(0.80);
+    return palette.fg;
   }
 }
 
