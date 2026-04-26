@@ -84,10 +84,13 @@ class EpochCeremony {
     // re-open the dialog on the next rebuild.
     final now = DateTime.now();
     if (startNew == true) {
+      // Clear epochAckedAt on entering the new epoch so the ceremony
+      // can fire again once the pentagon is refilled in эпоха N+1 —
+      // otherwise the dialog would be a once-per-lifetime event.
       final updated = profile.copyWith(
         currentEpoch: nextEpoch,
         epochStartedAt: now,
-        epochAckedAt: now,
+        clearEpochAckedAt: true,
         updatedAt: now,
       );
       await ref.read(profileServiceProvider).save(updated);

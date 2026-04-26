@@ -107,6 +107,13 @@ class _DayDetailSheet extends ConsumerWidget {
                   alignment: Alignment.centerLeft,
                   child: OutlinedButton.icon(
                     onPressed: () {
+                      // Capture the Navigator's own context *before*
+                      // popping — using `context` from this sheet
+                      // after pop would reference a deactivated
+                      // widget and could assert in debug / misbehave
+                      // in release.
+                      final nav = Navigator.of(context);
+                      final rootCtx = nav.context;
                       final due = DateTime(
                         day.year,
                         day.month,
@@ -114,9 +121,9 @@ class _DayDetailSheet extends ConsumerWidget {
                         9,
                         0,
                       );
-                      Navigator.of(context).pop();
+                      nav.pop();
                       showEntryEditor(
-                        context,
+                        rootCtx,
                         ref,
                         initialDueAt: due,
                         initialKind: EntryKind.task,
@@ -259,8 +266,10 @@ class _EntryTile extends ConsumerWidget {
         .toList();
     return InkWell(
       onTap: () {
-        Navigator.of(context).pop();
-        showEntryEditor(context, ref, existing: entry);
+        final nav = Navigator.of(context);
+        final rootCtx = nav.context;
+        nav.pop();
+        showEntryEditor(rootCtx, ref, existing: entry);
       },
       borderRadius: BorderRadius.circular(8),
       child: Padding(
