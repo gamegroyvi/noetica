@@ -1448,9 +1448,19 @@ class _ActivityHeatmapState extends State<_ActivityHeatmap> {
         LayoutBuilder(
           builder: (context, constraints) {
             const rows = 7;
-            const cell = _cellPx;
             const spacing = _spacingPx;
             const labelGutter = _labelGutter;
+
+            // Decide cell size: if there's enough horizontal room to
+            // show the whole year without scrolling, stretch cells to
+            // fill the container (github does this on wide screens);
+            // otherwise keep the compact 13 px cell and scroll.
+            final available = constraints.maxWidth - labelGutter;
+            final fitCellPx =
+                (available - (cols - 1) * spacing) / cols;
+            final cell = fitCellPx >= _cellPx
+                ? fitCellPx.clamp(_cellPx.toDouble(), 22.0)
+                : _cellPx.toDouble();
             final gridWidth = cols * cell + (cols - 1) * spacing;
 
             // Compute the "anchor" column we want visible on first
@@ -1471,6 +1481,7 @@ class _ActivityHeatmapState extends State<_ActivityHeatmap> {
                 if (!mounted || !_scroll.hasClients) return;
                 final max = _scroll.position.maxScrollExtent;
                 final viewport = _scroll.position.viewportDimension;
+                if (max <= 0) return; // fits without scrolling
                 // Right-edge anchor with ~8 columns of breathing room
                 // to the right of today (matches github's layout).
                 final desired =

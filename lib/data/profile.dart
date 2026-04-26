@@ -59,6 +59,8 @@ class UserProfile {
     this.currentEpoch = 1,
     this.epochStartedAt,
     this.epochAckedAt,
+    this.epochTier = 1,
+    this.epochRefreshedAt,
   });
 
   final String name;
@@ -88,6 +90,18 @@ class UserProfile {
   /// they reopen the self screen while already fully decorated.
   final DateTime? epochAckedAt;
 
+  /// Inner "tier" inside the current epoch. Bumps every time the user
+  /// picks «Углубиться» from the epoch overlay — signalling they want
+  /// another round of tougher tasks along the same axes without
+  /// redrawing them. Starts at 1, resets to 1 when a new эпоха begins.
+  final int epochTier;
+
+  /// Moment the user last tapped «Углубиться». Used as an override
+  /// cutoff when computing axis scores — completions before this date
+  /// no longer decay into the pentagon, so the tree visually resets
+  /// and the user has to refill it in the new tier.
+  final DateTime? epochRefreshedAt;
+
   Map<String, dynamic> toJson() => {
         'name': name,
         if (birthdate != null) 'birthdate': birthdate!.toIso8601String(),
@@ -102,6 +116,9 @@ class UserProfile {
           'epochStartedAt': epochStartedAt!.toIso8601String(),
         if (epochAckedAt != null)
           'epochAckedAt': epochAckedAt!.toIso8601String(),
+        'epochTier': epochTier,
+        if (epochRefreshedAt != null)
+          'epochRefreshedAt': epochRefreshedAt!.toIso8601String(),
       };
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
@@ -139,6 +156,10 @@ class UserProfile {
       epochAckedAt: (json['epochAckedAt'] as String?) != null
           ? DateTime.tryParse(json['epochAckedAt'] as String)
           : null,
+      epochTier: (json['epochTier'] as num?)?.toInt() ?? 1,
+      epochRefreshedAt: (json['epochRefreshedAt'] as String?) != null
+          ? DateTime.tryParse(json['epochRefreshedAt'] as String)
+          : null,
     );
   }
 
@@ -157,6 +178,9 @@ class UserProfile {
     bool clearEpochStartedAt = false,
     DateTime? epochAckedAt,
     bool clearEpochAckedAt = false,
+    int? epochTier,
+    DateTime? epochRefreshedAt,
+    bool clearEpochRefreshedAt = false,
   }) {
     return UserProfile(
       name: name ?? this.name,
@@ -173,6 +197,10 @@ class UserProfile {
           : (epochStartedAt ?? this.epochStartedAt),
       epochAckedAt:
           clearEpochAckedAt ? null : (epochAckedAt ?? this.epochAckedAt),
+      epochTier: epochTier ?? this.epochTier,
+      epochRefreshedAt: clearEpochRefreshedAt
+          ? null
+          : (epochRefreshedAt ?? this.epochRefreshedAt),
     );
   }
 }

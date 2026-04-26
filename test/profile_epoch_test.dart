@@ -66,5 +66,56 @@ void main() {
       expect(cleared.epochAckedAt, isNull);
       expect(cleared.epochStartedAt, isNull);
     });
+
+    test('round-trip preserves epochTier and epochRefreshedAt', () {
+      final refreshed = DateTime.utc(2024, 6, 10, 9, 30);
+      final p = UserProfile(
+        name: 'Ира',
+        aspiration: '',
+        interests: const [],
+        interestLevels: const {},
+        painPoint: '',
+        weeklyHours: 0,
+        updatedAt: DateTime.utc(2024, 6, 10),
+        currentEpoch: 2,
+        epochTier: 3,
+        epochRefreshedAt: refreshed,
+      );
+      final restored = UserProfile.fromJson(
+        jsonDecode(jsonEncode(p.toJson())) as Map<String, dynamic>,
+      );
+      expect(restored.epochTier, 3);
+      expect(restored.epochRefreshedAt, refreshed);
+    });
+
+    test('old saves default epochTier=1 and null epochRefreshedAt', () {
+      final legacy = {
+        'name': 'Ира',
+        'aspiration': '',
+        'interests': [],
+        'interestLevels': {},
+        'painPoint': '',
+        'weeklyHours': 5,
+        'updatedAt': DateTime.utc(2024, 1, 1).toIso8601String(),
+      };
+      final p = UserProfile.fromJson(legacy);
+      expect(p.epochTier, 1);
+      expect(p.epochRefreshedAt, isNull);
+    });
+
+    test('copyWith can clear epochRefreshedAt via flag', () {
+      final p = UserProfile(
+        name: '',
+        aspiration: '',
+        interests: const [],
+        interestLevels: const {},
+        painPoint: '',
+        weeklyHours: 0,
+        updatedAt: DateTime(2024),
+        epochRefreshedAt: DateTime(2024),
+      );
+      final cleared = p.copyWith(clearEpochRefreshedAt: true);
+      expect(cleared.epochRefreshedAt, isNull);
+    });
   });
 }

@@ -35,11 +35,15 @@ final entriesProvider = StreamProvider<List<Entry>>((ref) async* {
 });
 
 final scoresProvider = FutureProvider<List<AxisScore>>((ref) async {
-  // Recompute whenever entries change.
+  // Recompute whenever entries, axes, or the эпоха tier change.
   ref.watch(entriesProvider);
   ref.watch(axesProvider);
+  // Profile is the source for `epochRefreshedAt` — re-run on every
+  // change so tapping «Углубиться» produces an immediate visible
+  // pentagon reset without waiting for the decay window to roll.
+  final profile = ref.watch(profileProvider).valueOrNull;
   final repo = await ref.watch(repositoryProvider.future);
-  return repo.computeScores();
+  return repo.computeScores(baselineCutoff: profile?.epochRefreshedAt);
 });
 
 final onboardedProvider = FutureProvider<bool>((ref) async {

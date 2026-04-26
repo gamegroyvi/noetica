@@ -23,7 +23,6 @@ class SelfScreen extends ConsumerStatefulWidget {
 }
 
 class _SelfScreenState extends ConsumerState<SelfScreen> {
-  bool _ceremonyShown = false;
   bool _rearmInFlight = false;
 
   @override
@@ -36,27 +35,15 @@ class _SelfScreenState extends ConsumerState<SelfScreen> {
     final axisLevelsAsync = ref.watch(axisLevelStatsProvider);
     final hasName = profile != null && profile.name.isNotEmpty;
 
-    // Эпоха-ceremony trigger. Two cases:
-    //  1. Pentagon currently full AND the current эпоха has never been
-    //     acknowledged (`epochAckedAt == null`) → fire ceremony.
-    //  2. Pentagon currently NOT full but a previous ack is stored →
-    //     clear the ack so that next time scores refill we fire again.
-    //     Scores use a 30-day decay window and no longer reference
-    //     эпохи, so this "dip + refill" is the natural rearm signal.
+    // Re-arm logic only — the ceremony itself is no longer a modal.
+    // The inline overlay decides on its own whether to be visible
+    // based on (pentagonFull && epochAckedAt == null). What we still
+    // need to do here is *clear* the ack once any axis dips below 95
+    // again, so the next refill re-arms the overlay naturally.
     final scores = scoresAsync.valueOrNull;
     if (profile != null && scores != null && scores.length >= 3) {
       final isFull = EpochCeremony.pentagonFull(scores);
-      if (!_ceremonyShown &&
-          isFull &&
-          profile.epochAckedAt == null) {
-        _ceremonyShown = true;
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) return;
-          EpochCeremony.show(context, ref, profile: profile);
-        });
-      } else if (!isFull &&
-          profile.epochAckedAt != null &&
-          !_rearmInFlight) {
+      if (!isFull && profile.epochAckedAt != null && !_rearmInFlight) {
         _rearmInFlight = true;
         WidgetsBinding.instance.addPostFrameCallback((_) async {
           if (!mounted) return;
@@ -65,10 +52,7 @@ class _SelfScreenState extends ConsumerState<SelfScreen> {
             clearEpochAckedAt: true,
             updatedAt: DateTime.now(),
           ));
-          if (mounted) {
-            _rearmInFlight = false;
-            _ceremonyShown = false;
-          }
+          if (mounted) _rearmInFlight = false;
         });
       }
     }
@@ -128,14 +112,49 @@ class _SelfScreenState extends ConsumerState<SelfScreen> {
                 streak: streakAsync.valueOrNull ?? 0,
                 aspiration: profile?.aspiration ?? '',
                 epoch: profile?.currentEpoch ?? 1,
+                tier: profile?.epochTier ?? 1,
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
+              if (profile != null &&
+                  scores.length >= 3 &&
+                  EpochCeremony.pentagonFull(scores) &&
+                  profile.epochAckedAt != null)
+                _TransitionReadyBanner(
+                  palette: palette,
+                  onTap: () async {
+                    // Re-open the overlay by clearing the ack — the
+                    // EpochOverlay visibility switches on the next
+                    // rebuild.
+                    final svc = ref.read(profileServiceProvider);
+                    await svc.save(profile.copyWith(
+                      clearEpochAckedAt: true,
+                      updatedAt: DateTime.now(),
+                    ));
+                  },
+                ),
+              const SizedBox(height: 8),
               if (scores.length < 3)
                 _EmptyAxes()
               else ...[
                 SizedBox(
                   height: 320,
-                  child: _DrevoCanvas(scores: scores),
+                  child: profile == null
+                      ? _DrevoCanvas(scores: scores)
+                      : EpochOverlay(
+                          profile: profile,
+                          visible: EpochCeremony.pentagonFull(scores) &&
+                              profile.epochAckedAt == null,
+                          onDismissed: () async {
+                            if (profile.epochAckedAt != null) return;
+                            final svc =
+                                ref.read(profileServiceProvider);
+                            await svc.save(profile.copyWith(
+                              epochAckedAt: DateTime.now(),
+                              updatedAt: DateTime.now(),
+                            ));
+                          },
+                          child: _DrevoCanvas(scores: scores),
+                        ),
                 ),
                 const SizedBox(height: 24),
                 Text(
@@ -191,12 +210,14 @@ class _ProfileHeader extends StatelessWidget {
     required this.streak,
     required this.aspiration,
     required this.epoch,
+    this.tier = 1,
   });
 
   final LevelStats? level;
   final int streak;
   final String aspiration;
   final int epoch;
+  final int tier;
 
   @override
   Widget build(BuildContext context) {
@@ -217,7 +238,7 @@ class _ProfileHeader extends StatelessWidget {
             children: [
               _BigNumber(
                 label: 'ЭПОХА',
-                value: 'Э$epoch',
+                value: tier > 1 ? 'Э$epoch.$tier' : 'Э$epoch',
               ),
               const SizedBox(width: 20),
               _BigNumber(
@@ -304,6 +325,49 @@ class _BigNumber extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Small tappable banner that surfaces after the user dismissed the
+/// overlay once. It gently indicates "you've got a transition waiting"
+/// and re-opens the overlay on tap — no autoreopening on every build,
+/// no autohiding either.
+class _TransitionReadyBanner extends StatelessWidget {
+  const _TransitionReadyBanner({required this.palette, required this.onTap});
+  final NoeticaPalette palette;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+        decoration: BoxDecoration(
+          color: palette.surface,
+          border: Border.all(color: palette.fg, width: 1.2),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.auto_awesome, size: 18, color: palette.fg),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Готов к переходу — тапни, чтобы открыть',
+                style: TextStyle(
+                  color: palette.fg,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            Icon(Icons.chevron_right, size: 18, color: palette.fg),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -617,6 +681,9 @@ class _DrevoCanvasState extends ConsumerState<_DrevoCanvas>
                   bg: palette.bg,
                   progress: progress.toDouble(),
                   highlightedAxisIndex: _highlight,
+                  bloomedAxes:
+                      EpochCeremony.bloomedAxes(widget.scores),
+                  bloomPulse: _breath.value,
                 ),
                 child: const SizedBox.expand(),
               );

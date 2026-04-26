@@ -55,4 +55,35 @@ void main() {
       );
     });
   });
+
+  group('EpochCeremony.bloomedAxes', () {
+    test('returns empty set when no axis reached the threshold', () {
+      final out = EpochCeremony.bloomedAxes([
+        score('a', 40),
+        score('b', 60),
+        score('c', 80),
+      ]);
+      expect(out, isEmpty);
+    });
+
+    test('includes every axis >= 95 and excludes the rest', () {
+      final out = EpochCeremony.bloomedAxes([
+        score('a', 94.9),
+        score('b', 95),
+        score('c', 100),
+        score('d', 80),
+        score('e', 99.5),
+      ]);
+      expect(out, <int>{1, 2, 4});
+    });
+
+    test('returns all indices when the whole pentagon is full', () {
+      final out = EpochCeremony.bloomedAxes([
+        score('a', 100),
+        score('b', 100),
+        score('c', 100),
+      ]);
+      expect(out, <int>{0, 1, 2});
+    });
+  });
 }

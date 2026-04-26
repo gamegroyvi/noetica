@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../data/models.dart';
 import '../../providers.dart';
 import '../../services/notifications.dart';
 import '../../theme/app_theme.dart';
@@ -447,6 +448,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               style: TextStyle(color: palette.muted),
             ),
           ),
+          // Debug panel is always visible pre-release — the user
+          // explicitly asked for an easy way to test эпоха-related
+          // flows without having to actually fill the pentagon over
+          // weeks of real usage.
+          const Divider(height: 1),
+          const _SectionHeader(title: '⚙ Разработчик'),
+          _DebugEpochPanel(),
         ],
       ),
     );
@@ -471,6 +479,158 @@ class _SectionHeader extends StatelessWidget {
           fontWeight: FontWeight.w600,
         ),
       ),
+    );
+  }
+}
+
+/// Dev-only controls for fiddling with эпоха-state without having to
+/// actually fill the pentagon over weeks. Ships in pre-release builds
+/// so the user (and reviewers) can exercise the overlay / ceremony
+/// paths on demand.
+class _DebugEpochPanel extends ConsumerStatefulWidget {
+  @override
+  ConsumerState<_DebugEpochPanel> createState() =>
+      _DebugEpochPanelState();
+}
+
+class _DebugEpochPanelState extends ConsumerState<_DebugEpochPanel> {
+  bool _busy = false;
+
+  Future<void> _run(Future<void> Function() body, String toast) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      await body();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(toast)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// Fill every axis with synthetic completed tasks until every score
+  /// is ≥95. Uses the same path as a real task completion so XP /
+  /// levels move consistently — we just bulk-spawn entries dated to
+  /// now().
+  Future<void> _fillAll() async {
+    final repo = await ref.read(repositoryProvider.future);
+    final axes = await repo.listAxes();
+    final now = DateTime.now();
+    for (final a in axes) {
+      // 5 × 40 xp synthetic tasks on each axis saturates the decay
+      // window so the score pegs to ~100.
+      for (var i = 0; i < 5; i++) {
+        final created = await repo.createEntry(
+          title: '[debug] filler ${i + 1} · ${a.symbol}',
+          body: 'auto-filler для тестирования эпох',
+          kind: EntryKind.task,
+          axisIds: [a.id],
+          axisWeights: {a.id: 1.0},
+          xp: 40,
+        );
+        await repo.upsertEntry(created.copyWith(
+          completedAt: now.subtract(Duration(minutes: i * 5)),
+          updatedAt: now,
+        ));
+      }
+    }
+    ref.invalidate(entriesProvider);
+    ref.invalidate(scoresProvider);
+  }
+
+  Future<void> _clearAck() async {
+    final svc = ref.read(profileServiceProvider);
+    final profile = await svc.load();
+    if (profile == null) return;
+    await svc.save(profile.copyWith(
+      clearEpochAckedAt: true,
+      updatedAt: DateTime.now(),
+    ));
+    ref.invalidate(profileProvider);
+  }
+
+  Future<void> _bumpEpoch() async {
+    final svc = ref.read(profileServiceProvider);
+    final profile = await svc.load();
+    if (profile == null) return;
+    await svc.save(profile.copyWith(
+      currentEpoch: profile.currentEpoch + 1,
+      epochTier: 1,
+      epochStartedAt: DateTime.now(),
+      epochAckedAt: DateTime.now(),
+      epochRefreshedAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    ));
+    ref.invalidate(profileProvider);
+    ref.invalidate(scoresProvider);
+  }
+
+  Future<void> _reset() async {
+    final svc = ref.read(profileServiceProvider);
+    final profile = await svc.load();
+    if (profile == null) return;
+    await svc.save(profile.copyWith(
+      currentEpoch: 1,
+      epochTier: 1,
+      clearEpochStartedAt: true,
+      clearEpochAckedAt: true,
+      clearEpochRefreshedAt: true,
+      updatedAt: DateTime.now(),
+    ));
+    ref.invalidate(profileProvider);
+    ref.invalidate(scoresProvider);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    Widget tile(IconData icon, String title, String subtitle,
+            Future<void> Function() action, String toast) =>
+        ListTile(
+          leading: Icon(icon, color: palette.fg),
+          title: Text(title),
+          subtitle: Text(subtitle, style: TextStyle(color: palette.muted)),
+          enabled: !_busy,
+          onTap: () => _run(action, toast),
+        );
+    return Column(
+      children: [
+        tile(
+          Icons.bolt,
+          'Заполнить все оси до 100%',
+          'Создаёт синтетические задачи, чтобы пентагон встал на пик',
+          _fillAll,
+          'Готово. Открой «Я» — оверлей должен появиться.',
+        ),
+        tile(
+          Icons.refresh,
+          'Сбросить ack эпохи',
+          'Обнуляет epochAckedAt — оверлей снова пустит при пике',
+          _clearAck,
+          'Ack сброшен.',
+        ),
+        tile(
+          Icons.arrow_upward,
+          'Форсировать +1 эпоху',
+          'currentEpoch + 1, tier → 1, ack/refresh = now',
+          _bumpEpoch,
+          'Эпоха увеличена.',
+        ),
+        tile(
+          Icons.restore,
+          'Сбросить эпоху на 1',
+          'Полный откат прогрессии до Эпохи 1',
+          _reset,
+          'Сброс до Эпохи 1.',
+        ),
+      ],
     );
   }
 }
