@@ -1,7 +1,9 @@
+import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lottie/lottie.dart';
 
 import '../../services/pomodoro_service.dart';
 import '../../theme/app_theme.dart';
@@ -27,7 +29,11 @@ const double _kRailExtended = 1200;
 /// don't end up hidden under the partially-transparent bar).
 const double kFloatingTabBarHeight = 52;
 const double kFloatingTabBarMargin = 10;
-const double kFloatingTabBarHorizontalInset = 28;
+const double kFloatingTabBarHorizontalInset = 16;
+/// Side length of the pentagon FAB that sits inline-right of the
+/// floating tabbar capsule.
+const double kFloatingFabSize = 52;
+const double kFloatingFabGap = 10;
 /// Total vertical room the bar visually occupies above the system safe
 /// area (capsule height + top + bottom margin). Used by screens that
 /// build their own ListView padding.
@@ -175,16 +181,19 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       icon: Icons.dashboard_outlined,
       selectedIcon: Icons.dashboard,
       label: 'Сейчас',
+      lottie: 'assets/icons/tab_home.json',
     ),
     _Destination(
       icon: Icons.auto_graph_outlined,
       selectedIcon: Icons.auto_graph,
       label: 'Я',
+      lottie: 'assets/icons/tab_profile.json',
     ),
     _Destination(
       icon: Icons.checklist_outlined,
       selectedIcon: Icons.checklist,
       label: 'Задачи',
+      lottie: 'assets/icons/tab_tasks.json',
     ),
   ];
 
@@ -229,19 +238,32 @@ class _HomeShellState extends ConsumerState<HomeShell> {
               left: 0,
               right: 0,
               bottom: 0,
-              child: _FloatingTabBar(
-                palette: palette,
-                selectedIndex: mobileSelected,
-                destinations: _destinations,
-                onDestinationSelected: (i) => setState(() => _index = i),
-              ),
-            ),
-            Positioned(
-              right: 16,
-              bottom: kFloatingTabBarReserve + bottomSafe + 12,
-              child: FloatingActionButton(
-                onPressed: () => showEntryEditor(context, ref),
-                child: const Icon(Icons.add),
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  kFloatingTabBarHorizontalInset,
+                  kFloatingTabBarMargin,
+                  kFloatingTabBarHorizontalInset,
+                  kFloatingTabBarMargin + bottomSafe,
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: _FloatingTabBar(
+                        palette: palette,
+                        selectedIndex: mobileSelected,
+                        destinations: _destinations,
+                        onDestinationSelected: (i) =>
+                            setState(() => _index = i),
+                      ),
+                    ),
+                    const SizedBox(width: kFloatingFabGap),
+                    _PentagonFab(
+                      palette: palette,
+                      onTap: () => showEntryEditor(context, ref),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -286,11 +308,16 @@ class _Destination {
     required this.icon,
     required this.selectedIcon,
     required this.label,
+    required this.lottie,
   });
 
   final IconData icon;
   final IconData selectedIcon;
   final String label;
+  /// Path to a Lottie JSON file that plays a looping animation when
+  /// this tab is selected; remains paused on frame 0 otherwise.
+  /// Desktop sidebar still uses [icon] / [selectedIcon].
+  final String lottie;
 }
 
 /// Custom sidebar — `NavigationRail` doesn't support a "secondary" group of
@@ -541,8 +568,10 @@ class _SidebarTile extends StatelessWidget {
 }
 
 /// Telegram-style floating mobile tab bar — capsule shape, fully rounded
-/// on both sides, hovers over content with a soft shadow. Sits inside a
-/// horizontal margin so the bar visibly detaches from the screen edges.
+/// on both sides, hovers over content with a soft shadow. Outer
+/// margins are applied by the parent layout (a Row that places the
+/// pentagon FAB inline to the right) — this widget only renders the
+/// capsule itself.
 class _FloatingTabBar extends StatelessWidget {
   const _FloatingTabBar({
     required this.palette,
@@ -558,55 +587,41 @@ class _FloatingTabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bottomSafe = MediaQuery.of(context).padding.bottom;
-    return Padding(
-      // Wider horizontal inset (28 px) makes the capsule narrower so it
-      // visually detaches from the screen edges; the parent area
-      // outside the capsule is fully transparent — content scrolling
-      // underneath is visible there.
-      padding: EdgeInsets.fromLTRB(
-        kFloatingTabBarHorizontalInset,
-        kFloatingTabBarMargin,
-        kFloatingTabBarHorizontalInset,
-        kFloatingTabBarMargin + bottomSafe,
-      ),
-      child: PhysicalModel(
-        color: Colors.transparent,
-        elevation: 12,
-        shadowColor: Colors.black.withOpacity(0.55),
+    return PhysicalModel(
+      color: Colors.transparent,
+      elevation: 12,
+      shadowColor: Colors.black.withOpacity(0.55),
+      borderRadius: BorderRadius.circular(kFloatingTabBarHeight / 2),
+      // Backdrop blur + 72 % opaque surface lets content moving
+      // underneath the capsule subtly show through, which is what
+      // makes the bar read as "floating" on top instead of "stuck
+      // to the bottom".
+      child: ClipRRect(
         borderRadius: BorderRadius.circular(kFloatingTabBarHeight / 2),
-        // Backdrop blur + 70 % opaque surface lets content moving
-        // underneath the capsule subtly show through, which is what
-        // makes the bar read as "floating" on top instead of "stuck
-        // to the bottom".
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(kFloatingTabBarHeight / 2),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-            child: Container(
-              height: kFloatingTabBarHeight,
-              decoration: BoxDecoration(
-                color: palette.surface.withOpacity(0.72),
-                borderRadius:
-                    BorderRadius.circular(kFloatingTabBarHeight / 2),
-                border: Border.all(
-                  color: palette.line.withOpacity(0.55),
-                  width: 1,
-                ),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+          child: Container(
+            height: kFloatingTabBarHeight,
+            decoration: BoxDecoration(
+              color: palette.surface.withOpacity(0.72),
+              borderRadius: BorderRadius.circular(kFloatingTabBarHeight / 2),
+              border: Border.all(
+                color: palette.line.withOpacity(0.55),
+                width: 1,
               ),
-              child: Row(
-                children: [
-                  for (var i = 0; i < destinations.length; i++)
-                    Expanded(
-                      child: _FloatingTabItem(
-                        palette: palette,
-                        destination: destinations[i],
-                        selected: i == selectedIndex,
-                        onTap: () => onDestinationSelected(i),
-                      ),
+            ),
+            child: Row(
+              children: [
+                for (var i = 0; i < destinations.length; i++)
+                  Expanded(
+                    child: _FloatingTabItem(
+                      palette: palette,
+                      destination: destinations[i],
+                      selected: i == selectedIndex,
+                      onTap: () => onDestinationSelected(i),
                     ),
-                ],
-              ),
+                  ),
+              ],
             ),
           ),
         ),
@@ -615,7 +630,13 @@ class _FloatingTabBar extends StatelessWidget {
   }
 }
 
-class _FloatingTabItem extends StatelessWidget {
+/// Per-tab item: an animated Lottie icon + label. Kept as a stateful
+/// widget so we own a single `AnimationController` per icon — when the
+/// tab is selected we loop the JSON animation; when it's deselected we
+/// reset to frame 0 (icon stays still). No InkWell / ripple / hover —
+/// the user explicitly asked for a flat hit area, only the active tab
+/// is highlighted (via colour + bold label).
+class _FloatingTabItem extends StatefulWidget {
   const _FloatingTabItem({
     required this.palette,
     required this.destination,
@@ -629,40 +650,238 @@ class _FloatingTabItem extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  State<_FloatingTabItem> createState() => _FloatingTabItemState();
+}
+
+class _FloatingTabItemState extends State<_FloatingTabItem>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl =
+      AnimationController(vsync: this, duration: const Duration(seconds: 2));
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.selected) {
+      _ctrl.repeat();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _FloatingTabItem oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.selected && !oldWidget.selected) {
+      _ctrl
+        ..reset()
+        ..repeat();
+    } else if (!widget.selected && oldWidget.selected) {
+      _ctrl
+        ..stop()
+        ..reset();
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final color = selected ? palette.fg : palette.muted;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(kFloatingTabBarHeight / 2),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                selected ? destination.selectedIcon : destination.icon,
-                color: color,
-                size: 20,
-              ),
-              const SizedBox(height: 1),
-              Text(
-                destination.label,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 10,
-                  height: 1.05,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+    final color = widget.selected ? widget.palette.fg : widget.palette.muted;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: widget.onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 26,
+              height: 26,
+              child: Lottie.asset(
+                widget.destination.lottie,
+                controller: _ctrl,
+                fit: BoxFit.contain,
+                onLoaded: (composition) {
+                  _ctrl.duration = composition.duration;
+                  if (widget.selected) {
+                    _ctrl.repeat();
+                  }
+                },
+                delegates: LottieDelegates(
+                  values: [
+                    ValueDelegate.color(
+                      const ['**'],
+                      value: color,
+                    ),
+                    ValueDelegate.strokeColor(
+                      const ['**'],
+                      value: color,
+                    ),
+                  ],
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
-            ],
+            ),
+            const SizedBox(height: 1),
+            Text(
+              widget.destination.label,
+              style: TextStyle(
+                color: color,
+                fontSize: 10,
+                height: 1.05,
+                fontWeight: widget.selected ? FontWeight.w700 : FontWeight.w500,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Pentagon-shaped FAB that mirrors the Noetica logo glyph. Sits
+/// inline to the right of the floating tab bar capsule. No
+/// InkWell / ripple — flat tap surface, just an explicit press
+/// scale-down for tactile feedback.
+class _PentagonFab extends StatefulWidget {
+  const _PentagonFab({required this.palette, required this.onTap});
+
+  final NoeticaPalette palette;
+  final VoidCallback onTap;
+
+  @override
+  State<_PentagonFab> createState() => _PentagonFabState();
+}
+
+class _PentagonFabState extends State<_PentagonFab> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        scale: _pressed ? 0.92 : 1,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        child: SizedBox(
+          width: kFloatingFabSize,
+          height: kFloatingFabSize,
+          child: CustomPaint(
+            painter: _PentagonPainter(
+              fill: widget.palette.fg,
+              stroke: widget.palette.line.withOpacity(0.6),
+            ),
+            child: Center(
+              child: Icon(
+                Icons.add,
+                color: widget.palette.bg,
+                size: 26,
+              ),
+            ),
           ),
         ),
       ),
     );
   }
+}
+
+/// Draws a regular pentagon (point-up) with rounded vertices and a
+/// soft drop shadow underneath, matching the Noetica brand glyph.
+class _PentagonPainter extends CustomPainter {
+  _PentagonPainter({required this.fill, required this.stroke});
+
+  final Color fill;
+  final Color stroke;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    // Slightly inset radius so the stroke stays inside the canvas.
+    final r = math.min(size.width, size.height) / 2 - 1;
+    final path = _pentagonPath(cx, cy, r, cornerRadius: 6);
+
+    // Shadow.
+    canvas.drawShadow(path, Colors.black.withOpacity(0.6), 6, false);
+
+    // Fill.
+    canvas.drawPath(path, Paint()..color = fill);
+
+    // Subtle border to match the capsule's 1 px line.
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = stroke
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1,
+    );
+  }
+
+  /// Build a regular pentagon path (one vertex at the top) with
+  /// rounded corners. We construct the polygon, then approximate
+  /// rounded vertices by inserting two anchor points per corner and
+  /// quadratic curves between them.
+  Path _pentagonPath(
+    double cx,
+    double cy,
+    double r, {
+    double cornerRadius = 0,
+  }) {
+    final pts = <Offset>[
+      for (var i = 0; i < 5; i++)
+        Offset(
+          cx + r * math.cos(-math.pi / 2 + i * 2 * math.pi / 5),
+          cy + r * math.sin(-math.pi / 2 + i * 2 * math.pi / 5),
+        ),
+    ];
+
+    final path = Path();
+    if (cornerRadius <= 0) {
+      path.moveTo(pts[0].dx, pts[0].dy);
+      for (var i = 1; i < pts.length; i++) {
+        path.lineTo(pts[i].dx, pts[i].dy);
+      }
+      path.close();
+      return path;
+    }
+
+    for (var i = 0; i < pts.length; i++) {
+      final prev = pts[(i - 1 + pts.length) % pts.length];
+      final curr = pts[i];
+      final next = pts[(i + 1) % pts.length];
+
+      final v1 = curr - prev;
+      final v2 = next - curr;
+      final l1 = v1.distance;
+      final l2 = v2.distance;
+      final d1 = math.min(cornerRadius, l1 / 2);
+      final d2 = math.min(cornerRadius, l2 / 2);
+
+      final p1 = curr - v1 * (d1 / l1); // entry anchor
+      final p2 = curr + v2 * (d2 / l2); // exit anchor
+
+      if (i == 0) {
+        path.moveTo(p1.dx, p1.dy);
+      } else {
+        path.lineTo(p1.dx, p1.dy);
+      }
+      path.quadraticBezierTo(curr.dx, curr.dy, p2.dx, p2.dy);
+    }
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldRepaint(covariant _PentagonPainter oldDelegate) =>
+      oldDelegate.fill != fill || oldDelegate.stroke != stroke;
 }

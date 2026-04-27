@@ -34,6 +34,7 @@ dependencies:
   launch_at_startup: ^0.3.1
   package_info_plus: ^8.0.2
   audioplayers: ^6.1.0
+  lottie: ^3.1.2
 
 dev_dependencies:
   flutter_test:
@@ -47,6 +48,7 @@ flutter:
   assets:
     - assets/branding/
     - assets/sounds/
+    - assets/icons/
 
 flutter_launcher_icons:
   android: true
