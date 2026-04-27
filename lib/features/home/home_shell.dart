@@ -182,6 +182,11 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       selectedIcon: Icons.dashboard,
       label: 'Сейчас',
       lottie: 'assets/icons/tab_home.json',
+      // Source canvas (256×256) has a lot of padding around the
+      // dashboard glyph itself — bump the visual scale and slow the
+      // playback so it doesn't feel jittery.
+      lottieScale: 1.55,
+      lottieSpeed: 0.55,
     ),
     _Destination(
       icon: Icons.auto_graph_outlined,
@@ -309,15 +314,25 @@ class _Destination {
     required this.selectedIcon,
     required this.label,
     required this.lottie,
+    this.lottieScale = 1.0,
+    this.lottieSpeed = 1.0,
   });
 
   final IconData icon;
   final IconData selectedIcon;
   final String label;
   /// Path to a Lottie JSON file that plays a looping animation when
-  /// this tab is selected; remains paused on frame 0 otherwise.
-  /// Desktop sidebar still uses [icon] / [selectedIcon].
+  /// this tab is selected; rests on the final frame otherwise so
+  /// icons that draw themselves from scratch (e.g. profile) stay
+  /// visible. Desktop sidebar still uses [icon] / [selectedIcon].
   final String lottie;
+  /// Visual scale multiplier for the rendered Lottie. Lottie source
+  /// canvases sometimes have generous padding; this lets us blow up
+  /// the glyph to match the visual weight of other tabs.
+  final double lottieScale;
+  /// Playback speed multiplier. <1 slows the animation down, >1
+  /// speeds it up. Applied as a divisor on the controller duration.
+  final double lottieSpeed;
 }
 
 /// Custom sidebar — `NavigationRail` doesn't support a "secondary" group of
@@ -661,6 +676,10 @@ class _FloatingTabItemState extends State<_FloatingTabItem>
   @override
   void initState() {
     super.initState();
+    // Default rest pose: the FINAL frame. Lottie compositions in
+    // this codebase are draw-themselves-from-zero animations, so
+    // resting at frame 0 leaves the icon invisible until tapped.
+    _ctrl.value = widget.selected ? 0 : 1;
     if (widget.selected) {
       _ctrl.repeat();
     }
@@ -671,12 +690,13 @@ class _FloatingTabItemState extends State<_FloatingTabItem>
     super.didUpdateWidget(oldWidget);
     if (widget.selected && !oldWidget.selected) {
       _ctrl
+        ..stop()
         ..reset()
         ..repeat();
     } else if (!widget.selected && oldWidget.selected) {
       _ctrl
         ..stop()
-        ..reset();
+        ..value = 1;
     }
   }
 
@@ -708,16 +728,21 @@ class _FloatingTabItemState extends State<_FloatingTabItem>
               height: 28,
               child: ColorFiltered(
                 colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
-                child: Lottie.asset(
-                  widget.destination.lottie,
-                  controller: _ctrl,
-                  fit: BoxFit.contain,
-                  onLoaded: (composition) {
-                    _ctrl.duration = composition.duration;
-                    if (widget.selected) {
-                      _ctrl.repeat();
-                    }
-                  },
+                child: Transform.scale(
+                  scale: widget.destination.lottieScale,
+                  child: Lottie.asset(
+                    widget.destination.lottie,
+                    controller: _ctrl,
+                    fit: BoxFit.contain,
+                    onLoaded: (composition) {
+                      final speed = widget.destination.lottieSpeed;
+                      _ctrl.duration = composition.duration * (1 / speed);
+                      _ctrl.value = widget.selected ? 0 : 1;
+                      if (widget.selected) {
+                        _ctrl.repeat();
+                      }
+                    },
+                  ),
                 ),
               ),
             ),
