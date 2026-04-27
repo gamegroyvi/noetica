@@ -8,6 +8,7 @@ import '../../utils/subtask_utils.dart';
 import '../../utils/time_utils.dart';
 import '../../widgets/brand_glyph.dart';
 import '../entry/entry_editor_sheet.dart';
+import '../home/home_shell.dart';
 import '../reflection/reflection_sheet.dart';
 import '../settings/settings_screen.dart';
 
@@ -142,8 +143,9 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                         palette: palette,
                       )
                     : ListView.separated(
-                        padding:
-                            const EdgeInsets.fromLTRB(16, 4, 16, 96),
+                        // Reserve room for the floating capsule + FAB above it.
+                        padding: const EdgeInsets.fromLTRB(
+                            16, 4, 16, 24 + kFloatingTabBarReserve),
                         itemCount: filtered.length,
                         separatorBuilder: (_, __) =>
                             const SizedBox(height: 6),

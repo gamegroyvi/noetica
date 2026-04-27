@@ -306,7 +306,10 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
               ? Center(child: Text(_error!))
               : SafeArea(
                   child: AnimatedBuilder(
-                    animation: _shimmer,
+                    // Rebuild on shimmer ticks AND on zoom changes so
+                    // node widgets can apply an inverse Transform.scale
+                    // and keep their pixel size constant at any zoom.
+                    animation: Listenable.merge([_shimmer, _zoom]),
                     builder: (context, _) => InteractiveViewer(
                       transformationController: _zoom,
                       // Wider zoom range so the user can pull way out to
@@ -338,6 +341,12 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
                           knowledge: _knowledge!,
                           palette: palette,
                           shimmer: _shimmer.value,
+                          // Read the uniform scale of the InteractiveViewer
+                          // matrix; node children divide by it so they
+                          // visually keep a constant pixel size at any
+                          // zoom level (the user asked for "fruit" nodes
+                          // to stay the same size when zooming).
+                          zoom: _zoom.value.getMaxScaleOnAxis(),
                           recentNotes: recentNotes,
                           recentTasks: recentTasks,
                           onTapCenter: () =>
@@ -563,6 +572,7 @@ class _GraphCanvas extends StatelessWidget {
     required this.knowledge,
     required this.palette,
     required this.shimmer,
+    required this.zoom,
     required this.onTapCenter,
     required this.onTapBranchHeader,
     required this.onTapLeaf,
@@ -573,6 +583,10 @@ class _GraphCanvas extends StatelessWidget {
   final PersonalKnowledge knowledge;
   final NoeticaPalette palette;
   final double shimmer; // 0..1, advances slowly
+  /// Uniform scale of the parent InteractiveViewer. Node widgets apply
+  /// `Transform.scale(1 / zoom)` so their pixel size doesn't grow when
+  /// the user pinches in.
+  final double zoom;
   final VoidCallback onTapCenter;
   final ValueChanged<_Branch> onTapBranchHeader;
   final void Function(_Branch branch, int index) onTapLeaf;
@@ -695,62 +709,84 @@ class _GraphCanvas extends StatelessWidget {
                 muted: palette.muted,
               ),
             ),
-            // Centre node — user / "трунк".
-            Positioned(
-              left: centre.dx - 38,
-              top: centre.dy - 38,
-              width: 76,
-              height: 76,
-              child: GestureDetector(
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  onTapCenter();
-                },
-                child: _CentreNode(
-                  palette: palette,
-                  pulse: 0.5 + 0.5 * math.sin(shimmer * 2 * math.pi),
-                  summary: knowledge.summary,
-                ),
-              ),
-            ),
-            // Branch header nodes.
-            for (final b in branches)
-              Positioned(
-                left: positions[b]!.dx - 44,
-                top: positions[b]!.dy - 22,
-                width: 88,
-                height: 44,
-                child: GestureDetector(
-                  onTap: () {
-                    HapticFeedback.selectionClick();
-                    onTapBranchHeader(b);
-                  },
-                  child: _BranchNode(
-                    title: b.title,
-                    symbol: b.symbol,
-                    count: _items(b).length,
-                    palette: palette,
-                  ),
-                ),
-              ),
-            // Leaf nodes.
-            for (final b in branches)
-              for (var li = 0; li < leafPositions[b]!.length; li++)
+            // Inverse scale applied to every node widget so that, no
+            // matter how aggressively the user pinch-zooms the canvas,
+            // the cards / text / fruits stay the same pixel size on
+            // screen. Lines drawn by the CustomPainter still scale
+            // with the canvas so the tree geometry is preserved.
+            // Clamped to a sane minimum to avoid div-by-zero on the
+            // first frame when zoom is initialised to 0.
+            // ignore: unused_local_variable
+            ...(() {
+              final inv = 1 / math.max(0.001, zoom);
+              return [
+                // Centre node — user / "трунк".
                 Positioned(
-                  left: leafPositions[b]![li].dx - 60,
-                  top: leafPositions[b]![li].dy - 16,
-                  width: 120,
-                  height: 32,
+                  left: centre.dx - 38,
+                  top: centre.dy - 38,
+                  width: 76,
+                  height: 76,
                   child: GestureDetector(
-                    onTap: b == _Branch.preferences
-                        ? () => onTapBranchHeader(b)
-                        : () => onTapLeaf(b, li),
-                    child: _LeafNode(
-                      label: _items(b)[li],
-                      palette: palette,
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      onTapCenter();
+                    },
+                    child: Transform.scale(
+                      scale: inv,
+                      child: _CentreNode(
+                        palette: palette,
+                        pulse: 0.5 + 0.5 * math.sin(shimmer * 2 * math.pi),
+                        summary: knowledge.summary,
+                      ),
                     ),
                   ),
                 ),
+                // Branch header nodes.
+                for (final b in branches)
+                  Positioned(
+                    left: positions[b]!.dx - 44,
+                    top: positions[b]!.dy - 22,
+                    width: 88,
+                    height: 44,
+                    child: GestureDetector(
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        onTapBranchHeader(b);
+                      },
+                      child: Transform.scale(
+                        scale: inv,
+                        child: _BranchNode(
+                          title: b.title,
+                          symbol: b.symbol,
+                          count: _items(b).length,
+                          palette: palette,
+                        ),
+                      ),
+                    ),
+                  ),
+                // Leaf nodes.
+                for (final b in branches)
+                  for (var li = 0; li < leafPositions[b]!.length; li++)
+                    Positioned(
+                      left: leafPositions[b]![li].dx - 60,
+                      top: leafPositions[b]![li].dy - 16,
+                      width: 120,
+                      height: 32,
+                      child: GestureDetector(
+                        onTap: b == _Branch.preferences
+                            ? () => onTapBranchHeader(b)
+                            : () => onTapLeaf(b, li),
+                        child: Transform.scale(
+                          scale: inv,
+                          child: _LeafNode(
+                            label: _items(b)[li],
+                            palette: palette,
+                          ),
+                        ),
+                      ),
+                    ),
+              ];
+            })(),
           ],
         );
       },

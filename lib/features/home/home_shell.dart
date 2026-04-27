@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -20,11 +22,17 @@ import '../tasks/tasks_screen.dart';
 const double _kRailMin = 900;
 const double _kRailExtended = 1200;
 
-/// Vertical space the floating capsule reserves above safe-area bottom.
-/// Pages add this to their scroll padding so the last items aren't
-/// hidden under the bar.
-const double kFloatingTabBarHeight = 64;
-const double kFloatingTabBarMargin = 12;
+/// Geometry of the floating capsule tab bar — exported so screens can
+/// add the reserve to their own scroll paddings (so the last items
+/// don't end up hidden under the partially-transparent bar).
+const double kFloatingTabBarHeight = 52;
+const double kFloatingTabBarMargin = 10;
+const double kFloatingTabBarHorizontalInset = 28;
+/// Total vertical room the bar visually occupies above the system safe
+/// area (capsule height + top + bottom margin). Used by screens that
+/// build their own ListView padding.
+const double kFloatingTabBarReserve =
+    kFloatingTabBarHeight + kFloatingTabBarMargin * 2;
 
 class HomeShell extends ConsumerStatefulWidget {
   const HomeShell({super.key});
@@ -194,28 +202,49 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       // the bar's selectedIndex so it doesn't break when index = 3 (would
       // happen if user navigated to journal then resized to mobile).
       final mobileSelected = _index < _destinations.length ? _index : 0;
-      // Telegram-style floating tab bar: the bar is a fully-rounded
-      // capsule with horizontal margins + a shadow so it visually hovers
-      // over content. We deliberately do NOT use extendBody:true here —
-      // letting the body slide UNDER the capsule means many screens
-      // (which use hard-coded ListView padding instead of MediaQuery)
-      // end up with their last items clipped, and the FAB has to be
-      // pushed up by a fragile constant. Keeping the bar inside the
-      // standard bottomNavigationBar slot lets Scaffold reserve the
-      // exact height and place the FAB right above the capsule, while
-      // the 12 px outer margin in _FloatingTabBar still produces the
-      // floating-capsule look the user asked for.
-      return Scaffold(
-        body: body,
-        floatingActionButton: FloatingActionButton(
-          onPressed: () => showEntryEditor(context, ref),
-          child: const Icon(Icons.add),
+      final bottomSafe = MediaQuery.of(context).padding.bottom;
+      // Telegram-style truly-floating capsule: drop the bottomNavigationBar
+      // slot (which forced Scaffold to reserve a strip and made the bar
+      // sit *inside* a non-floating box) and instead overlay it via a
+      // Stack at the screen level. The body fills the entire screen,
+      // but we inject MediaQuery.padding.bottom += reserve so SafeArea
+      // and other padding-aware widgets in pages know to leave room
+      // under the capsule. The FAB is also Stack-positioned so it
+      // sits a comfortable margin *above* the capsule and never lands
+      // on top of page content like «Сгенерировать план».
+      final body3 = MediaQuery(
+        data: MediaQuery.of(context).copyWith(
+          padding: MediaQuery.of(context).padding.copyWith(
+                bottom:
+                    MediaQuery.of(context).padding.bottom + kFloatingTabBarReserve,
+              ),
         ),
-        bottomNavigationBar: _FloatingTabBar(
-          palette: palette,
-          selectedIndex: mobileSelected,
-          destinations: _destinations,
-          onDestinationSelected: (i) => setState(() => _index = i),
+        child: body,
+      );
+      return Scaffold(
+        body: Stack(
+          children: [
+            Positioned.fill(child: body3),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: _FloatingTabBar(
+                palette: palette,
+                selectedIndex: mobileSelected,
+                destinations: _destinations,
+                onDestinationSelected: (i) => setState(() => _index = i),
+              ),
+            ),
+            Positioned(
+              right: 16,
+              bottom: kFloatingTabBarReserve + bottomSafe + 12,
+              child: FloatingActionButton(
+                onPressed: () => showEntryEditor(context, ref),
+                child: const Icon(Icons.add),
+              ),
+            ),
+          ],
         ),
       );
     }
@@ -531,36 +560,54 @@ class _FloatingTabBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final bottomSafe = MediaQuery.of(context).padding.bottom;
     return Padding(
+      // Wider horizontal inset (28 px) makes the capsule narrower so it
+      // visually detaches from the screen edges; the parent area
+      // outside the capsule is fully transparent — content scrolling
+      // underneath is visible there.
       padding: EdgeInsets.fromLTRB(
-        16,
+        kFloatingTabBarHorizontalInset,
         kFloatingTabBarMargin,
-        16,
+        kFloatingTabBarHorizontalInset,
         kFloatingTabBarMargin + bottomSafe,
       ),
       child: PhysicalModel(
         color: Colors.transparent,
-        elevation: 16,
-        shadowColor: Colors.black.withOpacity(0.45),
+        elevation: 12,
+        shadowColor: Colors.black.withOpacity(0.55),
         borderRadius: BorderRadius.circular(kFloatingTabBarHeight / 2),
-        child: Container(
-          height: kFloatingTabBarHeight,
-          decoration: BoxDecoration(
-            color: palette.surface,
-            borderRadius: BorderRadius.circular(kFloatingTabBarHeight / 2),
-            border: Border.all(color: palette.line, width: 1),
-          ),
-          child: Row(
-            children: [
-              for (var i = 0; i < destinations.length; i++)
-                Expanded(
-                  child: _FloatingTabItem(
-                    palette: palette,
-                    destination: destinations[i],
-                    selected: i == selectedIndex,
-                    onTap: () => onDestinationSelected(i),
-                  ),
+        // Backdrop blur + 70 % opaque surface lets content moving
+        // underneath the capsule subtly show through, which is what
+        // makes the bar read as "floating" on top instead of "stuck
+        // to the bottom".
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(kFloatingTabBarHeight / 2),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+            child: Container(
+              height: kFloatingTabBarHeight,
+              decoration: BoxDecoration(
+                color: palette.surface.withOpacity(0.72),
+                borderRadius:
+                    BorderRadius.circular(kFloatingTabBarHeight / 2),
+                border: Border.all(
+                  color: palette.line.withOpacity(0.55),
+                  width: 1,
                 ),
-            ],
+              ),
+              child: Row(
+                children: [
+                  for (var i = 0; i < destinations.length; i++)
+                    Expanded(
+                      child: _FloatingTabItem(
+                        palette: palette,
+                        destination: destinations[i],
+                        selected: i == selectedIndex,
+                        onTap: () => onDestinationSelected(i),
+                      ),
+                    ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -590,21 +637,23 @@ class _FloatingTabItem extends StatelessWidget {
         borderRadius: BorderRadius.circular(kFloatingTabBarHeight / 2),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.symmetric(vertical: 4),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
                 selected ? destination.selectedIcon : destination.icon,
                 color: color,
-                size: 22,
+                size: 20,
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 1),
               Text(
                 destination.label,
                 style: TextStyle(
                   color: color,
-                  fontSize: 11,
+                  fontSize: 10,
+                  height: 1.05,
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                 ),
                 maxLines: 1,

@@ -10,6 +10,7 @@ import '../../theme/app_theme.dart';
 import '../../widgets/brand_glyph.dart';
 import '../roadmap/roadmap_screen.dart';
 import '../settings/settings_screen.dart';
+import '../home/home_shell.dart';
 import 'axes_editor_screen.dart';
 import 'axis_detail_sheet.dart';
 import 'epoch_ceremony.dart';
@@ -105,7 +106,11 @@ class _SelfScreenState extends ConsumerState<SelfScreen> {
         error: (e, _) => Center(child: Text('$e')),
         data: (scores) {
           return ListView(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+            // Last items would otherwise hide under the floating
+            // capsule + the FAB sitting above it. We reserve 24 px of
+            // breathing room *plus* the capsule footprint so the
+            // «Сгенерировать план» button never lands under «+».
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24 + kFloatingTabBarReserve),
             children: [
               _ProfileHeader(
                 level: levelAsync.valueOrNull,

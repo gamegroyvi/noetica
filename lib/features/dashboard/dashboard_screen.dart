@@ -10,6 +10,7 @@ import '../../services/weekly_reflection_service.dart';
 import '../calendar/calendar_screen.dart';
 import '../calendar/day_detail_sheet.dart';
 import '../entry/entry_editor_sheet.dart';
+import '../home/home_shell.dart';
 import '../knowledge/knowledge_graph_screen.dart';
 import '../notes/notes_screen.dart';
 import '../pomodoro/pomodoro_sheet.dart';
@@ -228,7 +229,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           final greeting = _greeting(now, profileAsync.valueOrNull?.name);
 
           return ListView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+            // Reserve space for the floating capsule + FAB hovering above it.
+            padding: const
+                EdgeInsets.fromLTRB(16, 8, 16, 24 + kFloatingTabBarReserve),
             children: [
               if (_showWeeklyBanner) ...[
                 _WeeklyBanner(
