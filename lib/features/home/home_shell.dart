@@ -698,30 +698,26 @@ class _FloatingTabItemState extends State<_FloatingTabItem>
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Tint the entire monochrome icon with the active palette
+            // colour using BlendMode.srcIn — selected tabs read in fg,
+            // deselected tabs in muted. We avoid Lottie's color delegate
+            // because the JSON may use complex multi-shape compositions
+            // where targeting individual layers is brittle.
             SizedBox(
-              width: 26,
-              height: 26,
-              child: Lottie.asset(
-                widget.destination.lottie,
-                controller: _ctrl,
-                fit: BoxFit.contain,
-                onLoaded: (composition) {
-                  _ctrl.duration = composition.duration;
-                  if (widget.selected) {
-                    _ctrl.repeat();
-                  }
-                },
-                delegates: LottieDelegates(
-                  values: [
-                    ValueDelegate.color(
-                      const ['**'],
-                      value: color,
-                    ),
-                    ValueDelegate.strokeColor(
-                      const ['**'],
-                      value: color,
-                    ),
-                  ],
+              width: 28,
+              height: 28,
+              child: ColorFiltered(
+                colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+                child: Lottie.asset(
+                  widget.destination.lottie,
+                  controller: _ctrl,
+                  fit: BoxFit.contain,
+                  onLoaded: (composition) {
+                    _ctrl.duration = composition.duration;
+                    if (widget.selected) {
+                      _ctrl.repeat();
+                    }
+                  },
                 ),
               ),
             ),
