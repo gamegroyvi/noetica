@@ -3,6 +3,8 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'models.dart';
+
 const _kProfileKey = 'noetica.profile.v1';
 
 /// Suggested interest chips shown in the questionnaire. They are *only*
@@ -46,6 +48,85 @@ const Map<String, String> kInterestLevelLabels = <String, String>{
   'expert': 'Эксперт',
 };
 
+/// A frozen-in-time record of an эпоха the user has already completed.
+/// Captured the moment they tap «Новая эпоха», so the «Я» screen can
+/// render that эпоха's tree read-only later. We store the axes the
+/// user lived with during that эпоха (their names/symbols may differ
+/// from the current ones) plus the final 0..100 score per axis at the
+/// moment of transition, so the pentagon and tree visually freeze at
+/// "where the user was when they closed that chapter".
+class EpochSnapshot {
+  const EpochSnapshot({
+    required this.epoch,
+    required this.tier,
+    required this.axes,
+    required this.scores,
+    required this.startedAt,
+    required this.endedAt,
+    this.summary,
+  });
+
+  /// Which эпоха this snapshot represents.
+  final int epoch;
+
+  /// Last tier the user reached inside that эпоха before transitioning.
+  final int tier;
+
+  /// Snapshot of the axes (id/name/symbol) the user lived with during
+  /// this эпоха. Stored verbatim so renaming axes later doesn't rewrite
+  /// the past.
+  final List<LifeAxis> axes;
+
+  /// Final 0..100 score per axis at the moment of transition. Keys
+  /// match `axes[i].id`. Missing keys treated as 0.
+  final Map<String, double> scores;
+
+  /// Boundaries of this эпоха.
+  final DateTime startedAt;
+  final DateTime endedAt;
+
+  /// Optional one-liner the user typed at transition time (we don't
+  /// prompt for it yet, reserved for a future "what did this эпоха
+  /// teach you" screen).
+  final String? summary;
+
+  Map<String, dynamic> toJson() => {
+        'epoch': epoch,
+        'tier': tier,
+        'axes': [for (final a in axes) a.toMap()],
+        'scores': scores,
+        'startedAt': startedAt.toIso8601String(),
+        'endedAt': endedAt.toIso8601String(),
+        if (summary != null) 'summary': summary,
+      };
+
+  factory EpochSnapshot.fromJson(Map<String, dynamic> json) {
+    final rawAxes = (json['axes'] as List?) ?? const [];
+    final rawScores = (json['scores'] as Map?) ?? const {};
+    return EpochSnapshot(
+      epoch: (json['epoch'] as num?)?.toInt() ?? 0,
+      tier: (json['tier'] as num?)?.toInt() ?? 1,
+      axes: [
+        for (final raw in rawAxes)
+          if (raw is Map)
+            LifeAxis.fromMap(raw.map(
+              (k, v) => MapEntry(k.toString(), v as Object?),
+            )),
+      ],
+      scores: <String, double>{
+        for (final e in rawScores.entries)
+          if (e.key is String && e.value is num)
+            e.key as String: (e.value as num).toDouble(),
+      },
+      startedAt: DateTime.tryParse((json['startedAt'] as String?) ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
+      endedAt: DateTime.tryParse((json['endedAt'] as String?) ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
+      summary: json['summary'] as String?,
+    );
+  }
+}
+
 class UserProfile {
   const UserProfile({
     required this.name,
@@ -61,6 +142,7 @@ class UserProfile {
     this.epochAckedAt,
     this.epochTier = 1,
     this.epochRefreshedAt,
+    this.epochArchive = const [],
   });
 
   final String name;
@@ -102,6 +184,15 @@ class UserProfile {
   /// and the user has to refill it in the new tier.
   final DateTime? epochRefreshedAt;
 
+  /// Frozen records of all the эпохи the user has already completed.
+  /// Each transition «Новая эпоха» pushes the *previous* state here
+  /// before the new axes are generated, so the «Я» screen can let the
+  /// user swipe back into a read-only view of past эпох. Empty for
+  /// users who haven't transitioned yet OR whose transitions happened
+  /// before this archive feature shipped (those are represented as a
+  /// «архива нет» placeholder in the UI).
+  final List<EpochSnapshot> epochArchive;
+
   Map<String, dynamic> toJson() => {
         'name': name,
         if (birthdate != null) 'birthdate': birthdate!.toIso8601String(),
@@ -119,6 +210,8 @@ class UserProfile {
         'epochTier': epochTier,
         if (epochRefreshedAt != null)
           'epochRefreshedAt': epochRefreshedAt!.toIso8601String(),
+        if (epochArchive.isNotEmpty)
+          'epochArchive': [for (final s in epochArchive) s.toJson()],
       };
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
@@ -160,6 +253,13 @@ class UserProfile {
       epochRefreshedAt: (json['epochRefreshedAt'] as String?) != null
           ? DateTime.tryParse(json['epochRefreshedAt'] as String)
           : null,
+      epochArchive: [
+        for (final raw in (json['epochArchive'] as List?) ?? const [])
+          if (raw is Map)
+            EpochSnapshot.fromJson(raw.map(
+              (k, v) => MapEntry(k.toString(), v),
+            )),
+      ],
     );
   }
 
@@ -181,6 +281,7 @@ class UserProfile {
     int? epochTier,
     DateTime? epochRefreshedAt,
     bool clearEpochRefreshedAt = false,
+    List<EpochSnapshot>? epochArchive,
   }) {
     return UserProfile(
       name: name ?? this.name,
@@ -201,6 +302,7 @@ class UserProfile {
       epochRefreshedAt: clearEpochRefreshedAt
           ? null
           : (epochRefreshedAt ?? this.epochRefreshedAt),
+      epochArchive: epochArchive ?? this.epochArchive,
     );
   }
 }

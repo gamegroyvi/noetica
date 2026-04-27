@@ -220,6 +220,29 @@ class _EpochOverlayState extends ConsumerState<EpochOverlay>
     await _exit.forward();
     if (!mounted) return;
     final now = DateTime.now();
+
+    // Freeze the эпоха the user is leaving (its axes, final scores,
+    // boundaries) into the archive so the «Я» screen can show a
+    // read-only retrospective view of it later. Read straight from
+    // the providers — they're guaranteed to be loaded by now since
+    // the user just hit pentagonFull(scores).
+    final axes = ref.read(axesProvider).valueOrNull ?? const <LifeAxis>[];
+    final scoresList =
+        ref.read(scoresProvider).valueOrNull ?? const <AxisScore>[];
+    final liveAxes = [for (final a in axes) if (!a.isDeleted) a];
+    final scoresMap = <String, double>{
+      for (final s in scoresList) s.axis.id: s.value,
+    };
+    final snapshot = EpochSnapshot(
+      epoch: widget.profile.currentEpoch,
+      tier: widget.profile.epochTier,
+      axes: liveAxes,
+      scores: scoresMap,
+      startedAt: widget.profile.epochStartedAt ?? widget.profile.updatedAt,
+      endedAt: now,
+    );
+    final newArchive = [...widget.profile.epochArchive, snapshot];
+
     final updated = widget.profile.copyWith(
       currentEpoch: widget.profile.currentEpoch + 1,
       epochStartedAt: now,
@@ -227,6 +250,7 @@ class _EpochOverlayState extends ConsumerState<EpochOverlay>
       epochRefreshedAt: now,
       epochAckedAt: now,
       updatedAt: now,
+      epochArchive: newArchive,
     );
     await ref.read(profileServiceProvider).save(updated);
     if (!mounted) return;
