@@ -27,12 +27,12 @@ const double _kRailExtended = 1200;
 /// Geometry of the floating capsule tab bar — exported so screens can
 /// add the reserve to their own scroll paddings (so the last items
 /// don't end up hidden under the partially-transparent bar).
-const double kFloatingTabBarHeight = 52;
+const double kFloatingTabBarHeight = 60;
 const double kFloatingTabBarMargin = 10;
 const double kFloatingTabBarHorizontalInset = 16;
 /// Side length of the pentagon FAB that sits inline-right of the
 /// floating tabbar capsule.
-const double kFloatingFabSize = 52;
+const double kFloatingFabSize = 60;
 const double kFloatingFabGap = 10;
 /// Total vertical room the bar visually occupies above the system safe
 /// area (capsule height + top + bottom margin). Used by screens that
@@ -188,6 +188,10 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       selectedIcon: Icons.auto_graph,
       label: 'Я',
       lottie: 'assets/icons/tab_profile.json',
+      // Octahedron is intentionally two-tone (black faces + white
+      // edges) — don't tint it with the palette colour, just dim it
+      // when the tab is inactive.
+      tintWithPalette: false,
     ),
     _Destination(
       icon: Icons.checklist_outlined,
@@ -309,16 +313,21 @@ class _Destination {
     required this.selectedIcon,
     required this.label,
     required this.lottie,
+    this.tintWithPalette = true,
   });
 
   final IconData icon;
   final IconData selectedIcon;
   final String label;
-  /// Path to a Lottie JSON file that plays a looping animation when
-  /// this tab is selected; rests on the final frame otherwise so
-  /// icons that draw themselves from scratch (e.g. profile) stay
-  /// visible. Desktop sidebar still uses [icon] / [selectedIcon].
+  /// Path to a Lottie JSON file that plays once when the tab is
+  /// activated and rests on the final frame otherwise. Desktop
+  /// sidebar still uses [icon] / [selectedIcon].
   final String lottie;
+  /// When true, the entire Lottie composition is repainted with the
+  /// palette foreground/muted colour via BlendMode.srcIn. When false,
+  /// the source colours are preserved (used for two-tone icons whose
+  /// internal colour relationships matter).
+  final bool tintWithPalette;
 }
 
 /// Custom sidebar — `NavigationRail` doesn't support a "secondary" group of
@@ -662,28 +671,41 @@ class _FloatingTabItemState extends State<_FloatingTabItem>
   @override
   void initState() {
     super.initState();
-    // Default rest pose: the FINAL frame. Lottie compositions in
-    // this codebase are draw-themselves-from-zero animations, so
-    // resting at frame 0 leaves the icon invisible until tapped.
-    _ctrl.value = widget.selected ? 0 : 1;
+    // Rest pose is the FINAL frame so icons that draw themselves
+    // from zero (profile) stay visible. When selected, animation
+    // plays once forward — not on a loop.
+    _ctrl.value = 1;
     if (widget.selected) {
-      _ctrl.repeat();
+      _replay();
     }
+  }
+
+  void _replay() {
+    _ctrl
+      ..stop()
+      ..value = 0;
+    _ctrl.forward();
   }
 
   @override
   void didUpdateWidget(covariant _FloatingTabItem oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.selected && !oldWidget.selected) {
-      _ctrl
-        ..stop()
-        ..reset()
-        ..repeat();
+      _replay();
     } else if (!widget.selected && oldWidget.selected) {
       _ctrl
         ..stop()
         ..value = 1;
     }
+  }
+
+  void _handleTap() {
+    // If tapping the already-active tab, replay the icon animation
+    // for tactile feedback. Otherwise propagate the selection.
+    if (widget.selected) {
+      _replay();
+    }
+    widget.onTap();
   }
 
   @override
@@ -695,39 +717,35 @@ class _FloatingTabItemState extends State<_FloatingTabItem>
   @override
   Widget build(BuildContext context) {
     final color = widget.selected ? widget.palette.fg : widget.palette.muted;
+    final lottie = Lottie.asset(
+      widget.destination.lottie,
+      controller: _ctrl,
+      fit: BoxFit.contain,
+      onLoaded: (composition) {
+        _ctrl.duration = composition.duration;
+        if (widget.selected && !_ctrl.isAnimating && _ctrl.value == 1) {
+          _replay();
+        }
+      },
+    );
+    final Widget icon = widget.destination.tintWithPalette
+        ? ColorFiltered(
+            colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+            child: lottie,
+          )
+        : Opacity(opacity: widget.selected ? 1.0 : 0.45, child: lottie);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: widget.onTap,
+      onTap: _handleTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Tint the entire monochrome icon with the active palette
-            // colour using BlendMode.srcIn — selected tabs read in fg,
-            // deselected tabs in muted. We avoid Lottie's color delegate
-            // because the JSON may use complex multi-shape compositions
-            // where targeting individual layers is brittle.
-            SizedBox(
-              width: 28,
-              height: 28,
-              child: ColorFiltered(
-                colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
-                child: Lottie.asset(
-                  widget.destination.lottie,
-                  controller: _ctrl,
-                  fit: BoxFit.contain,
-                  onLoaded: (composition) {
-                    _ctrl.duration = composition.duration;
-                    _ctrl.value = widget.selected ? 0 : 1;
-                    if (widget.selected) {
-                      _ctrl.repeat();
-                    }
-                  },
-                ),
-              ),
-            ),
+            // Larger render box — source icons have generous canvas
+            // padding, so 28 px felt visually undersized.
+            SizedBox(width: 36, height: 36, child: icon),
             const SizedBox(height: 1),
             Text(
               widget.destination.label,
