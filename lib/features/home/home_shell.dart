@@ -182,30 +182,26 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       selectedIcon: Icons.dashboard,
       label: 'Сейчас',
       lottie: 'assets/icons/tab_home.json',
-      // Dashboard glyph already fills its own canvas tightly
-      // (~71%×109% — actually overflows vertically), so 1.0 is fine.
-      lottieScale: 1.0,
+      lottieScale: 1.4,
     ),
     _Destination(
       icon: Icons.auto_graph_outlined,
       selectedIcon: Icons.auto_graph,
       label: 'Я',
       lottie: 'assets/icons/tab_profile.json',
-      // Octahedron is intentionally two-tone (black faces + white
-      // edges) — don't tint it with the palette colour, just dim it
-      // when the tab is inactive. Source canvas only has ~32% of
-      // its area used by the glyph itself, so blow it up x3.
+      // Two-tone (black faces + white edges) — don't tint, just dim.
+      // Source canvas has ≈32% content, so blow up to fill cell.
       tintWithPalette: false,
-      lottieScale: 3.0,
+      lottieScale: 2.2,
     ),
     _Destination(
       icon: Icons.checklist_outlined,
       selectedIcon: Icons.checklist,
       label: 'Задачи',
       lottie: 'assets/icons/tab_tasks.json',
-      // Layers glyph fills only ~27% of its 256×256 canvas — needs
-      // an even more aggressive blow-up to match the others.
-      lottieScale: 3.5,
+      // Two-tone like profile. Source content occupies ≈27% of canvas.
+      tintWithPalette: false,
+      lottieScale: 2.6,
     ),
   ];
 
@@ -745,12 +741,17 @@ class _FloatingTabItemState extends State<_FloatingTabItem>
         },
       ),
     );
-    final Widget icon = widget.destination.tintWithPalette
+    final Widget tinted = widget.destination.tintWithPalette
         ? ColorFiltered(
             colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
             child: lottie,
           )
         : Opacity(opacity: widget.selected ? 1.0 : 0.45, child: lottie);
+    // Source Lottie canvases (256×256) sometimes have huge padding
+    // around their glyphs — we blow them up via Transform.scale and
+    // clip the overflow so the rendered icon stays inside the tab
+    // cell instead of bleeding into the capsule.
+    final Widget icon = ClipRect(child: tinted);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: _handleTap,
