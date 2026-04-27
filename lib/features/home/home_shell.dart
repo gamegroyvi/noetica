@@ -710,11 +710,6 @@ class _FloatingTabItemState extends State<_FloatingTabItem>
   }
 
   void _handleTap() {
-    // If tapping the already-active tab, replay the icon animation
-    // for tactile feedback. Otherwise propagate the selection.
-    if (widget.selected) {
-      _replay();
-    }
     widget.onTap();
   }
 
