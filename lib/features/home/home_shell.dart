@@ -27,12 +27,12 @@ const double _kRailExtended = 1200;
 /// Geometry of the floating capsule tab bar — exported so screens can
 /// add the reserve to their own scroll paddings (so the last items
 /// don't end up hidden under the partially-transparent bar).
-const double kFloatingTabBarHeight = 60;
+const double kFloatingTabBarHeight = 52;
 const double kFloatingTabBarMargin = 10;
 const double kFloatingTabBarHorizontalInset = 16;
 /// Side length of the pentagon FAB that sits inline-right of the
 /// floating tabbar capsule.
-const double kFloatingFabSize = 60;
+const double kFloatingFabSize = 52;
 const double kFloatingFabGap = 10;
 /// Total vertical room the bar visually occupies above the system safe
 /// area (capsule height + top + bottom margin). Used by screens that
@@ -182,6 +182,9 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       selectedIcon: Icons.dashboard,
       label: 'Сейчас',
       lottie: 'assets/icons/tab_home.json',
+      // Dashboard glyph already fills its own canvas tightly
+      // (~71%×109% — actually overflows vertically), so 1.0 is fine.
+      lottieScale: 1.0,
     ),
     _Destination(
       icon: Icons.auto_graph_outlined,
@@ -190,14 +193,19 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       lottie: 'assets/icons/tab_profile.json',
       // Octahedron is intentionally two-tone (black faces + white
       // edges) — don't tint it with the palette colour, just dim it
-      // when the tab is inactive.
+      // when the tab is inactive. Source canvas only has ~32% of
+      // its area used by the glyph itself, so blow it up x3.
       tintWithPalette: false,
+      lottieScale: 3.0,
     ),
     _Destination(
       icon: Icons.checklist_outlined,
       selectedIcon: Icons.checklist,
       label: 'Задачи',
       lottie: 'assets/icons/tab_tasks.json',
+      // Layers glyph fills only ~27% of its 256×256 canvas — needs
+      // an even more aggressive blow-up to match the others.
+      lottieScale: 3.5,
     ),
   ];
 
@@ -314,6 +322,7 @@ class _Destination {
     required this.label,
     required this.lottie,
     this.tintWithPalette = true,
+    this.lottieScale = 1.0,
   });
 
   final IconData icon;
@@ -328,6 +337,11 @@ class _Destination {
   /// the source colours are preserved (used for two-tone icons whose
   /// internal colour relationships matter).
   final bool tintWithPalette;
+  /// Visual blow-up factor applied via Transform.scale. Compensates
+  /// for source assets whose content occupies only a small fraction
+  /// of their declared 256×256 canvas (causing them to look tiny
+  /// when laid out via BoxFit.contain into our 28-px tab cell).
+  final double lottieScale;
 }
 
 /// Custom sidebar — `NavigationRail` doesn't support a "secondary" group of
@@ -717,16 +731,19 @@ class _FloatingTabItemState extends State<_FloatingTabItem>
   @override
   Widget build(BuildContext context) {
     final color = widget.selected ? widget.palette.fg : widget.palette.muted;
-    final lottie = Lottie.asset(
-      widget.destination.lottie,
-      controller: _ctrl,
-      fit: BoxFit.contain,
-      onLoaded: (composition) {
-        _ctrl.duration = composition.duration;
-        if (widget.selected && !_ctrl.isAnimating && _ctrl.value == 1) {
-          _replay();
-        }
-      },
+    final lottie = Transform.scale(
+      scale: widget.destination.lottieScale,
+      child: Lottie.asset(
+        widget.destination.lottie,
+        controller: _ctrl,
+        fit: BoxFit.contain,
+        onLoaded: (composition) {
+          _ctrl.duration = composition.duration;
+          if (widget.selected && !_ctrl.isAnimating && _ctrl.value == 1) {
+            _replay();
+          }
+        },
+      ),
     );
     final Widget icon = widget.destination.tintWithPalette
         ? ColorFiltered(
@@ -743,9 +760,7 @@ class _FloatingTabItemState extends State<_FloatingTabItem>
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Larger render box — source icons have generous canvas
-            // padding, so 28 px felt visually undersized.
-            SizedBox(width: 36, height: 36, child: icon),
+            SizedBox(width: 28, height: 28, child: icon),
             const SizedBox(height: 1),
             Text(
               widget.destination.label,
