@@ -20,8 +20,13 @@ import '../tasks/tasks_screen.dart';
 /// Layout breakpoints. Below `_kRailMin`: bottom navigation bar. Between
 /// `_kRailMin` and `_kRailExtended`: compact NavigationRail (icons only).
 /// At/above `_kRailExtended`: extended NavigationRail with text labels.
-const double _kRailMin = 900;
-const double _kRailExtended = 1200;
+///
+/// `_kRailMin` was bumped from 900 → 720 so tablets and the smaller
+/// foldable form factors get a real sidebar instead of the cramped
+/// floating tab bar (which collides with our wider editor sheet at
+/// those widths).
+const double _kRailMin = 720;
+const double _kRailExtended = 1100;
 
 /// Geometry of the floating capsule tab bar — exported so screens can
 /// add the reserve to their own scroll paddings (so the last items

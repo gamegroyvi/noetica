@@ -34,6 +34,8 @@ dependencies:
   launch_at_startup: ^0.3.1
   package_info_plus: ^8.0.2
   audioplayers: ^6.1.0
+  flutter_markdown: ^0.7.4
+  markdown: ^7.2.2
 
 dev_dependencies:
   flutter_test:

@@ -6,6 +6,7 @@ import '../../providers.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/subtask_utils.dart';
 import '../../utils/time_utils.dart';
+import 'markdown_body_editor.dart';
 
 Future<void> showEntryEditor(
   BuildContext context,
@@ -14,24 +15,43 @@ Future<void> showEntryEditor(
   DateTime? initialDueAt,
   EntryKind? initialKind,
 }) async {
-  await showModalBottomSheet<void>(
+  // The editor pops with a non-null `Entry` value when the user taps an
+  // unresolved [[wiki link]] inside the markdown preview. We then open
+  // a fresh editor for that target so navigation feels natural.
+  final result = await showModalBottomSheet<Entry?>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Theme.of(context).scaffoldBackgroundColor,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
-    builder: (ctx) => Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(ctx).viewInsets.bottom,
-      ),
-      child: _EntryEditor(
-        existing: existing,
-        initialDueAt: initialDueAt,
-        initialKind: initialKind,
-      ),
-    ),
+    builder: (ctx) {
+      final size = MediaQuery.of(ctx).size;
+      // On wide layouts we let the sheet take more vertical space so
+      // the WYSIWYG split-view has room to breathe.
+      final maxH = size.width >= 1100 ? size.height * 0.92 : size.height * 0.85;
+      return Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(ctx).viewInsets.bottom,
+        ),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: maxH),
+          child: _EntryEditor(
+            existing: existing,
+            initialDueAt: initialDueAt,
+            initialKind: initialKind,
+          ),
+        ),
+      );
+    },
   );
+  if (result != null && context.mounted) {
+    // Allow the previous sheet to fully dismiss before pushing the next
+    // one so animations don't overlap.
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+    if (!context.mounted) return;
+    await showEntryEditor(context, ref, existing: result);
+  }
 }
 
 class _EntryEditor extends ConsumerStatefulWidget {
@@ -47,8 +67,10 @@ class _EntryEditor extends ConsumerStatefulWidget {
 class _EntryEditorState extends ConsumerState<_EntryEditor> {
   late final TextEditingController _title;
   late final TextEditingController _body;
+  late final TextEditingController _tagInput;
   late EntryKind _kind;
   late Set<String> _selectedAxes;
+  late List<String> _tags;
   DateTime? _due;
   int _xp = 10;
   bool _saving = false;
@@ -59,11 +81,13 @@ class _EntryEditorState extends ConsumerState<_EntryEditor> {
     final e = widget.existing;
     _title = TextEditingController(text: e?.title ?? '');
     _body = TextEditingController(text: e?.body ?? '');
+    _tagInput = TextEditingController();
     // Editing an existing entry keeps its kind. Creating a new entry
     // prefers the caller's hint (e.g. Calendar's "schedule task" CTA)
     // otherwise defaults to a free-form note.
     _kind = e?.kind ?? widget.initialKind ?? EntryKind.note;
     _selectedAxes = Set<String>.from(e?.axisIds ?? const <String>[]);
+    _tags = List<String>.from(e?.tags ?? const <String>[]);
     // Same idea for the due date: if the caller pre-populated one (e.g.
     // we're scheduling a task for a given calendar day) we honour it.
     _due = e?.dueAt ?? widget.initialDueAt;
@@ -74,7 +98,26 @@ class _EntryEditorState extends ConsumerState<_EntryEditor> {
   void dispose() {
     _title.dispose();
     _body.dispose();
+    _tagInput.dispose();
     super.dispose();
+  }
+
+  void _commitTagInput() {
+    final raw = _tagInput.text.trim();
+    if (raw.isEmpty) return;
+    // Allow comma-separated input as a shortcut.
+    for (final part in raw.split(RegExp(r'[,\s]+'))) {
+      final clean = part.replaceAll('#', '').trim().toLowerCase();
+      if (clean.isEmpty) continue;
+      if (_tags.contains(clean)) continue;
+      _tags.add(clean);
+    }
+    _tagInput.clear();
+    setState(() {});
+  }
+
+  void _removeTag(String tag) {
+    setState(() => _tags.remove(tag));
   }
 
   Future<void> _pickDue() async {
@@ -107,22 +150,27 @@ class _EntryEditorState extends ConsumerState<_EntryEditor> {
   }
 
   Future<void> _save() async {
+    // Make sure any half-typed tag in the input field is committed before
+    // we serialise.
+    _commitTagInput();
     if (_title.text.trim().isEmpty) return;
     setState(() => _saving = true);
     try {
       final repo = await ref.read(repositoryProvider.future);
       final existing = widget.existing;
+      Entry saved;
       if (existing == null) {
-        await repo.createEntry(
+        saved = await repo.createEntry(
           title: _title.text.trim(),
           body: _body.text.trim(),
           kind: _kind,
           dueAt: _due,
           xp: _xp,
           axisIds: _selectedAxes.toList(),
+          tags: _tags,
         );
       } else {
-        await repo.upsertEntry(existing.copyWith(
+        saved = existing.copyWith(
           title: _title.text.trim(),
           body: _body.text.trim(),
           kind: _kind,
@@ -130,9 +178,17 @@ class _EntryEditorState extends ConsumerState<_EntryEditor> {
           clearDue: _due == null,
           xp: _xp,
           axisIds: _selectedAxes.toList(),
+          tags: _tags,
           updatedAt: DateTime.now(),
-        ));
+        );
+        await repo.upsertEntry(saved);
       }
+      // Auto-resolve [[wiki links]] in the body — creates stub entries
+      // for any unknown title and inserts bidirectional rows in
+      // entry_links so the knowledge graph picks them up.
+      try {
+        await repo.syncBodyLinks(saved);
+      } catch (_) {/* best effort */}
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (mounted) {
@@ -160,7 +216,13 @@ class _EntryEditorState extends ConsumerState<_EntryEditor> {
     final isTask = _kind == EntryKind.task;
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-      child: Column(
+      child: _buildEditorBody(context, palette, axesAsync, isTask),
+    );
+  }
+
+  Widget _buildEditorBody(BuildContext context, NoeticaPalette palette,
+      AsyncValue<List<LifeAxis>> axesAsync, bool isTask) {
+    return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Center(
@@ -198,14 +260,9 @@ class _EntryEditorState extends ConsumerState<_EntryEditor> {
             ),
           ),
           const SizedBox(height: 12),
-          TextField(
+          MarkdownBodyEditor(
             controller: _body,
-            minLines: 3,
-            maxLines: 8,
-            decoration: const InputDecoration(
-              hintText: 'Что у тебя на уме?',
-            ),
-            onChanged: (_) => setState(() {}),
+            entryId: widget.existing?.id,
           ),
           // Subtask preview: when the body has `- [ ] …` markdown the
           // user can tick them right here and we'll rewrite the body
@@ -221,6 +278,23 @@ class _EntryEditorState extends ConsumerState<_EntryEditor> {
               });
             },
           ),
+          const SizedBox(height: 16),
+          _TagsField(
+            palette: palette,
+            tags: _tags,
+            controller: _tagInput,
+            onCommit: _commitTagInput,
+            onRemove: _removeTag,
+          ),
+          if (widget.existing != null) ...[
+            const SizedBox(height: 16),
+            _BacklinksPanel(
+              palette: palette,
+              entryId: widget.existing!.id,
+              onTapEntry: (entry) =>
+                  Navigator.of(context).pop(entry),
+            ),
+          ],
           const SizedBox(height: 16),
           Text(
             'Оси',
@@ -411,8 +485,7 @@ class _EntryEditorState extends ConsumerState<_EntryEditor> {
             ),
           ),
         ],
-      ),
-    );
+      );
   }
 }
 
@@ -465,9 +538,194 @@ class _AxisToggleChip extends StatelessWidget {
   }
 }
 
-/// Renders the body's `- [ ] …` lines as real tickable checkboxes. The
-/// source of truth is still the markdown text — we just edit it in place
-/// when the user taps a box. Hidden when the body has no checkboxes.
+/// Compact chip-input used for the entry's tags. The tag list is the
+/// source of truth — the backing TextField only holds the half-typed
+/// next tag. Comma / space / Enter all commit.
+class _TagsField extends StatelessWidget {
+  const _TagsField({
+    required this.palette,
+    required this.tags,
+    required this.controller,
+    required this.onCommit,
+    required this.onRemove,
+  });
+
+  final NoeticaPalette palette;
+  final List<String> tags;
+  final TextEditingController controller;
+  final VoidCallback onCommit;
+  final ValueChanged<String> onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Теги',
+          style: Theme.of(context)
+              .textTheme
+              .labelLarge
+              ?.copyWith(color: palette.muted, letterSpacing: 1.4),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+          decoration: BoxDecoration(
+            border: Border.all(color: palette.line),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              for (final tag in tags)
+                InkWell(
+                  onTap: () => onRemove(tag),
+                  borderRadius: BorderRadius.circular(999),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: palette.surface,
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: palette.line),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('#', style: TextStyle(color: palette.muted, fontSize: 11)),
+                        Text(
+                          tag,
+                          style: TextStyle(color: palette.fg, fontSize: 12),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(Icons.close, size: 11, color: palette.muted),
+                      ],
+                    ),
+                  ),
+                ),
+              IntrinsicWidth(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minWidth: 80),
+                  child: TextField(
+                    controller: controller,
+                    style: TextStyle(color: palette.fg, fontSize: 13),
+                    decoration: InputDecoration(
+                      hintText: tags.isEmpty ? 'добавить тег…' : '+',
+                      hintStyle: TextStyle(color: palette.muted, fontSize: 12),
+                      isDense: true,
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 4, vertical: 6),
+                    ),
+                    onSubmitted: (_) => onCommit(),
+                    onChanged: (v) {
+                      if (v.endsWith(' ') || v.endsWith(',')) onCommit();
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Read-only list of entries that link _to_ this entry via `[[…]]`.
+/// Lets the user pivot from a note to its referrers without leaving
+/// the editor sheet.
+class _BacklinksPanel extends ConsumerWidget {
+  const _BacklinksPanel({
+    required this.palette,
+    required this.entryId,
+    required this.onTapEntry,
+  });
+
+  final NoeticaPalette palette;
+  final String entryId;
+  final ValueChanged<Entry> onTapEntry;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final repoAsync = ref.watch(repositoryProvider);
+    return repoAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (repo) => FutureBuilder<List<Entry>>(
+        future: repo.listBacklinks(entryId),
+        builder: (context, snap) {
+          final items = snap.data ?? const <Entry>[];
+          if (items.isEmpty) return const SizedBox.shrink();
+          return Container(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+            decoration: BoxDecoration(
+              color: palette.surface,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: palette.line),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.subdirectory_arrow_left,
+                        size: 14, color: palette.muted),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Сюда ссылаются (${items.length})',
+                      style: TextStyle(
+                        color: palette.muted,
+                        fontSize: 11,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                for (final e in items)
+                  InkWell(
+                    onTap: () => onTapEntry(e),
+                    borderRadius: BorderRadius.circular(6),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      child: Row(
+                        children: [
+                          Icon(
+                            e.kind == EntryKind.task
+                                ? Icons.check_circle_outline
+                                : Icons.note_outlined,
+                            size: 14,
+                            color: palette.muted,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              e.title.isEmpty ? '(без названия)' : e.title,
+                              style: TextStyle(
+                                color: palette.fg,
+                                fontSize: 13,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
 class _SubtaskEditor extends StatelessWidget {
   const _SubtaskEditor({required this.body, required this.onChanged});
 

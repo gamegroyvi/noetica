@@ -620,6 +620,27 @@ class NoeticaRepository {
     return rows.map((r) => r['target_id']! as String).toList();
   }
 
+  /// All entries that link _to_ [entryId] via `[[…]]`. Used to drive
+  /// the backlinks panel on the entry editor.
+  Future<List<m.Entry>> listBacklinks(String entryId) async {
+    final rows = await _db.raw.query(
+      'entry_links',
+      columns: ['source_id'],
+      where: 'target_id = ?',
+      whereArgs: [entryId],
+    );
+    if (rows.isEmpty) return const [];
+    final ids = rows.map((r) => r['source_id']! as String).toSet().toList();
+    final entries = await _db.raw.query(
+      'entries',
+      where:
+          'deleted_at IS NULL AND id IN (${List.filled(ids.length, '?').join(',')})',
+      whereArgs: ids,
+      orderBy: 'updated_at DESC',
+    );
+    return entries.map(m.Entry.fromMap).toList();
+  }
+
   /// Get all links in the database (for graph rendering).
   Future<List<({String source, String target})>> allLinks() async {
     final rows = await _db.raw.rawQuery(
