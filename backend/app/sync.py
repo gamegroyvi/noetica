@@ -58,6 +58,8 @@ class EntryPayload(BaseModel):
     xp: int = 10
     axis_ids: list[str] = Field(default_factory=list)
     deleted_at: int | None = None
+    tags: str = ""
+    bookmarked: int = 0
 
 
 class ProfilePayload(BaseModel):
@@ -135,7 +137,7 @@ async def _load_entries(
     cur = await conn.execute(
         """
         SELECT id, title, body, kind, created_at, updated_at, due_at,
-               completed_at, xp, deleted_at
+               completed_at, xp, deleted_at, tags, bookmarked
         FROM entries WHERE user_id = ? AND updated_at > ?
         """,
         (user_id, since_ms),
@@ -166,6 +168,8 @@ async def _load_entries(
             xp=r["xp"],
             axis_ids=by_entry.get(r["id"], []),
             deleted_at=r["deleted_at"],
+            tags=r["tags"] or "",
+            bookmarked=r["bookmarked"] or 0,
         )
         for r in rows
     ]
@@ -254,8 +258,8 @@ async def _accept_entry(
             """
             INSERT INTO entries (id, user_id, title, body, kind, created_at,
                                  updated_at, due_at, completed_at, xp,
-                                 deleted_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                 deleted_at, tags, bookmarked)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 entry.id,
@@ -269,6 +273,8 @@ async def _accept_entry(
                 entry.completed_at,
                 entry.xp,
                 entry.deleted_at,
+                entry.tags,
+                entry.bookmarked,
             ),
         )
     else:
@@ -276,7 +282,8 @@ async def _accept_entry(
             """
             UPDATE entries
             SET title = ?, body = ?, kind = ?, updated_at = ?, due_at = ?,
-                completed_at = ?, xp = ?, deleted_at = ?
+                completed_at = ?, xp = ?, deleted_at = ?,
+                tags = ?, bookmarked = ?
             WHERE id = ? AND user_id = ?
             """,
             (
@@ -288,6 +295,8 @@ async def _accept_entry(
                 entry.completed_at,
                 entry.xp,
                 entry.deleted_at,
+                entry.tags,
+                entry.bookmarked,
                 entry.id,
                 user_id,
             ),

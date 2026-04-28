@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models.dart';
+import '../../data/profile.dart';
 import '../../providers.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/time_utils.dart';
@@ -16,6 +17,7 @@ import '../notes/notes_screen.dart';
 import '../pomodoro/pomodoro_sheet.dart';
 import '../reflection/reflection_sheet.dart';
 import '../reflection/weekly_reflection_sheet.dart';
+import '../roadmap/roadmap_screen.dart';
 import '../self/pentagon_painter.dart';
 import '../self/self_screen.dart';
 import '../settings/settings_screen.dart';
@@ -187,7 +189,26 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           final axesById = {for (final a in axes) a.id: a};
 
           if (entries.isEmpty) {
-            return _Empty(palette: palette);
+            return _OnboardingHints(
+              palette: palette,
+              profile: profileAsync.valueOrNull,
+              onCreateEntry: () =>
+                  showEntryEditor(context, ref).then((_) {
+                if (!mounted) return;
+                setState(() {});
+              }),
+              onOpenRoadmap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const RoadmapScreen(),
+                ),
+              ),
+              onOpenKnowledge: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const KnowledgeGraphScreen(),
+                ),
+              ),
+              onOpenSelf: _openSelf,
+            );
           }
 
           final now = DateTime.now();
@@ -1153,32 +1174,185 @@ class _WeeklyBanner extends StatelessWidget {
   }
 }
 
-class _Empty extends StatelessWidget {
-  const _Empty({required this.palette});
+/// First-run dashboard. Replaces the old "Здесь пока пусто" stub which
+/// left the user staring at an empty screen with no obvious next step.
+/// We now show a personalised greeting + three CTA cards that map 1:1
+/// to the most useful first actions: generate a task plan from the
+/// onboarding aspiration, explore the pentagon, or jot a free-form
+/// note. The cards self-dismiss as soon as the user creates their first
+/// entry (this whole widget only renders when `entries.isEmpty`).
+class _OnboardingHints extends StatelessWidget {
+  const _OnboardingHints({
+    required this.palette,
+    required this.profile,
+    required this.onCreateEntry,
+    required this.onOpenRoadmap,
+    required this.onOpenKnowledge,
+    required this.onOpenSelf,
+  });
+
   final NoeticaPalette palette;
+  final UserProfile? profile;
+  final VoidCallback onCreateEntry;
+  final VoidCallback onOpenRoadmap;
+  final VoidCallback onOpenKnowledge;
+  final VoidCallback onOpenSelf;
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Здесь пока пусто',
-              style: Theme.of(context).textTheme.titleLarge,
+    final aspiration = profile?.aspiration.trim() ?? '';
+    final name = profile?.name.trim() ?? '';
+    final greeting = name.isEmpty ? 'Привет' : 'Привет, $name';
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24 + kFloatingTabBarReserve),
+      children: [
+        Text(
+          greeting,
+          style: Theme.of(context).textTheme.headlineSmall,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          aspiration.isEmpty
+              ? 'С чего начнём? Выбери действие ниже — это разово, потом дашборд оживёт твоими записями.'
+              : 'Готовы помочь с целью «$aspiration». Выбери, с чего начать — карточки исчезнут, как только появятся первые записи.',
+          style: Theme.of(context)
+              .textTheme
+              .bodyMedium
+              ?.copyWith(color: palette.muted),
+        ),
+        const SizedBox(height: 22),
+        _HintCard(
+          palette: palette,
+          icon: Icons.auto_awesome,
+          accent: const Color(0xFFA78BFA),
+          title: 'Сгенерируй план задач',
+          subtitle: aspiration.isEmpty
+              ? 'AI разложит твою цель на 4–10 конкретных задач, привязанных к осям пентаграммы.'
+              : 'AI разложит «$aspiration» на 4–10 задач. Поле уже заполнено — можно редактировать.',
+          ctaLabel: 'Сгенерировать',
+          onPressed: onOpenRoadmap,
+        ),
+        const SizedBox(height: 12),
+        _HintCard(
+          palette: palette,
+          icon: Icons.account_tree_outlined,
+          accent: const Color(0xFF60A5FA),
+          title: 'Заглянь в базу знаний',
+          subtitle:
+              'Граф второго мозга: цели, ограничения, рефлексии и заметки. Тапни ветку — отредактируй.',
+          ctaLabel: 'Открыть граф',
+          onPressed: onOpenKnowledge,
+        ),
+        const SizedBox(height: 12),
+        _HintCard(
+          palette: palette,
+          icon: Icons.edit_note_outlined,
+          accent: const Color(0xFF34D399),
+          title: 'Запиши первую заметку',
+          subtitle:
+              'Лёгкий старт: пара мыслей, наблюдение или идея. Заметку можно потом превратить в задачу.',
+          ctaLabel: 'Создать',
+          onPressed: onCreateEntry,
+        ),
+        const SizedBox(height: 16),
+        Center(
+          child: TextButton.icon(
+            onPressed: onOpenSelf,
+            icon: const Icon(Icons.radar_outlined, size: 16),
+            label: const Text('Посмотреть свою пентаграмму'),
+            style: TextButton.styleFrom(
+              foregroundColor: palette.muted,
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Создай первую запись через «+». Можно начать с заметки или сразу с задачи.',
-              textAlign: TextAlign.center,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodyMedium
-                  ?.copyWith(color: palette.muted),
-            ),
-          ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HintCard extends StatelessWidget {
+  const _HintCard({
+    required this.palette,
+    required this.icon,
+    required this.accent,
+    required this.title,
+    required this.subtitle,
+    required this.ctaLabel,
+    required this.onPressed,
+  });
+
+  final NoeticaPalette palette;
+  final IconData icon;
+  final Color accent;
+  final String title;
+  final String subtitle;
+  final String ctaLabel;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: palette.surface,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onPressed,
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: palette.line),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: accent.withOpacity(0.18),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, size: 18, color: accent),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(color: palette.muted, height: 1.4),
+                    ),
+                    const SizedBox(height: 12),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: FilledButton(
+                        onPressed: onPressed,
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 8),
+                          minimumSize: const Size(0, 32),
+                        ),
+                        child: Text(ctaLabel),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

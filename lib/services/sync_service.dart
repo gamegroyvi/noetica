@@ -375,6 +375,8 @@ class SyncService {
           'deleted_at': e.deletedAt!.millisecondsSinceEpoch,
         'xp': e.xp,
         'axis_ids': e.axisIds,
+        'tags': e.tags.join(','),
+        'bookmarked': e.bookmarked ? 1 : 0,
       };
 
   m.Entry _entryFromRemote(Map<String, dynamic> r) => m.Entry(
@@ -400,6 +402,11 @@ class SyncService {
         axisIds: ((r['axis_ids'] as List<dynamic>?) ?? const [])
             .map((e) => e as String)
             .toList(),
+        tags: ((r['tags'] as String?) ?? '')
+            .split(',')
+            .where((t) => t.isNotEmpty)
+            .toList(),
+        bookmarked: (r['bookmarked'] as int?) == 1,
       );
 
   void dispose() {
