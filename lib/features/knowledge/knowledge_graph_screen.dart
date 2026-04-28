@@ -1531,8 +1531,8 @@ class _EditListScreenState extends State<_EditListScreen> {
       floatingActionButton: _controllers.length < widget.maxItems
           ? FloatingActionButton.small(
               onPressed: _add,
-              backgroundColor: palette.accent,
-              child: const Icon(Icons.add, color: Colors.white),
+              backgroundColor: palette.fg,
+              child: Icon(Icons.add, color: palette.bg),
             )
           : null,
       body: ReorderableListView.builder(
