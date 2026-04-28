@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NOETICA — second brain, growth tracker, memoir</title>
+  <meta name="description" content="Noetica — единый инструмент для мышления, запоминания и роста. Трекер личного развития с ИИ, пентагоном осей и системой XP." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- PENTAGON NETWORK BACKGROUND -->
+  <canvas class="pentagon-bg" id="pentagonBg"></canvas>
+
+  <!-- NAV -->
+  <nav class="nav">
+    <a href="#" class="nav__brand">
+      <img src="img/logo-icon.png" alt="Noetica" class="nav__logo" />
+      <span>NOETICA</span>
+    </a>
+    <div class="nav__links" id="navLinks">
+      <a href="#product">Продукт</a>
+      <a href="#features">Функции</a>
+      <a href="#download" class="nav__cta">Скачать</a>
+    </div>
+    <button class="nav__burger" id="burger" aria-label="Menu">
+      <span></span><span></span>
+    </button>
+  </nav>
+
+  <!-- HERO -->
+  <header class="hero">
+    <div class="hero__canvas-wrap">
+      <canvas id="heroPentagon"></canvas>
+    </div>
+    <div class="hero__inner">
+      <p class="hero__label">PERSONAL GROWTH SYSTEM</p>
+      <h1 class="hero__title">NOETICA</h1>
+      <p class="hero__sub">Second brain. Growth tracker. Memoir.</p>
+      <div class="hero__cta">
+        <a href="#download" class="btn btn--primary">Скачать</a>
+        <a href="#product" class="btn btn--ghost">Узнать больше</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- PRODUCT SHOWCASE -->
+  <section class="product" id="product">
+    <div class="container">
+      <div class="product__hero-shot" data-anim>
+        <div class="device device--desktop">
+          <div class="device__bar"><span></span><span></span><span></span></div>
+          <img src="img/desktop-dashboard.png" alt="Дашборд Noetica" />
+        </div>
+      </div>
+
+      <div class="product__duo" data-anim>
+        <div class="device device--phone">
+          <div class="device__notch"></div>
+          <div class="device__screen"><img src="img/mobile-self.png" alt="Древо роста" /></div>
+          <div class="device__home-ind"></div>
+        </div>
+        <div class="product__text">
+          <p class="label">ДРЕВО РОСТА</p>
+          <h2>Пентагон из 5&nbsp;осей жизни</h2>
+          <p>Тело, Ум, Код, Душа, Люди. XP за задачи двигает вершины. Затухает за 30 дней &mdash; пентагон показывает тебя <em>сейчас</em>, а не сумму прошлых побед.</p>
+        </div>
+      </div>
+
+      <div class="product__duo product__duo--reverse" data-anim>
+        <div class="device device--phone">
+          <div class="device__notch"></div>
+          <div class="device__screen"><img src="img/mobile-dashboard.png" alt="Мобильный дашборд" /></div>
+          <div class="device__home-ind"></div>
+        </div>
+        <div class="product__text">
+          <p class="label">ДАШБОРД &laquo;СЕЙЧАС&raquo;</p>
+          <h2>Фокус на одном действии</h2>
+          <p>Текущая задача, стрик, XP за сегодня, лучшая ось, ближайший дедлайн. Всё что нужно &mdash; на одном экране.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="features" id="features">
+    <div class="container">
+      <p class="label label--center">ВОЗМОЖНОСТИ</p>
+      <h2 class="section-title">Всё для роста &mdash;<br>в&nbsp;одном месте</h2>
+
+      <div class="features__grid">
+        <div class="f-card" data-anim>
+          <svg class="f-card__icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="12,2 22,8.5 22,15.5 12,22 2,15.5 2,8.5"/></svg>
+          <h3>Древо роста</h3>
+          <p>5 осей, XP, уровни, эпохи. Затухание 30 дней.</p>
+        </div>
+        <div class="f-card" data-anim>
+          <svg class="f-card__icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <h3>ИИ-ассистент</h3>
+          <p>Онбординг, генерация задач, еженедельная рефлексия.</p>
+        </div>
+        <div class="f-card" data-anim>
+          <svg class="f-card__icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          <h3>Задачи + XP</h3>
+          <p>Привязка к осям, мини-опрос после выполнения.</p>
+        </div>
+        <div class="f-card" data-anim>
+          <svg class="f-card__icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <h3>Помодоро</h3>
+          <p>Таймер фокуса. Старт из задачи одним тапом.</p>
+        </div>
+        <div class="f-card" data-anim>
+          <svg class="f-card__icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <h3>Календарь</h3>
+          <p>Точки активности, детали дня, хитмэп за год.</p>
+        </div>
+        <div class="f-card" data-anim>
+          <svg class="f-card__icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          <h3>База знаний</h3>
+          <p>Граф для ИИ. Растёт автоматически.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LAYERS -->
+  <section class="layers">
+    <div class="container">
+      <p class="label label--center">АРХИТЕКТУРА</p>
+      <h2 class="section-title">Три слоя</h2>
+      <div class="layers__row">
+        <div class="layer" data-anim>
+          <span class="layer__num">01</span>
+          <h3>СЕЙЧАС</h3>
+          <p>Задачи, помодоро, фокус</p>
+        </div>
+        <div class="layer" data-anim>
+          <span class="layer__num">02</span>
+          <h3>Я</h3>
+          <p>Древо, оси, XP, уровни</p>
+        </div>
+        <div class="layer" data-anim>
+          <span class="layer__num">03</span>
+          <h3>ПРОШЛОЕ</h3>
+          <p>Журнал, мемуар, рефлексия</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PHILOSOPHY -->
+  <section class="philosophy">
+    <div class="container">
+      <div class="philosophy__block" data-anim>
+        <h2>Не приложение для продуктивности</h2>
+        <p>Инструмент для тех, кто хочет <em>расти</em>. XP затухает. Пентагон честен. Данные локальны. Дизайн строг.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- STACK -->
+  <section class="stack">
+    <div class="container">
+      <div class="stack__pills">
+        <span>Flutter</span>
+        <span>Dart</span>
+        <span>Riverpod</span>
+        <span>SQLite</span>
+        <span>DeepSeek AI</span>
+        <span>Android</span>
+        <span>Windows</span>
+        <span>Web</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta" id="download">
+    <div class="container">
+      <img src="img/logo-icon.png" alt="" class="cta__logo" />
+      <h2 class="cta__title">НАЧНИ РАСТИ</h2>
+      <p class="cta__sub">Бесплатно. Приватно. Без подписок.</p>
+      <div class="cta__btns">
+        <a href="#" class="btn btn--primary btn--lg">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Android
+        </a>
+        <a href="#" class="btn btn--ghost btn--lg">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          Windows
+        </a>
+      </div>
+      <p class="cta__note">iOS, macOS, Linux &mdash; скоро</p>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="container footer__inner">
+      <span class="footer__brand">
+        <img src="img/logo-icon.png" alt="" class="footer__logo" />
+        NOETICA
+      </span>
+      <span class="footer__copy">&copy; 2026</span>
+      <a href="https://github.com/gamegroyvi/noetica" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
