@@ -77,7 +77,6 @@ class _GraphNode {
     required this.isCentre,
     required this.isBranchHeader,
     this.leafIndex = -1,
-    this.childCount = 0,
     Offset? position,
   }) : pos = position ?? Offset.zero,
        vel = Offset.zero;
@@ -89,7 +88,7 @@ class _GraphNode {
   final bool isBranchHeader;
   final int leafIndex;
   /// Number of leaves hanging off this branch header node.
-  int childCount;
+  int childCount = 0;
   Offset pos;
   Offset vel;
 
@@ -308,7 +307,7 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
 
     final n = _nodes.length;
     final forces = List<Offset>.filled(n, Offset.zero);
-    final canvasCenter = Offset.zero;
+    const canvasCenter = Offset.zero;
 
     // Repulsion (all pairs).
     for (var i = 0; i < n; i++) {
