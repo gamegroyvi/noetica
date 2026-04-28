@@ -268,7 +268,7 @@ class LlmClient:
         if response.status_code >= 400:
             raise LlmUpstreamError(
                 status=response.status_code,
-                detail=response.text[:300],
+                message=response.text[:300],
             )
 
         data = response.json()

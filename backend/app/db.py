@@ -100,10 +100,35 @@ _SCHEMA_STATEMENTS = [
 ]
 
 
+# Idempotent ALTER TABLE migrations for already-existing databases.
+# `CREATE TABLE IF NOT EXISTS` above is a no-op if the table already exists,
+# so newly-added columns must be ALTERed in. SQLite has no
+# `ADD COLUMN IF NOT EXISTS`, so we read `PRAGMA table_info` first.
+async def _ensure_column(
+    db: aiosqlite.Connection,
+    table: str,
+    column: str,
+    coldef: str,
+) -> None:
+    cursor = await db.execute(f"PRAGMA table_info({table})")
+    rows = await cursor.fetchall()
+    existing = {row[1] for row in rows}  # row[1] is the column name.
+    if column in existing:
+        return
+    await db.execute(f"ALTER TABLE {table} ADD COLUMN {coldef}")
+
+
 async def _init_schema(db: aiosqlite.Connection) -> None:
     await db.execute("PRAGMA foreign_keys = ON")
     for stmt in _SCHEMA_STATEMENTS:
         await db.execute(stmt)
+    # Migrations for databases created before these columns existed.
+    await _ensure_column(
+        db, "entries", "tags", "tags TEXT NOT NULL DEFAULT ''"
+    )
+    await _ensure_column(
+        db, "entries", "bookmarked", "bookmarked INTEGER NOT NULL DEFAULT 0"
+    )
     await db.commit()
 
 
