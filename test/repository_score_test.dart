@@ -44,7 +44,17 @@ void main() {
               completed_at INTEGER,
               xp INTEGER NOT NULL DEFAULT 10,
               base_xp INTEGER NOT NULL DEFAULT 10,
+              tags TEXT NOT NULL DEFAULT '',
+              bookmarked INTEGER NOT NULL DEFAULT 0,
               deleted_at INTEGER
+            )
+          ''');
+          await db.execute('''
+            CREATE TABLE entry_links (
+              source_id TEXT NOT NULL,
+              target_id TEXT NOT NULL,
+              created_at INTEGER NOT NULL,
+              PRIMARY KEY (source_id, target_id)
             )
           ''');
           await db.execute('''

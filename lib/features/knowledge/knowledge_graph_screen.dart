@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models.dart';
 import '../../data/personal_knowledge_service.dart';
-import '../../data/repository.dart';
 import '../../providers.dart';
 import '../../theme/app_theme.dart';
 import '../entry/entry_editor_sheet.dart';
@@ -141,7 +140,7 @@ Color _entryColor(Entry? e) {
 // Filter modes.
 // ---------------------------------------------------------------------------
 
-enum _FilterMode { all, notes, tasks, bookmarks, daily }
+enum _FilterMode { all, notes, tasks, bookmarks, daily, knowledge }
 
 extension on _FilterMode {
   String get label {
@@ -156,6 +155,8 @@ extension on _FilterMode {
         return 'Закладки';
       case _FilterMode.daily:
         return 'Дневник';
+      case _FilterMode.knowledge:
+        return 'Знания о себе';
     }
   }
 
@@ -171,6 +172,39 @@ extension on _FilterMode {
         return Icons.bookmark_outline;
       case _FilterMode.daily:
         return Icons.today;
+      case _FilterMode.knowledge:
+        return Icons.account_tree_outlined;
+    }
+  }
+
+  /// Whether this filter shows the PersonalKnowledge category branches
+  /// (Цели / Ограничения / Достижения / Рефлексии / Предпочтения).
+  /// Other filter modes hide them so the user actually sees a filtered
+  /// graph instead of the same star of branches dominating the view.
+  bool get showsKnowledgeBranches {
+    switch (this) {
+      case _FilterMode.all:
+      case _FilterMode.knowledge:
+        return true;
+      case _FilterMode.notes:
+      case _FilterMode.tasks:
+      case _FilterMode.bookmarks:
+      case _FilterMode.daily:
+        return false;
+    }
+  }
+
+  /// Whether this filter shows entry nodes (notes / tasks / journals).
+  bool get showsEntries {
+    switch (this) {
+      case _FilterMode.all:
+      case _FilterMode.notes:
+      case _FilterMode.tasks:
+      case _FilterMode.bookmarks:
+      case _FilterMode.daily:
+        return true;
+      case _FilterMode.knowledge:
+        return false;
     }
   }
 }
@@ -235,6 +269,21 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
     HapticFeedback.selectionClick();
   }
 
+  /// True when the graph has nothing meaningful to show: only the centre
+  /// "я" node, possibly with PK branch headers that themselves have no
+  /// leaves and no entries. Drives the dedicated empty-state UI.
+  bool _isEffectivelyEmpty() {
+    if (_nodes.isEmpty) return true;
+    // Count anything other than the centre + empty branch headers.
+    var meaningful = 0;
+    for (final n in _nodes) {
+      if (n.isCentre) continue;
+      if (n.isBranchHeader && n.childCount == 0) continue;
+      meaningful++;
+    }
+    return meaningful == 0;
+  }
+
   // ======================== data loading ========================
 
   Future<void> _load() async {
@@ -268,18 +317,25 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
     // Filter entries based on current filter mode.
     var filtered = entries.where((e) => !e.isDeleted).toList();
 
-    switch (_filter) {
-      case _FilterMode.all:
-        break;
-      case _FilterMode.notes:
-        filtered = filtered.where((e) => e.kind == EntryKind.note).toList();
-      case _FilterMode.tasks:
-        filtered = filtered.where((e) => e.kind == EntryKind.task).toList();
-      case _FilterMode.bookmarks:
-        filtered = filtered.where((e) => e.bookmarked).toList();
-      case _FilterMode.daily:
-        filtered =
-            filtered.where((e) => e.tags.contains('daily')).toList();
+    if (!_filter.showsEntries) {
+      filtered = const <Entry>[];
+    } else {
+      switch (_filter) {
+        case _FilterMode.all:
+          break;
+        case _FilterMode.notes:
+          filtered = filtered.where((e) => e.kind == EntryKind.note).toList();
+        case _FilterMode.tasks:
+          filtered = filtered.where((e) => e.kind == EntryKind.task).toList();
+        case _FilterMode.bookmarks:
+          filtered = filtered.where((e) => e.bookmarked).toList();
+        case _FilterMode.daily:
+          filtered =
+              filtered.where((e) => e.tags.contains('daily')).toList();
+        case _FilterMode.knowledge:
+          // Already short-circuited above.
+          filtered = const <Entry>[];
+      }
     }
 
     if (_activeTag != null) {
@@ -323,7 +379,14 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
     ));
 
     // ---- PersonalKnowledge category branches (like original) ----
-    if (k != null && _localGraphCentreId == null) {
+    // Only render the goals/constraints/highlights/reflections/preferences
+    // "star" when the active filter actually wants to show them. With the
+    // old code the branches were drawn for every filter, so e.g. the
+    // "Заметки" chip looked broken — the user saw no visible change
+    // because PK branches dominated the layout regardless.
+    if (k != null &&
+        _localGraphCentreId == null &&
+        _filter.showsKnowledgeBranches) {
       final branchItems = <_Branch, List<String>>{};
       for (final b in _Branch.values) {
         switch (b) {
@@ -1015,21 +1078,21 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
                       ),
                     // Graph view.
                     Expanded(
-                      child: _nodes.isEmpty
-                          ? Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.auto_graph,
-                                      size: 48, color: palette.muted),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    'База знаний пуста\nСоздайте первую заметку',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(color: palette.muted),
-                                  ),
-                                ],
-                              ),
+                      child: _isEffectivelyEmpty()
+                          ? _GraphEmptyState(
+                              filter: _filter,
+                              palette: palette,
+                              onCreateEntry: () =>
+                                  showEntryEditor(context, ref).then((_) {
+                                if (mounted) _rebuildGraph();
+                              }),
+                              onResetFilter: () {
+                                setState(() {
+                                  _filter = _FilterMode.all;
+                                  _activeTag = null;
+                                });
+                                _rebuildGraph();
+                              },
                             )
                           : SafeArea(
                               top: false,
@@ -1272,10 +1335,10 @@ class _PositionedNode extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (node.isBookmarked)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 4),
+                    const Padding(
+                      padding: EdgeInsets.only(right: 4),
                       child: Icon(Icons.bookmark,
-                          size: 12, color: const Color(0xFFF59E0B)),
+                          size: 12, color: Color(0xFFF59E0B)),
                     ),
                   Flexible(
                     child: Text(
@@ -1580,5 +1643,127 @@ class _EditListScreenState extends State<_EditListScreen> {
         },
       ),
     );
+  }
+}
+
+
+class _GraphEmptyState extends StatelessWidget {
+  const _GraphEmptyState({
+    required this.filter,
+    required this.palette,
+    required this.onCreateEntry,
+    required this.onResetFilter,
+  });
+
+  final _FilterMode filter;
+  final NoeticaPalette palette;
+  final VoidCallback onCreateEntry;
+  final VoidCallback onResetFilter;
+
+  @override
+  Widget build(BuildContext context) {
+    final (title, hint, primaryLabel, primaryAction, showReset) =
+        _copyForFilter();
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(filter.icon, size: 48, color: palette.muted),
+            const SizedBox(height: 16),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: palette.fg,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              hint,
+              textAlign: TextAlign.center,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: palette.muted),
+            ),
+            const SizedBox(height: 20),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                if (primaryAction != null)
+                  FilledButton.icon(
+                    onPressed: primaryAction,
+                    icon: const Icon(Icons.add, size: 16),
+                    label: Text(primaryLabel),
+                  ),
+                if (showReset)
+                  OutlinedButton.icon(
+                    onPressed: onResetFilter,
+                    icon: const Icon(Icons.tune, size: 16),
+                    label: const Text('Сбросить фильтр'),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  (String, String, String, VoidCallback?, bool) _copyForFilter() {
+    switch (filter) {
+      case _FilterMode.all:
+        return (
+          'База знаний пока пуста',
+          'Создайте первую заметку или задачу — они появятся здесь как узлы графа.',
+          'Создать запись',
+          onCreateEntry,
+          false,
+        );
+      case _FilterMode.notes:
+        return (
+          'Заметок пока нет',
+          'Заметки будут видны как отдельные узлы. Связи появляются автоматически, когда в теле есть [[ссылка]] на другую заметку.',
+          'Создать заметку',
+          onCreateEntry,
+          true,
+        );
+      case _FilterMode.tasks:
+        return (
+          'Задач в графе нет',
+          'Создайте задачу через «+» или сгенерируйте план задач из вашей цели.',
+          'Создать запись',
+          onCreateEntry,
+          true,
+        );
+      case _FilterMode.bookmarks:
+        return (
+          'Закладок пока нет',
+          'Долгое нажатие на узел графа добавит его в закладки.',
+          '',
+          null,
+          true,
+        );
+      case _FilterMode.daily:
+        return (
+          'Дневник пуст',
+          'Тапните иконку календаря в шапке, чтобы создать запись на сегодня.',
+          '',
+          null,
+          true,
+        );
+      case _FilterMode.knowledge:
+        return (
+          'Знания о себе пусты',
+          'Заполните цели, ограничения и достижения через тапы по веткам графа — это даст AI больше контекста для генерации планов.',
+          '',
+          null,
+          true,
+        );
+    }
   }
 }
