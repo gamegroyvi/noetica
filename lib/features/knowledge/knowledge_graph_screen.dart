@@ -15,6 +15,54 @@ import '../entry/entry_editor_sheet.dart';
 // Graph node — a single point in the force-directed simulation.
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Branch enum — PersonalKnowledge categories shown as branch headers.
+// ---------------------------------------------------------------------------
+
+enum _Branch {
+  goals,
+  constraints,
+  highlights,
+  reflections,
+  preferences,
+}
+
+extension on _Branch {
+  String get title {
+    switch (this) {
+      case _Branch.goals:
+        return 'Цели';
+      case _Branch.constraints:
+        return 'Ограничения';
+      case _Branch.highlights:
+        return 'Достижения';
+      case _Branch.reflections:
+        return 'Рефлексии';
+      case _Branch.preferences:
+        return 'Предпочтения';
+    }
+  }
+
+  Color get color {
+    switch (this) {
+      case _Branch.goals:
+        return const Color(0xFF7C3AED);
+      case _Branch.constraints:
+        return const Color(0xFFEF4444);
+      case _Branch.highlights:
+        return const Color(0xFFF59E0B);
+      case _Branch.reflections:
+        return const Color(0xFF3B82F6);
+      case _Branch.preferences:
+        return const Color(0xFF8B5CF6);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Graph node — a single point in the force-directed simulation.
+// ---------------------------------------------------------------------------
+
 class _GraphNode {
   _GraphNode({
     required this.id,
@@ -23,6 +71,10 @@ class _GraphNode {
     required this.isCentre,
     this.entry,
     this.isBookmarked = false,
+    this.isBranchHeader = false,
+    this.isLeaf = false,
+    this.branch,
+    this.leafIndex = -1,
     this.tags = const [],
     Offset? position,
   })  : pos = position ?? Offset.zero,
@@ -34,15 +86,22 @@ class _GraphNode {
   final bool isCentre;
   final Entry? entry;
   final bool isBookmarked;
+  final bool isBranchHeader;
+  final bool isLeaf;
+  final _Branch? branch;
+  final int leafIndex;
   final List<String> tags;
   int linkCount = 0;
+  int childCount = 0;
   Offset pos;
   Offset vel;
   bool pinned = false;
 
   double get radius {
-    if (isCentre) return 16;
+    if (isCentre) return 18;
+    if (isBranchHeader) return 12;
     if (isBookmarked) return 13;
+    if (isLeaf) return 7;
     final base = 6.0 + math.min(linkCount * 1.5, 8.0);
     return base;
   }
@@ -263,14 +322,77 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
       position: Offset.zero,
     ));
 
-    // Map entry IDs to node indices.
-    final idToIndex = <String, int>{};
+    // ---- PersonalKnowledge category branches (like original) ----
+    if (k != null && _localGraphCentreId == null) {
+      final branchItems = <_Branch, List<String>>{};
+      for (final b in _Branch.values) {
+        switch (b) {
+          case _Branch.goals:
+            branchItems[b] = k.goals;
+          case _Branch.constraints:
+            branchItems[b] = k.constraints;
+          case _Branch.highlights:
+            branchItems[b] = k.completedHighlights;
+          case _Branch.reflections:
+            branchItems[b] = k.recentReflections;
+          case _Branch.preferences:
+            branchItems[b] = [
+              for (final e in k.preferences.entries) '${e.key}: ${e.value}',
+            ];
+        }
+      }
 
-    // Add entry nodes.
+      final branchCount = _Branch.values.length;
+      for (var bi = 0; bi < branchCount; bi++) {
+        final b = _Branch.values[bi];
+        final angle = bi * 2 * math.pi / branchCount - math.pi / 2;
+        final headerIdx = nodes.length;
+        nodes.add(_GraphNode(
+          id: '__branch_${b.name}__',
+          label: b.title,
+          color: b.color,
+          isCentre: false,
+          isBranchHeader: true,
+          branch: b,
+          position: Offset(
+            math.cos(angle) * 200 + rng.nextDouble() * 20 - 10,
+            math.sin(angle) * 200 + rng.nextDouble() * 20 - 10,
+          ),
+        ));
+        graphEdges.add(_GraphEdge(0, headerIdx));
+
+        final items = branchItems[b] ?? [];
+        nodes[headerIdx].childCount = items.length;
+        for (var li = 0; li < items.length; li++) {
+          final leafAngle = angle +
+              (li - items.length / 2) * 0.35;
+          final leafIdx = nodes.length;
+          nodes.add(_GraphNode(
+            id: '__leaf_${b.name}_$li',
+            label: items[li],
+            color: b.color,
+            isCentre: false,
+            isLeaf: true,
+            branch: b,
+            leafIndex: li,
+            position: Offset(
+              math.cos(leafAngle) * 340 + rng.nextDouble() * 20 - 10,
+              math.sin(leafAngle) * 340 + rng.nextDouble() * 20 - 10,
+            ),
+          ));
+          graphEdges.add(_GraphEdge(headerIdx, leafIdx));
+        }
+      }
+    }
+
+    // ---- Entry nodes (notes, tasks, etc.) ----
+    final idToIndex = <String, int>{};
+    final entryStartAngle = _Branch.values.length * 2 * math.pi / 5;
     for (var i = 0; i < filtered.length; i++) {
       final e = filtered[i];
-      final angle = i * 2 * math.pi / math.max(filtered.length, 1);
-      final dist = 150.0 + rng.nextDouble() * 100;
+      final angle = entryStartAngle +
+          i * 2 * math.pi / math.max(filtered.length, 1);
+      final dist = 250.0 + rng.nextDouble() * 100;
       final idx = nodes.length;
       idToIndex[e.id] = idx;
       nodes.add(_GraphNode(
@@ -301,16 +423,15 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
       }
     }
 
-    // Connect orphan nodes to the centre with weak springs so they don't
-    // float off into the void.
+    // Connect orphan entry nodes to the centre.
     final connectedNodeIndices = <int>{};
     for (final e in graphEdges) {
       connectedNodeIndices.add(e.from);
       connectedNodeIndices.add(e.to);
     }
-    for (var i = 1; i < nodes.length; i++) {
-      if (!connectedNodeIndices.contains(i)) {
-        graphEdges.add(_GraphEdge(0, i));
+    for (final kv in idToIndex.entries) {
+      if (!connectedNodeIndices.contains(kv.value)) {
+        graphEdges.add(_GraphEdge(0, kv.value));
       }
     }
 
@@ -420,11 +541,111 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
       _editSummary(_knowledge?.summary ?? '');
       return;
     }
+    if (node.isBranchHeader) {
+      _onTapBranch(node.branch!);
+      return;
+    }
+    if (node.isLeaf) {
+      _onTapLeaf(node.branch!, node.leafIndex);
+      return;
+    }
     if (node.entry != null) {
       showEntryEditor(context, ref, existing: node.entry).then((_) {
         _syncBodyLinks(node.entry!);
         _rebuildGraph();
       });
+    }
+  }
+
+  void _onTapBranch(_Branch branch) {
+    switch (branch) {
+      case _Branch.goals:
+        _editList(
+          title: 'Цели',
+          hint: 'Что хочешь достичь',
+          items: _knowledge!.goals,
+          apply: (n) =>
+              _knowledge!.copyWith(goals: n, updatedAt: DateTime.now()),
+        );
+      case _Branch.constraints:
+        _editList(
+          title: 'Ограничения',
+          hint: 'Что мешает или ограничивает',
+          items: _knowledge!.constraints,
+          apply: (n) =>
+              _knowledge!.copyWith(constraints: n, updatedAt: DateTime.now()),
+        );
+      case _Branch.highlights:
+        _editList(
+          title: 'Достижения',
+          hint: 'Что уже получилось',
+          items: _knowledge!.completedHighlights,
+          maxItems: 20,
+          apply: (n) => _knowledge!.copyWith(
+              completedHighlights: n, updatedAt: DateTime.now()),
+        );
+      case _Branch.reflections:
+        _editList(
+          title: 'Рефлексии',
+          hint: 'Заметки о пройденном',
+          items: _knowledge!.recentReflections,
+          maxItems: 10,
+          apply: (n) => _knowledge!.copyWith(
+              recentReflections: n, updatedAt: DateTime.now()),
+        );
+      case _Branch.preferences:
+        final prefs = _knowledge!.preferences;
+        final flat = [
+          for (final e in prefs.entries) '${e.key}: ${e.value}',
+        ];
+        _editList(
+          title: 'Предпочтения',
+          hint: 'ключ: значение',
+          items: flat,
+          apply: (n) {
+            final m = <String, String>{};
+            for (final line in n) {
+              final i = line.indexOf(':');
+              if (i <= 0 || i >= line.length - 1) {
+                m[line.trim()] = '';
+              } else {
+                m[line.substring(0, i).trim()] = line.substring(i + 1).trim();
+              }
+            }
+            return _knowledge!
+                .copyWith(preferences: m, updatedAt: DateTime.now());
+          },
+        );
+    }
+  }
+
+  void _onTapLeaf(_Branch branch, int index) {
+    _onTapBranch(branch);
+  }
+
+  Future<void> _editList({
+    required String title,
+    required String hint,
+    required List<String> items,
+    required PersonalKnowledge Function(List<String> next) apply,
+    int maxItems = 12,
+  }) async {
+    final next = await Navigator.of(context).push<List<String>>(
+      MaterialPageRoute(
+        builder: (_) => _EditListScreen(
+          title: title,
+          hint: hint,
+          initial: items,
+          maxItems: maxItems,
+        ),
+      ),
+    );
+    if (next == null || _knowledge == null) return;
+    final upd = apply(next);
+    await _service.save(upd);
+    if (mounted) {
+      setState(() => _knowledge = upd);
+      _rebuildGraph();
     }
   }
 
@@ -871,7 +1092,7 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
                                             },
                                             onLocalGraph: (i) {
                                               final node = _nodes[i];
-                                              if (!node.isCentre) {
+                                              if (node.entry != null) {
                                                 _toggleLocalGraph(node.id);
                                               }
                                             },
@@ -1233,4 +1454,131 @@ class _ObsidianEdgePainter extends CustomPainter {
 class _EditResult {
   const _EditResult({required this.value});
   final String value;
+}
+
+// ---------------------------------------------------------------------------
+// Simple list editor for PersonalKnowledge branch items.
+// ---------------------------------------------------------------------------
+
+class _EditListScreen extends StatefulWidget {
+  const _EditListScreen({
+    required this.title,
+    required this.hint,
+    required this.initial,
+    this.maxItems = 12,
+  });
+  final String title;
+  final String hint;
+  final List<String> initial;
+  final int maxItems;
+
+  @override
+  State<_EditListScreen> createState() => _EditListScreenState();
+}
+
+class _EditListScreenState extends State<_EditListScreen> {
+  late final List<TextEditingController> _controllers;
+
+  @override
+  void initState() {
+    super.initState();
+    _controllers = [
+      for (final item in widget.initial) TextEditingController(text: item),
+    ];
+  }
+
+  @override
+  void dispose() {
+    for (final c in _controllers) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  void _add() {
+    if (_controllers.length >= widget.maxItems) return;
+    setState(() => _controllers.add(TextEditingController()));
+  }
+
+  void _remove(int i) {
+    setState(() {
+      _controllers[i].dispose();
+      _controllers.removeAt(i);
+    });
+  }
+
+  void _save() {
+    final items = _controllers
+        .map((c) => c.text.trim())
+        .where((t) => t.isNotEmpty)
+        .toList();
+    Navigator.of(context).pop(items);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    return Scaffold(
+      backgroundColor: palette.bg,
+      appBar: AppBar(
+        backgroundColor: palette.surface,
+        foregroundColor: palette.fg,
+        title: Text(widget.title),
+        actions: [
+          IconButton(icon: const Icon(Icons.check), onPressed: _save),
+        ],
+      ),
+      floatingActionButton: _controllers.length < widget.maxItems
+          ? FloatingActionButton.small(
+              onPressed: _add,
+              backgroundColor: palette.accent,
+              child: const Icon(Icons.add, color: Colors.white),
+            )
+          : null,
+      body: ReorderableListView.builder(
+        padding: const EdgeInsets.all(12),
+        itemCount: _controllers.length,
+        onReorder: (old, nw) {
+          setState(() {
+            final c = _controllers.removeAt(old);
+            _controllers.insert(nw > old ? nw - 1 : nw, c);
+          });
+        },
+        itemBuilder: (_, i) {
+          return Padding(
+            key: ValueKey(i),
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _controllers[i],
+                    style: TextStyle(color: palette.fg, fontSize: 14),
+                    decoration: InputDecoration(
+                      hintText: widget.hint,
+                      hintStyle: TextStyle(color: palette.muted),
+                      filled: true,
+                      fillColor: palette.surface,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(Icons.close, color: palette.muted, size: 18),
+                  onPressed: () => _remove(i),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
 }
