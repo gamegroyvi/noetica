@@ -57,6 +57,12 @@ DEFAULT_BASE_URL = "https://api.openai.com/v1"
 DEFAULT_MODEL = "gpt-4o-mini"
 REQUEST_TIMEOUT = 45.0
 
+# Gemini (Google AI) endpoint. OpenAI-compatible gateway — same request
+# shape, just a different base URL and model name. Free tier with
+# generous limits (250k tokens/min). Preferred when GEMINI_API_KEY is set.
+GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai"
+GEMINI_MODEL = "gemini-2.5-flash"
+
 # DeepSeek-native endpoint. When DEEPSEEK_API_KEY is set and no explicit
 # LLM_BASE_URL / LLM_MODEL override is provided, we route to DeepSeek
 # automatically — it's OpenAI-compatible and significantly cheaper, so
@@ -194,23 +200,22 @@ def _user_prompt(
 
 class LlmClient:
     def __init__(self) -> None:
-        # Devin's deploy tool auto-generates its own Dockerfile/fly.toml
-        # and doesn't carry env vars from the committed fly.toml, so
-        # secrets have to live in the Python source to reach the fly
-        # container. _BAKED_DEEPSEEK_KEY is injected at deploy time by
-        # a session-local edit and intentionally left empty in the
-        # committed tree; real deployments should set DEEPSEEK_API_KEY
-        # via flyctl secrets. Remove this fallback once the deploy
-        # tool grows a `--env` option.
-        deepseek_key = os.getenv("DEEPSEEK_API_KEY") or _BAKED_DEEPSEEK_KEY
         # Key resolution order:
-        #   1. DEEPSEEK_API_KEY — if present, make DeepSeek the default
-        #      backend (cheap, OpenAI-compatible, strong JSON output).
-        #   2. OPENAI_API_KEY / OPENROUTER_API_KEY / LLM_API_KEY — fallback
-        #      for the previous default OpenAI gateway.
+        #   1. GEMINI_API_KEY — if present, use Google Gemini (free tier,
+        #      OpenAI-compatible endpoint, strong multilingual output).
+        #   2. DEEPSEEK_API_KEY — DeepSeek (cheap, OpenAI-compatible).
+        #   3. OPENAI_API_KEY / OPENROUTER_API_KEY / LLM_API_KEY — fallback.
         # LLM_BASE_URL / LLM_MODEL overrides always win over these
         # defaults, so an ops override stays authoritative.
-        if deepseek_key:
+        gemini_key = os.getenv("GEMINI_API_KEY")
+        deepseek_key = os.getenv("DEEPSEEK_API_KEY") or _BAKED_DEEPSEEK_KEY
+        if gemini_key:
+            self.api_key = gemini_key
+            self.base_url = os.getenv(
+                "LLM_BASE_URL", GEMINI_BASE_URL
+            ).rstrip("/")
+            self.model = os.getenv("LLM_MODEL", GEMINI_MODEL)
+        elif deepseek_key:
             self.api_key = deepseek_key
             self.base_url = os.getenv(
                 "LLM_BASE_URL", DEEPSEEK_BASE_URL
@@ -228,13 +233,46 @@ class LlmClient:
             self.model = os.getenv("LLM_MODEL", DEFAULT_MODEL)
         if not self.api_key:
             raise LlmConfigError(
-                "No API key configured (DEEPSEEK_API_KEY / OPENAI_API_KEY"
-                " / OPENROUTER_API_KEY / LLM_API_KEY)."
+                "No API key configured (GEMINI_API_KEY / DEEPSEEK_API_KEY"
+                " / OPENAI_API_KEY / OPENROUTER_API_KEY / LLM_API_KEY)."
             )
         self.referer = os.getenv(
             "LLM_HTTP_REFERER", "https://noetica.app"
         )
         self.title = os.getenv("LLM_APP_TITLE", "Noetica")
+
+    async def chat(
+        self,
+        messages: list[dict[str, str]],
+        temperature: float = 0.6,
+        max_tokens: int = 1000,
+    ) -> str:
+        """Generic chat completion — returns the raw text response."""
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": self.referer,
+            "X-Title": self.title,
+        }
+        payload: dict[str, Any] = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        }
+
+        url = f"{self.base_url}/chat/completions"
+        async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+            response = await client.post(url, json=payload, headers=headers)
+
+        if response.status_code >= 400:
+            raise LlmUpstreamError(
+                status=response.status_code,
+                detail=response.text[:300],
+            )
+
+        data = response.json()
+        return data["choices"][0]["message"]["content"]
 
     async def generate_roadmap(
         self,

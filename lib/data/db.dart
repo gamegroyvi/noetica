@@ -20,7 +20,7 @@ class NoeticaDb {
   /// v5 adds `entries.base_xp` so the reflection-difficulty multiplier
   /// is always applied to the original XP, never to a previously-
   /// adjusted value (used to compound on every re-complete cycle).
-  static const int currentSchemaVersion = 5;
+  static const int currentSchemaVersion = 6;
 
   static Future<NoeticaDb> open() async {
     final path = await _databasePath();
@@ -69,7 +69,9 @@ class NoeticaDb {
         completed_at INTEGER,
         xp INTEGER NOT NULL DEFAULT 10,
         base_xp INTEGER NOT NULL DEFAULT 10,
-        deleted_at INTEGER
+        deleted_at INTEGER,
+        tags TEXT NOT NULL DEFAULT '',
+        bookmarked INTEGER NOT NULL DEFAULT 0
       )
     ''');
     await db.execute(
@@ -91,6 +93,7 @@ class NoeticaDb {
     await db.execute(
         'CREATE INDEX idx_entry_axes_axis ON entry_axes(axis_id)');
     await _createReflectionsTable(db);
+    await _createEntryLinksTable(db);
   }
 
   static Future<void> _createReflectionsTable(Database db) async {
@@ -107,6 +110,21 @@ class NoeticaDb {
     ''');
     await db.execute(
         'CREATE INDEX idx_task_reflections_entry ON task_reflections(entry_id)');
+  }
+
+  static Future<void> _createEntryLinksTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE entry_links (
+        source_id TEXT NOT NULL REFERENCES entries(id) ON DELETE CASCADE,
+        target_id TEXT NOT NULL REFERENCES entries(id) ON DELETE CASCADE,
+        created_at INTEGER NOT NULL,
+        PRIMARY KEY (source_id, target_id)
+      )
+    ''');
+    await db.execute(
+        'CREATE INDEX idx_entry_links_source ON entry_links(source_id)');
+    await db.execute(
+        'CREATE INDEX idx_entry_links_target ON entry_links(target_id)');
   }
 
   static Future<void> _onUpgrade(
@@ -154,6 +172,14 @@ class NoeticaDb {
       await db.execute(
           'ALTER TABLE entries ADD COLUMN base_xp INTEGER NOT NULL DEFAULT 10');
       await db.execute('UPDATE entries SET base_xp = xp');
+    }
+    if (oldVersion < 6) {
+      // Knowledge-base features: bidirectional links, bookmarks, tags.
+      await _createEntryLinksTable(db);
+      await db.execute(
+          "ALTER TABLE entries ADD COLUMN tags TEXT NOT NULL DEFAULT ''");
+      await db.execute(
+          'ALTER TABLE entries ADD COLUMN bookmarked INTEGER NOT NULL DEFAULT 0');
     }
   }
 

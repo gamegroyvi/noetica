@@ -96,6 +96,8 @@ class Entry {
     this.deletedAt,
     this.axisIds = const [],
     this.axisWeights = const {},
+    this.tags = const [],
+    this.bookmarked = false,
   }) : baseXp = baseXp ?? xp;
 
   final String id;
@@ -129,6 +131,13 @@ class Entry {
   /// task (including v3-and-earlier rows after migration).
   final Map<String, double> axisWeights;
 
+  /// Free-form tags for grouping entries in the knowledge graph.
+  /// Stored as comma-separated in SQLite, parsed in Dart.
+  final List<String> tags;
+
+  /// Whether this entry is pinned/bookmarked for quick access.
+  final bool bookmarked;
+
   bool get isTask => kind == EntryKind.task;
   bool get isCompleted => completedAt != null;
   bool get isDeleted => deletedAt != null;
@@ -145,6 +154,8 @@ class Entry {
     int? baseXp,
     List<String>? axisIds,
     Map<String, double>? axisWeights,
+    List<String>? tags,
+    bool? bookmarked,
     bool clearDue = false,
     bool clearCompleted = false,
     bool clearDeleted = false,
@@ -164,6 +175,8 @@ class Entry {
         baseXp: baseXp ?? this.baseXp,
         axisIds: axisIds ?? this.axisIds,
         axisWeights: axisWeights ?? this.axisWeights,
+        tags: tags ?? this.tags,
+        bookmarked: bookmarked ?? this.bookmarked,
       );
 
   Map<String, Object?> toMap() => {
@@ -178,7 +191,14 @@ class Entry {
         'deleted_at': deletedAt?.millisecondsSinceEpoch,
         'xp': xp,
         'base_xp': baseXp,
+        'tags': tags.join(','),
+        'bookmarked': bookmarked ? 1 : 0,
       };
+
+  static List<String> _parseTags(String? raw) {
+    if (raw == null || raw.isEmpty) return const [];
+    return raw.split(',').where((t) => t.isNotEmpty).toList();
+  }
 
   factory Entry.fromMap(
     Map<String, Object?> m, {
@@ -208,6 +228,8 @@ class Entry {
         baseXp: (m['base_xp'] as int?) ?? (m['xp'] as int?) ?? 10,
         axisIds: axisIds,
         axisWeights: axisWeights,
+        tags: _parseTags(m['tags'] as String?),
+        bookmarked: (m['bookmarked'] as int?) == 1,
       );
 }
 

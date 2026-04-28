@@ -342,31 +342,6 @@ class NoeticaRepository {
     return entry;
   }
 
-  Future<m.Entry> createEntry({
-    required String title,
-    String body = '',
-    m.EntryKind kind = m.EntryKind.note,
-    DateTime? dueAt,
-    int xp = 10,
-    List<String> axisIds = const [],
-    Map<String, double> axisWeights = const {},
-  }) {
-    final now = DateTime.now();
-    final entry = m.Entry(
-      id: _uuid.v4(),
-      title: title,
-      body: body,
-      kind: kind,
-      createdAt: now,
-      updatedAt: now,
-      dueAt: dueAt,
-      xp: xp,
-      axisIds: axisIds,
-      axisWeights: axisWeights,
-    );
-    return upsertEntry(entry);
-  }
-
   Future<void> deleteEntry(String id) async {
     final now = DateTime.now();
     await _db.raw.update(
@@ -601,6 +576,207 @@ class NoeticaRepository {
     if (entries) await _emitEntries();
   }
 
+  // ---------- knowledge base: links ----------
+
+  /// Create a bidirectional link between two entries.
+  Future<void> linkEntries(String sourceId, String targetId) async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    await _db.raw.transaction((txn) async {
+      await txn.insert('entry_links', {
+        'source_id': sourceId,
+        'target_id': targetId,
+        'created_at': now,
+      }, conflictAlgorithm: ConflictAlgorithm.ignore);
+      await txn.insert('entry_links', {
+        'source_id': targetId,
+        'target_id': sourceId,
+        'created_at': now,
+      }, conflictAlgorithm: ConflictAlgorithm.ignore);
+    });
+    _markDirty();
+  }
+
+  /// Remove a bidirectional link between two entries.
+  Future<void> unlinkEntries(String sourceId, String targetId) async {
+    await _db.raw.transaction((txn) async {
+      await txn.delete('entry_links',
+          where: 'source_id = ? AND target_id = ?',
+          whereArgs: [sourceId, targetId]);
+      await txn.delete('entry_links',
+          where: 'source_id = ? AND target_id = ?',
+          whereArgs: [targetId, sourceId]);
+    });
+    _markDirty();
+  }
+
+  /// Get all entry IDs linked to a given entry (both directions).
+  Future<List<String>> linkedEntryIds(String entryId) async {
+    final rows = await _db.raw.query(
+      'entry_links',
+      columns: ['target_id'],
+      where: 'source_id = ?',
+      whereArgs: [entryId],
+    );
+    return rows.map((r) => r['target_id']! as String).toList();
+  }
+
+  /// Get all links in the database (for graph rendering).
+  Future<List<({String source, String target})>> allLinks() async {
+    final rows = await _db.raw.rawQuery(
+      'SELECT DISTINCT source_id, target_id FROM entry_links '
+      'WHERE source_id < target_id',
+    );
+    return rows
+        .map((r) => (
+              source: r['source_id']! as String,
+              target: r['target_id']! as String,
+            ))
+        .toList();
+  }
+
+  // ---------- knowledge base: search ----------
+
+  /// Full-text search across entry titles and bodies.
+  Future<List<m.Entry>> searchEntries(String query) async {
+    if (query.trim().isEmpty) return const [];
+    final pattern = '%${query.trim()}%';
+    final rows = await _db.raw.query(
+      'entries',
+      where:
+          "deleted_at IS NULL AND (title LIKE ? OR body LIKE ? OR tags LIKE ?)",
+      whereArgs: [pattern, pattern, pattern],
+      orderBy: 'updated_at DESC',
+      limit: 50,
+    );
+    if (rows.isEmpty) return const [];
+    final ids = rows.map((r) => r['id'] as String).toList();
+    final links = await _db.raw.query(
+      'entry_axes',
+      where: 'entry_id IN (${List.filled(ids.length, '?').join(',')})',
+      whereArgs: ids,
+    );
+    final byEntry = <String, List<String>>{};
+    for (final l in links) {
+      byEntry
+          .putIfAbsent(l['entry_id']! as String, () => [])
+          .add(l['axis_id']! as String);
+    }
+    return rows
+        .map((r) =>
+            m.Entry.fromMap(r, axisIds: byEntry[r['id']] ?? const []))
+        .toList();
+  }
+
+  // ---------- knowledge base: bookmarks ----------
+
+  /// Toggle bookmark state for an entry.
+  Future<m.Entry> toggleBookmark(m.Entry entry) async {
+    final now = DateTime.now();
+    final newBookmarked = !entry.bookmarked;
+    await _db.raw.update(
+      'entries',
+      {
+        'bookmarked': newBookmarked ? 1 : 0,
+        'updated_at': now.millisecondsSinceEpoch,
+      },
+      where: 'id = ?',
+      whereArgs: [entry.id],
+    );
+    await _emitEntries();
+    _markDirty();
+    return entry.copyWith(bookmarked: newBookmarked, updatedAt: now);
+  }
+
+  // ---------- knowledge base: daily notes ----------
+
+  /// Get or create today's daily note.
+  Future<m.Entry> getOrCreateDailyNote() async {
+    final now = DateTime.now();
+    final dateStr =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final title = 'Дневник · $dateStr';
+    final rows = await _db.raw.query(
+      'entries',
+      where: "title = ? AND kind = ? AND deleted_at IS NULL",
+      whereArgs: [title, m.EntryKind.note.name],
+      limit: 1,
+    );
+    if (rows.isNotEmpty) {
+      return m.Entry.fromMap(rows.first);
+    }
+    return createEntry(
+      title: title,
+      body: '',
+      kind: m.EntryKind.note,
+      tags: ['daily'],
+    );
+  }
+
+  /// Create an entry with tags.
+  Future<m.Entry> createEntry({
+    required String title,
+    String body = '',
+    m.EntryKind kind = m.EntryKind.note,
+    DateTime? dueAt,
+    int xp = 10,
+    List<String> axisIds = const [],
+    Map<String, double> axisWeights = const {},
+    List<String> tags = const [],
+    bool bookmarked = false,
+  }) {
+    final now = DateTime.now();
+    final entry = m.Entry(
+      id: _uuid.v4(),
+      title: title,
+      body: body,
+      kind: kind,
+      createdAt: now,
+      updatedAt: now,
+      dueAt: dueAt,
+      xp: xp,
+      axisIds: axisIds,
+      axisWeights: axisWeights,
+      tags: tags,
+      bookmarked: bookmarked,
+    );
+    return upsertEntry(entry);
+  }
+
+  // ---------- knowledge base: parse [[links]] ----------
+
+  /// Extract `[[...]]` references from entry body text.
+  static List<String> extractWikiLinks(String body) {
+    final regex = RegExp(r'\[\[([^\]]+)\]\]');
+    return regex.allMatches(body).map((m) => m.group(1)!.trim()).toList();
+  }
+
+  /// Sync the entry_links table based on `[[...]]` references in the
+  /// body. Creates target entries if they don't exist yet (Obsidian-style).
+  Future<void> syncBodyLinks(m.Entry entry) async {
+    final refs = extractWikiLinks(entry.body);
+    if (refs.isEmpty) return;
+    for (final ref in refs) {
+      // Find an existing entry whose title matches the reference.
+      final rows = await _db.raw.query(
+        'entries',
+        where: 'title = ? AND deleted_at IS NULL',
+        whereArgs: [ref],
+        limit: 1,
+      );
+      String targetId;
+      if (rows.isNotEmpty) {
+        targetId = rows.first['id']! as String;
+      } else {
+        // Create a stub entry for the reference (Obsidian-style).
+        final stub = await createEntry(title: ref, body: '');
+        targetId = stub.id;
+      }
+      if (targetId != entry.id) {
+        await linkEntries(entry.id, targetId);
+      }
+    }
+  }
+
   /// Hard-delete every row in every table. Called by SyncService when the
   /// signed-in Google account changes — we drop the previous user's local
   /// cache wholesale so the new account isn't bleeding through it.
@@ -610,8 +786,9 @@ class NoeticaRepository {
   /// timeline. Streams are still re-emitted so the UI redraws empty.
   Future<void> wipeLocalData() async {
     await _db.raw.transaction((txn) async {
-      // Order respects the FK references (entry_axes & task_reflections
-      // both point at entries/axes; clear them first).
+      // Order respects the FK references (entry_axes, task_reflections,
+      // entry_links all point at entries/axes; clear them first).
+      await txn.delete('entry_links');
       await txn.delete('entry_axes');
       await txn.delete('task_reflections');
       await txn.delete('entries');
