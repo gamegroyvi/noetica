@@ -736,48 +736,62 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
               : _nodes.isEmpty
                   ? const Center(child: Text('База знаний пуста'))
                   : SafeArea(
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          final viewSize = Size(
-                            constraints.maxWidth,
-                            constraints.maxHeight,
-                          );
-                          return InteractiveViewer(
-                            transformationController: _zoom,
-                            minScale: 0.15,
-                            maxScale: 5.0,
-                            boundaryMargin: const EdgeInsets.all(2000),
-                            child: SizedBox(
-                              width: math.max(1600, viewSize.width * 3),
-                              height: math.max(1600, viewSize.height * 3),
-                              child: _ObsidianGraphView(
-                                nodes: _nodes,
-                                edges: _edges,
-                                zoom: _zoom,
-                                selectedNode: _selectedNode,
-                                onTapNode: (i) {
-                                  setState(() => _selectedNode =
-                                      _selectedNode == i ? null : i);
-                                  _onTapNode(_nodes[i]);
-                                },
-                                onDragStart: (i) {
-                                  _nodes[i].pinned = true;
-                                  _settled = false;
-                                },
-                                onDragUpdate: (i, delta) {
-                                  final scale =
-                                      _zoom.value.getMaxScaleOnAxis();
-                                  _nodes[i].pos += delta / scale;
-                                  _nodes[i].vel = Offset.zero;
-                                  _settled = false;
-                                  setState(() {});
-                                },
-                                onDragEnd: (i) {
-                                  _nodes[i].pinned = false;
-                                },
-                                palette: palette,
-                              ),
-                            ),
+                      child: AnimatedBuilder(
+                        animation: _zoom,
+                        builder: (context, _) {
+                          final zoomScale =
+                              _zoom.value.getMaxScaleOnAxis();
+                          return LayoutBuilder(
+                            builder: (context, constraints) {
+                              final viewSize = Size(
+                                constraints.maxWidth,
+                                constraints.maxHeight,
+                              );
+                              return InteractiveViewer(
+                                transformationController: _zoom,
+                                minScale: 0.15,
+                                maxScale: 5.0,
+                                boundaryMargin:
+                                    const EdgeInsets.all(2000),
+                                child: SizedBox(
+                                  width: math.max(
+                                      1600, viewSize.width * 3),
+                                  height: math.max(
+                                      1600, viewSize.height * 3),
+                                  child: _ObsidianGraphView(
+                                    nodes: _nodes,
+                                    edges: _edges,
+                                    zoomScale: zoomScale,
+                                    selectedNode: _selectedNode,
+                                    onTapNode: (i) {
+                                      setState(() =>
+                                          _selectedNode =
+                                              _selectedNode == i
+                                                  ? null
+                                                  : i);
+                                      _onTapNode(_nodes[i]);
+                                    },
+                                    onDragStart: (i) {
+                                      _nodes[i].pinned = true;
+                                      _settled = false;
+                                    },
+                                    onDragUpdate: (i, delta) {
+                                      final scale = _zoom.value
+                                          .getMaxScaleOnAxis();
+                                      _nodes[i].pos +=
+                                          delta / scale;
+                                      _nodes[i].vel = Offset.zero;
+                                      _settled = false;
+                                      setState(() {});
+                                    },
+                                    onDragEnd: (i) {
+                                      _nodes[i].pinned = false;
+                                    },
+                                    palette: palette,
+                                  ),
+                                ),
+                              );
+                            },
                           );
                         },
                       ),
@@ -794,7 +808,7 @@ class _ObsidianGraphView extends StatelessWidget {
   const _ObsidianGraphView({
     required this.nodes,
     required this.edges,
-    required this.zoom,
+    required this.zoomScale,
     required this.selectedNode,
     required this.onTapNode,
     required this.onDragStart,
@@ -805,7 +819,7 @@ class _ObsidianGraphView extends StatelessWidget {
 
   final List<_GraphNode> nodes;
   final List<_GraphEdge> edges;
-  final TransformationController zoom;
+  final double zoomScale;
   final int? selectedNode;
   final ValueChanged<int> onTapNode;
   final ValueChanged<int> onDragStart;
@@ -841,6 +855,7 @@ class _ObsidianGraphView extends StatelessWidget {
                 node: nodes[i],
                 canvasCentre: canvasCentre,
                 palette: palette,
+                zoomScale: zoomScale,
                 isSelected: selectedNode == i,
                 onTap: () => onTapNode(i),
                 onDragStart: () => onDragStart(i),
@@ -863,6 +878,7 @@ class _PositionedNode extends StatelessWidget {
     required this.node,
     required this.canvasCentre,
     required this.palette,
+    required this.zoomScale,
     required this.isSelected,
     required this.onTap,
     required this.onDragStart,
@@ -873,11 +889,15 @@ class _PositionedNode extends StatelessWidget {
   final _GraphNode node;
   final Offset canvasCentre;
   final NoeticaPalette palette;
+  final double zoomScale;
   final bool isSelected;
   final VoidCallback onTap;
   final VoidCallback onDragStart;
   final ValueChanged<Offset> onDragUpdate;
   final VoidCallback onDragEnd;
+
+  /// Threshold at which leaf circles expand into text cards.
+  static const double _expandThreshold = 1.8;
 
   @override
   Widget build(BuildContext context) {
@@ -887,12 +907,77 @@ class _PositionedNode extends StatelessWidget {
         ? palette.fg
         : (node.branch?.color ?? palette.fg);
 
-    // Determine the label area. For the centre, show it below the node.
-    // For branch headers, show it beside. For leaves, show on hover/select.
-    final showLabel = node.isCentre || node.isBranchHeader || isSelected;
+    // At high zoom, leaf nodes morph into readable text cards.
+    final expanded = zoomScale >= _expandThreshold && !node.isCentre;
+    final showLabel =
+        node.isCentre || node.isBranchHeader || isSelected || expanded;
 
-    final hitSize = math.max(r * 2 + 16, 44.0);
+    // Text card dimensions when expanded.
+    final cardW = expanded ? 140.0 : 0.0;
+    final cardH = expanded ? (node.isBranchHeader ? 36.0 : 28.0) : 0.0;
+    final hitSize = expanded
+        ? math.max(cardW, 44.0)
+        : math.max(r * 2 + 16, 44.0);
+    final hitHeight = expanded
+        ? math.max(cardH + 8, 44.0)
+        : hitSize;
 
+    if (expanded) {
+      // Expanded mode: text card replaces the circle.
+      return Positioned(
+        left: screenPos.dx - hitSize / 2,
+        top: screenPos.dy - hitHeight / 2,
+        width: hitSize,
+        height: hitHeight,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+          onPanStart: (_) => onDragStart(),
+          onPanUpdate: (d) => onDragUpdate(d.delta),
+          onPanEnd: (_) => onDragEnd(),
+          child: Center(
+            child: Container(
+              constraints: BoxConstraints(maxWidth: cardW),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: color.withOpacity(isSelected ? 0.9 : 0.5),
+                  width: isSelected ? 1.5 : 1,
+                ),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: color.withOpacity(0.3),
+                          blurRadius: 12,
+                          spreadRadius: 2,
+                        ),
+                      ]
+                    : null,
+              ),
+              child: Text(
+                node.isBranchHeader
+                    ? '${node.label} · ${node.childCount}'
+                    : node.label,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: color,
+                  fontSize: node.isBranchHeader ? 11 : 10,
+                  fontWeight: node.isBranchHeader
+                      ? FontWeight.w700
+                      : FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Default mode: circle with optional label below.
     return Positioned(
       left: screenPos.dx - hitSize / 2,
       top: screenPos.dy - hitSize / 2,
@@ -976,8 +1061,6 @@ class _PositionedNode extends StatelessWidget {
       ),
     );
   }
-
-
 }
 
 // ---------------------------------------------------------------------------
@@ -1016,8 +1099,8 @@ class _ObsidianEdgePainter extends CustomPainter {
 
       final paint = Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = isHighlighted ? 1.8 : 0.8
-        ..color = color.withOpacity(isHighlighted ? 0.6 : 0.15);
+        ..strokeWidth = isHighlighted ? 2.5 : 1.2
+        ..color = color.withOpacity(isHighlighted ? 0.75 : 0.35);
 
       canvas.drawLine(posA, posB, paint);
     }
