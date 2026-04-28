@@ -17,6 +17,10 @@ class PentagonPainter extends CustomPainter {
     required this.muted,
     required this.line,
     required this.bg,
+    this.progress = 1.0,
+    this.highlightedAxisIndex,
+    this.bloomedAxes = const <int>{},
+    this.bloomPulse = 0.0,
   });
 
   final List<AxisScore> scores;
@@ -24,6 +28,24 @@ class PentagonPainter extends CustomPainter {
   final Color muted;
   final Color line;
   final Color bg;
+
+  /// 0..1 — current progress of the entering tween. Multiplied into each
+  /// vertex's radius so the shape grows out from the center.
+  final double progress;
+
+  /// If set, the spoke + label for this axis are drawn with extra weight
+  /// to mark the user's tap. Other axes stay normal.
+  final int? highlightedAxisIndex;
+
+  /// Axes whose value has crossed the bloom threshold (≥95). Painted
+  /// with a thicker spoke + a halo around the label so the pentagon
+  /// reads "this branch is at the peak".
+  final Set<int> bloomedAxes;
+
+  /// 0..1 — value of the continuous breathing/pulse animation. Used to
+  /// modulate the bloom halo so it shimmers gently rather than sitting
+  /// still.
+  final double bloomPulse;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -69,17 +91,56 @@ class PentagonPainter extends CustomPainter {
       canvas.drawPath(path, ringPaint);
     }
 
-    // spokes
+    // spokes — highlight the tapped axis with a thicker stroke, and
+    // bloom (axis ≥95%) with a thicker, brighter version so the
+    // pentagon visually flags "this branch is at the peak".
     for (var i = 0; i < n; i++) {
       final p = _vertex(center, radius, i, n);
-      canvas.drawLine(center, p, spokePaint);
+      final highlight = i == highlightedAxisIndex;
+      final bloom = bloomedAxes.contains(i);
+      Paint paint;
+      if (bloom) {
+        paint = Paint()
+          ..style = PaintingStyle.stroke
+          ..color = fg
+          ..strokeWidth = 2.2;
+      } else if (highlight) {
+        paint = Paint()
+          ..style = PaintingStyle.stroke
+          ..color = fg
+          ..strokeWidth = 1.5;
+      } else {
+        paint = spokePaint;
+      }
+      canvas.drawLine(center, p, paint);
     }
 
-    // current state polygon
+    // Cross-link: when 2+ axes are bloomed simultaneously, draw soft
+    // connectors between every pair of bloomed vertices (through the
+    // pentagon's interior, not via the center). The line shimmers
+    // with [bloomPulse] so it doesn't sit static.
+    if (bloomedAxes.length >= 2) {
+      final list = bloomedAxes.toList()..sort();
+      final shimmer = 0.45 + 0.35 * (0.5 + 0.5 *
+          math.sin(bloomPulse * 2 * math.pi));
+      final connector = Paint()
+        ..style = PaintingStyle.stroke
+        ..color = fg.withOpacity(shimmer)
+        ..strokeWidth = 1.0;
+      for (var a = 0; a < list.length; a++) {
+        for (var b = a + 1; b < list.length; b++) {
+          final pa = _vertex(center, radius * 0.96, list[a], n);
+          final pb = _vertex(center, radius * 0.96, list[b], n);
+          canvas.drawLine(pa, pb, connector);
+        }
+      }
+    }
+
+    // current state polygon (animated outward via [progress])
     final shape = Path();
     for (var i = 0; i < n; i++) {
       final s = scores[i].value.clamp(0.0, 100.0) / 100.0;
-      final r = radius * s;
+      final r = radius * s * progress;
       final p = _vertex(center, r, i, n);
       if (i == 0) {
         shape.moveTo(p.dx, p.dy);
@@ -94,14 +155,41 @@ class PentagonPainter extends CustomPainter {
     // dots at the polygon vertices
     for (var i = 0; i < n; i++) {
       final s = scores[i].value.clamp(0.0, 100.0) / 100.0;
-      final r = radius * s;
+      final r = radius * s * progress;
       final p = _vertex(center, r, i, n);
-      canvas.drawCircle(p, 3.5, dotPaint);
+      final highlight = i == highlightedAxisIndex;
+      canvas.drawCircle(p, highlight ? 5.0 : 3.5, dotPaint);
     }
 
-    // axis labels
+    // axis labels (symbol). The tapped axis gets a small ring around
+    // it; bloomed (≥95%) axes get a softer halo that breathes with
+    // the pulse animation.
     for (var i = 0; i < n; i++) {
       final p = _vertex(center, radius + 18, i, n);
+      final highlight = i == highlightedAxisIndex;
+      final bloom = bloomedAxes.contains(i);
+      if (bloom) {
+        final breath = 0.55 + 0.35 * (0.5 + 0.5 *
+            math.sin(bloomPulse * 2 * math.pi));
+        canvas.drawCircle(
+          p,
+          16 + 3 * breath,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..color = fg.withOpacity(breath)
+            ..strokeWidth = 1.4,
+        );
+      }
+      if (highlight) {
+        canvas.drawCircle(
+          p,
+          14,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..color = fg
+            ..strokeWidth = 1.2,
+        );
+      }
       final tp = TextPainter(
         text: TextSpan(
           text: scores[i].axis.symbol,
@@ -116,6 +204,27 @@ class PentagonPainter extends CustomPainter {
       )..layout();
       tp.paint(canvas, p - Offset(tp.width / 2, tp.height / 2));
     }
+  }
+
+  /// Hit-test: return the axis index whose label sits closest to [tap]
+  /// within [tolerance] pixels, or null. Lets the parent open a sheet
+  /// for the tapped axis.
+  int? hitTestAxis(Offset tap, Size size, {double tolerance = 22}) {
+    final n = scores.length;
+    if (n < 3) return null;
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = math.min(size.width, size.height) / 2 - 36;
+    int? best;
+    double bestDist = tolerance;
+    for (var i = 0; i < n; i++) {
+      final p = _vertex(center, radius + 18, i, n);
+      final d = (p - tap).distance;
+      if (d < bestDist) {
+        bestDist = d;
+        best = i;
+      }
+    }
+    return best;
   }
 
   /// Vertex coordinate; vertex 0 sits at the top of the shape.
@@ -133,5 +242,9 @@ class PentagonPainter extends CustomPainter {
       oldDelegate.fg != fg ||
       oldDelegate.muted != muted ||
       oldDelegate.line != line ||
-      oldDelegate.bg != bg;
+      oldDelegate.bg != bg ||
+      oldDelegate.progress != progress ||
+      oldDelegate.highlightedAxisIndex != highlightedAxisIndex ||
+      oldDelegate.bloomedAxes != bloomedAxes ||
+      oldDelegate.bloomPulse != bloomPulse;
 }

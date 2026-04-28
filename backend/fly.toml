@@ -1,0 +1,28 @@
+# Fly.io deployment config for the Noetica backend.
+# Run `fly launch --copy-config --no-deploy` to bind to your account, then
+# `fly volumes create noetica_data --size 1 --region fra` and `fly deploy`.
+
+app = "noetica-backend-nzlazosh"
+primary_region = "fra"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  NOETICA_DB_PATH = "/data/noetica.db"
+
+[[mounts]]
+  source = "noetica_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 100
+    hard_limit = 200
