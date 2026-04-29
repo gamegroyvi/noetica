@@ -9,27 +9,11 @@ import '../../providers.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/time_utils.dart';
 
-/// Opens the entry editor as a full-screen page (push route).
-Future<void> openEntryEditor(
-  BuildContext context,
-  WidgetRef ref, {
-  Entry? existing,
-  DateTime? initialDueAt,
-  EntryKind? initialKind,
-}) async {
-  await Navigator.of(context).push<void>(
-    MaterialPageRoute(
-      builder: (_) => _EntryEditorPage(
-        existing: existing,
-        initialDueAt: initialDueAt,
-        initialKind: initialKind,
-      ),
-    ),
-  );
-}
-
-class _EntryEditorPage extends ConsumerStatefulWidget {
-  const _EntryEditorPage({
+/// Widget that renders the entry editor content.
+/// Used inside a bottom sheet from [showEntryEditor].
+class EntryEditorContent extends ConsumerStatefulWidget {
+  const EntryEditorContent({
+    super.key,
     this.existing,
     this.initialDueAt,
     this.initialKind,
@@ -39,10 +23,10 @@ class _EntryEditorPage extends ConsumerStatefulWidget {
   final EntryKind? initialKind;
 
   @override
-  ConsumerState<_EntryEditorPage> createState() => _EntryEditorPageState();
+  ConsumerState<EntryEditorContent> createState() => _EntryEditorContentState();
 }
 
-class _EntryEditorPageState extends ConsumerState<_EntryEditorPage> {
+class _EntryEditorContentState extends ConsumerState<EntryEditorContent> {
   late final TextEditingController _title;
   late final QuillController _quill;
   late EntryKind _kind;
@@ -75,26 +59,19 @@ class _EntryEditorPageState extends ConsumerState<_EntryEditorPage> {
     super.dispose();
   }
 
-  /// Convert a body string to a Quill Document. Handles both legacy
-  /// plain text and Quill Delta JSON (starts with '[').
   Document _bodyToDocument(String body) {
     if (body.isEmpty) return Document()..insert(0, '');
     if (body.startsWith('[')) {
       try {
         final json = jsonDecode(body) as List;
         return Document.fromJson(json);
-      } catch (_) {
-        // Fallback to plain text if JSON is invalid.
-      }
+      } catch (_) {}
     }
-    // Legacy plain text → simple document.
     final doc = Document();
     doc.insert(0, body);
     return doc;
   }
 
-  /// Serialize the Quill document back to a storable string.
-  /// Stores as Delta JSON so rich formatting is preserved.
   String _documentToBody() {
     final delta = _quill.document.toDelta();
     final plainText = _quill.document.toPlainText().trim();
@@ -190,182 +167,194 @@ class _EntryEditorPageState extends ConsumerState<_EntryEditorPage> {
     final axesAsync = ref.watch(axesProvider);
     final isNew = widget.existing == null;
 
-    return Scaffold(
-      backgroundColor: palette.bg,
-      appBar: AppBar(
-        backgroundColor: palette.bg,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: palette.fg),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text(
-          isNew ? 'Новая запись' : 'Редактирование',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-            color: palette.muted,
-          ),
-        ),
-        actions: [
-          if (!isNew)
-            IconButton(
-              icon: Icon(Icons.delete_outline, color: palette.muted),
-              onPressed: _delete,
-            ),
-          TextButton(
-            onPressed: _saving ? null : _save,
-            child: Text(
-              _saving ? '...' : 'Готово',
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: _saving ? palette.muted : palette.fg,
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Title field — large, clean, Notion-style.
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-            child: TextField(
-              controller: _title,
-              autofocus: isNew,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w700,
-                color: palette.fg,
-                height: 1.3,
-              ),
-              decoration: InputDecoration(
-                hintText: _kind == EntryKind.task
-                    ? 'Что нужно сделать?'
-                    : 'Без названия',
-                hintStyle: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                  color: palette.muted.withOpacity(0.4),
-                  height: 1.3,
-                ),
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                filled: false,
-                isCollapsed: true,
-                contentPadding: const EdgeInsets.symmetric(vertical: 8),
-              ),
-            ),
-          ),
-
-          // Quill toolbar — compact, minimal.
-          Container(
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Drag handle.
+        Center(
+          child: Container(
+            margin: const EdgeInsets.only(top: 10, bottom: 4),
+            width: 36,
+            height: 4,
             decoration: BoxDecoration(
-              border: Border(
-                top: BorderSide(color: palette.line, width: 0.5),
-                bottom: BorderSide(color: palette.line, width: 0.5),
-              ),
+              color: palette.muted.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(2),
             ),
-            child: QuillSimpleToolbar(
-              controller: _quill,
-              configurations: const QuillSimpleToolbarConfigurations(
-                showBoldButton: true,
-                showItalicButton: true,
-                showUnderLineButton: true,
-                showStrikeThrough: false,
-                showListBullets: true,
-                showListNumbers: true,
-                showListCheck: true,
-                showHeaderStyle: true,
-                showCodeBlock: false,
-                showInlineCode: true,
-                showLink: true,
-                showQuote: true,
-                showDividers: false,
-                showFontFamily: false,
-                showFontSize: false,
-                showBackgroundColorButton: false,
-                showColorButton: false,
-                showIndent: false,
-                showAlignmentButtons: false,
-                showDirection: false,
-                showSearchButton: false,
-                showSubscript: false,
-                showSuperscript: false,
-                showClipboardCut: false,
-                showClipboardCopy: false,
-                showClipboardPaste: false,
-                showUndo: false,
-                showRedo: false,
-                showClearFormat: false,
-                multiRowsDisplay: false,
-                buttonOptions: QuillSimpleToolbarButtonOptions(
-                  base: QuillToolbarBaseButtonOptions(
-                    iconSize: 18,
-                    iconButtonFactor: 1.2,
+          ),
+        ),
+
+        // Header row: title label + actions.
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 8, 0),
+          child: Row(
+            children: [
+              Text(
+                isNew ? 'Новая запись' : 'Редактирование',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: palette.muted,
+                ),
+              ),
+              const Spacer(),
+              if (!isNew)
+                IconButton(
+                  icon: Icon(Icons.delete_outline,
+                      color: palette.muted, size: 20),
+                  onPressed: _delete,
+                  visualDensity: VisualDensity.compact,
+                ),
+              TextButton(
+                onPressed: _saving ? null : _save,
+                child: Text(
+                  _saving ? '...' : 'Готово',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: _saving ? palette.muted : palette.fg,
                   ),
                 ),
               ),
+            ],
+          ),
+        ),
+
+        // Title field.
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+          child: TextField(
+            controller: _title,
+            autofocus: isNew,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: palette.fg,
+              height: 1.3,
+            ),
+            decoration: InputDecoration(
+              hintText: _kind == EntryKind.task
+                  ? 'Что нужно сделать?'
+                  : 'Без названия',
+              hintStyle: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: palette.muted.withOpacity(0.4),
+                height: 1.3,
+              ),
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              filled: false,
+              isCollapsed: true,
+              contentPadding: const EdgeInsets.symmetric(vertical: 6),
             ),
           ),
+        ),
 
-          // Body editor — rich text, WYSIWYG.
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: QuillEditor.basic(
-                controller: _quill,
-                configurations: const QuillEditorConfigurations(
-                  placeholder: 'Начни писать...',
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  autoFocus: false,
-                  expands: true,
-                  scrollable: true,
+        // Quill toolbar.
+        Container(
+          decoration: BoxDecoration(
+            border: Border(
+              top: BorderSide(color: palette.line, width: 0.5),
+              bottom: BorderSide(color: palette.line, width: 0.5),
+            ),
+          ),
+          child: QuillSimpleToolbar(
+            controller: _quill,
+            configurations: const QuillSimpleToolbarConfigurations(
+              showBoldButton: true,
+              showItalicButton: true,
+              showUnderLineButton: true,
+              showStrikeThrough: false,
+              showListBullets: true,
+              showListNumbers: true,
+              showListCheck: true,
+              showHeaderStyle: true,
+              showCodeBlock: false,
+              showInlineCode: true,
+              showLink: true,
+              showQuote: true,
+              showDividers: false,
+              showFontFamily: false,
+              showFontSize: false,
+              showBackgroundColorButton: false,
+              showColorButton: false,
+              showIndent: false,
+              showAlignmentButtons: false,
+              showDirection: false,
+              showSearchButton: false,
+              showSubscript: false,
+              showSuperscript: false,
+              showClipboardCut: false,
+              showClipboardCopy: false,
+              showClipboardPaste: false,
+              showUndo: false,
+              showRedo: false,
+              showClearFormat: false,
+              multiRowsDisplay: false,
+              buttonOptions: QuillSimpleToolbarButtonOptions(
+                base: QuillToolbarBaseButtonOptions(
+                  iconSize: 18,
+                  iconButtonFactor: 1.2,
                 ),
               ),
             ),
           ),
+        ),
 
-          // Bottom panel — axes + task controls, collapsible.
-          _BottomPanel(
-            palette: palette,
-            kind: _kind,
-            showTaskPanel: _showTaskPanel,
-            selectedAxes: _selectedAxes,
-            due: _due,
-            xp: _xp,
-            axesAsync: axesAsync,
-            onToggleKind: () => setState(() {
-              if (_kind == EntryKind.task) {
-                _kind = EntryKind.note;
-                _due = null;
-                _showTaskPanel = false;
-              } else {
-                _kind = EntryKind.task;
-                _showTaskPanel = true;
-              }
-            }),
-            onTogglePanel: () =>
-                setState(() => _showTaskPanel = !_showTaskPanel),
-            onPickDue: _pickDue,
-            onClearDue: () => setState(() => _due = null),
-            onXpChanged: (v) => setState(() => _xp = v),
-            onToggleAxis: (id) => setState(() {
-              if (_selectedAxes.contains(id)) {
-                _selectedAxes.remove(id);
-              } else {
-                _selectedAxes.add(id);
-              }
-            }),
+        // Body editor.
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: QuillEditor.basic(
+              controller: _quill,
+              configurations: const QuillEditorConfigurations(
+                placeholder: 'Начни писать...',
+                padding: EdgeInsets.symmetric(vertical: 12),
+                autoFocus: false,
+                expands: true,
+                scrollable: true,
+              ),
+            ),
           ),
-        ],
-      ),
+        ),
+
+        // Bottom panel — axes + task controls, collapsible.
+        _BottomPanel(
+          palette: palette,
+          kind: _kind,
+          showTaskPanel: _showTaskPanel,
+          selectedAxes: _selectedAxes,
+          due: _due,
+          xp: _xp,
+          axesAsync: axesAsync,
+          onToggleKind: () => setState(() {
+            if (_kind == EntryKind.task) {
+              _kind = EntryKind.note;
+              _due = null;
+              _showTaskPanel = false;
+            } else {
+              _kind = EntryKind.task;
+              _showTaskPanel = true;
+            }
+          }),
+          onTogglePanel: () =>
+              setState(() => _showTaskPanel = !_showTaskPanel),
+          onPickDue: _pickDue,
+          onClearDue: () => setState(() => _due = null),
+          onXpChanged: (v) => setState(() => _xp = v),
+          onToggleAxis: (id) => setState(() {
+            if (_selectedAxes.contains(id)) {
+              _selectedAxes.remove(id);
+            } else {
+              _selectedAxes.add(id);
+            }
+          }),
+        ),
+      ],
     );
   }
 }
 
-/// Collapsible bottom panel for task controls + axes.
 class _BottomPanel extends StatelessWidget {
   const _BottomPanel({
     required this.palette,
@@ -410,7 +399,6 @@ class _BottomPanel extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Quick-action bar.
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
               child: Row(
@@ -449,8 +437,6 @@ class _BottomPanel extends StatelessWidget {
                 ],
               ),
             ),
-
-            // Expandable detail panel.
             AnimatedSize(
               duration: const Duration(milliseconds: 200),
               curve: Curves.easeOutCubic,
@@ -518,12 +504,12 @@ class _BottomPanel extends StatelessWidget {
                             loading: () => const SizedBox(
                               height: 28,
                               child: Center(
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2),
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
                               ),
                             ),
-                            error: (e, _) =>
-                                Text('$e', style: TextStyle(color: palette.muted)),
+                            error: (e, _) => Text('$e',
+                                style: TextStyle(color: palette.muted)),
                             data: (axes) {
                               if (axes.isEmpty) {
                                 return Text(

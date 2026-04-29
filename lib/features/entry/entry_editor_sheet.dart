@@ -4,10 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models.dart';
 import 'entry_editor_page.dart';
 
-/// Opens the WYSIWYG entry editor as a full-screen page.
-///
-/// This function preserves the same signature used by the rest of the
-/// app so existing call-sites don't need any changes.
+/// Opens the WYSIWYG entry editor as a bottom sheet that slides up.
 Future<void> showEntryEditor(
   BuildContext context,
   WidgetRef ref, {
@@ -15,11 +12,29 @@ Future<void> showEntryEditor(
   DateTime? initialDueAt,
   EntryKind? initialKind,
 }) async {
-  await openEntryEditor(
-    context,
-    ref,
-    existing: existing,
-    initialDueAt: initialDueAt,
-    initialKind: initialKind,
+  await showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (ctx) {
+      final size = MediaQuery.of(ctx).size;
+      final maxH =
+          size.width >= 1100 ? size.height * 0.92 : size.height * 0.85;
+      return Padding(
+        padding:
+            EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: maxH),
+          child: EntryEditorContent(
+            existing: existing,
+            initialDueAt: initialDueAt,
+            initialKind: initialKind,
+          ),
+        ),
+      );
+    },
   );
 }
