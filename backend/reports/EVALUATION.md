@@ -1,7 +1,7 @@
 # LLM · Оценка «голден»-тестов
 
-**Бэкенд:** `https://generativelanguage.googleapis.com/v1beta/openai` · **Модель:** `gemini-2.0-flash`
-**API-ключ:** `GOOGLE_AI_KEY` (Google AI Studio, free tier: 15 RPM / 1 500 RPD)
+**Бэкенд:** `https://api.groq.com/openai/v1` · **Модель:** `llama-3.3-70b-versatile`
+**API-ключ:** `GROQ_API_KEY` (Groq, free tier: 30 RPM / 14 400 RPD)
 
 Прогнали 4 реалистичных персоны по пайплайну онбординга Noetica:
 `generate_axes` (5 осей под профиль) → `generate_roadmap` (10 задач на 30 дней).

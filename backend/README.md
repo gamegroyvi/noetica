@@ -1,7 +1,7 @@
 # Noetica backend
 
 FastAPI service that turns a personal growth goal into a batch of trackable
-tasks via Google Gemini (OpenAI-compatible endpoint).
+tasks via Groq (OpenAI-compatible endpoint, Llama 3.3 70B).
 
 ## Endpoints
 
@@ -13,9 +13,9 @@ tasks via Google Gemini (OpenAI-compatible endpoint).
 
 | Variable | Required | Default | Description |
 | --- | --- | --- | --- |
-| `GOOGLE_AI_KEY` | yes | — | Google AI Studio API key. |
-| `LLM_BASE_URL` | no | `https://generativelanguage.googleapis.com/v1beta/openai` | Override to use a different OpenAI-compatible gateway. |
-| `LLM_MODEL` | no | `gemini-2.0-flash` | Any model id supported by the gateway. |
+| `GROQ_API_KEY` | yes | — | Groq API key (https://console.groq.com/keys). |
+| `LLM_BASE_URL` | no | `https://api.groq.com/openai/v1` | Override to use a different OpenAI-compatible gateway. |
+| `LLM_MODEL` | no | `llama-3.3-70b-versatile` | Any model id supported by the gateway. |
 | `CORS_ORIGINS` | no | `http://localhost:8080` | Comma-separated list. |
 | `PORT` | no | `8080` | HTTP port (Fly.io sets this). |
 
@@ -26,7 +26,7 @@ Copy `.env.example` to `.env` for local dev.
 ```bash
 cd backend
 uv pip install -e .  # or: pip install -e .
-export GOOGLE_AI_KEY=...
+export GROQ_API_KEY=...
 uvicorn app.main:app --reload --port 8080
 ```
 
@@ -35,5 +35,5 @@ uvicorn app.main:app --reload --port 8080
 ```bash
 cd backend
 fly launch --now --name noetica-backend --region fra
-fly secrets set GOOGLE_AI_KEY=...
+fly secrets set GROQ_API_KEY=...
 ```

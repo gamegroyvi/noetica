@@ -8,10 +8,10 @@ axis distinctiveness, axis↔goal fit, task difficulty calibration, and
 per-axis coverage.
 
 Usage:
-    GOOGLE_AI_KEY=... python -m tests.persona_goldens
+    GROQ_API_KEY=... python -m tests.persona_goldens
 
 Requires the `backend` venv with httpx + pydantic installed and a valid
-GOOGLE_AI_KEY in the environment.
+GROQ_API_KEY in the environment.
 """
 
 from __future__ import annotations

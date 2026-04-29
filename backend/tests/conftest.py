@@ -19,7 +19,7 @@ def app_with_db(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     monkeypatch.setenv("NOETICA_DB_PATH", db_path)
     monkeypatch.setenv("JWT_SECRET", "test-secret-not-real")
     monkeypatch.setenv("GOOGLE_OAUTH_WEB_CLIENT_ID", "fake-web-client-id")
-    monkeypatch.setenv("GOOGLE_AI_KEY", "AIzaSyFake")
+    monkeypatch.setenv("GROQ_API_KEY", "gsk_fake")
     # Avoid CORS warnings noise in test logs.
     monkeypatch.setenv("LOG_LEVEL", "WARNING")
 

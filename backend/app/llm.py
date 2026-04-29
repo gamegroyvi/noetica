@@ -1,9 +1,9 @@
-"""Google Gemini LLM client used for roadmap generation.
+"""Groq LLM client used for roadmap generation.
 
-Uses Gemini's OpenAI-compatible endpoint so the request/response surface
-stays the standard chat-completions shape. Only `GOOGLE_AI_KEY` is
-required — no billing, free tier gives 15 RPM / 1 500 RPD for
-gemini-2.0-flash.
+Uses Groq's OpenAI-compatible endpoint so the request/response surface
+stays the standard chat-completions shape. Only `GROQ_API_KEY` is
+required — free tier gives 30 RPM / 14 400 RPD for
+llama-3.3-70b-versatile.
 """
 
 from __future__ import annotations
@@ -54,9 +54,9 @@ def _knowledge_lines(knowledge: KnowledgeInput | None) -> list[str]:
             lines.append(f"  - {snippet}")
     return lines
 
-# Google Gemini via its OpenAI-compatible gateway.
-GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai"
-GEMINI_MODEL = "gemini-2.0-flash"
+# Groq — free, fast, OpenAI-compatible.
+GROQ_BASE_URL = "https://api.groq.com/openai/v1"
+GROQ_MODEL = "llama-3.3-70b-versatile"
 REQUEST_TIMEOUT = 45.0
 
 
@@ -183,16 +183,16 @@ def _user_prompt(
 
 class LlmClient:
     def __init__(self) -> None:
-        self.api_key = os.getenv("GOOGLE_AI_KEY", "")
+        self.api_key = os.getenv("GROQ_API_KEY", "")
         if not self.api_key:
             raise LlmConfigError(
-                "No API key configured. Set the GOOGLE_AI_KEY "
-                "environment variable (Google AI Studio key)."
+                "No API key configured. Set the GROQ_API_KEY "
+                "environment variable (https://console.groq.com/keys)."
             )
         self.base_url = os.getenv(
-            "LLM_BASE_URL", GEMINI_BASE_URL
+            "LLM_BASE_URL", GROQ_BASE_URL
         ).rstrip("/")
-        self.model = os.getenv("LLM_MODEL", GEMINI_MODEL)
+        self.model = os.getenv("LLM_MODEL", GROQ_MODEL)
 
     async def generate_roadmap(
         self,

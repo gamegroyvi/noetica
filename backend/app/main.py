@@ -93,9 +93,11 @@ async def healthz_llm() -> dict[str, object]:
         client = LlmClient()
     except LlmConfigError as exc:
         return {"ok": False, "error": str(exc)}
-    provider = "gemini"
-    if "deepseek" in (client.base_url or ""):
-        provider = "deepseek"
+    provider = "groq"
+    if "groq" in (client.base_url or ""):
+        provider = "groq"
+    elif "generativelanguage" in (client.base_url or ""):
+        provider = "gemini"
     elif "openai.com" in (client.base_url or ""):
         provider = "openai"
     return {
