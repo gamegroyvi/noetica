@@ -10,9 +10,18 @@ import 'dart:convert';
 /// (`**`, `*`, `~~`, `` ` ``, `#`, `[[`, `]]`, `- [ ]`, etc.) are
 /// stripped so the card shows clean readable text.
 String bodyToPlainText(String body) {
-  if (body.isEmpty) return '';
+  return _stripMarkdown(bodyToMarkdown(body));
+}
 
-  // 1. Legacy Delta JSON → extract insert strings.
+/// Normalise an entry body to plain markdown.
+///
+/// Legacy bodies may be stored as Quill Delta JSON; this helper
+/// returns the markdown source either as-is (already markdown) or
+/// reconstructed from the Delta `insert` strings, so downstream
+/// renderers (cards, previews, the WYSIWYG editor) can rely on a
+/// single shape.
+String bodyToMarkdown(String body) {
+  if (body.isEmpty) return '';
   if (body.startsWith('[')) {
     try {
       final json = jsonDecode(body) as List;
@@ -23,14 +32,12 @@ String bodyToPlainText(String body) {
           if (insert is String) buf.write(insert);
         }
       }
-      return _stripMarkdown(buf.toString().trim());
+      return buf.toString();
     } catch (_) {
-      // Not valid JSON — fall through to markdown stripping.
+      // Not valid JSON — treat as plain markdown.
     }
   }
-
-  // 2. Plain markdown — strip markers.
-  return _stripMarkdown(body);
+  return body;
 }
 
 /// Remove common markdown markers from [text] for card display.
@@ -55,8 +62,12 @@ String _stripMarkdown(String text) {
   // Blockquote prefix
   s = s.replaceAll(RegExp(r'^>\s+', multiLine: true), '');
   // Checkbox markers: - [ ] / - [x]
-  s = s.replaceAll(RegExp(r'^(\s*)- \[[ xX]\]\s?', multiLine: true), r'$1');
+  s = s.replaceAllMapped(
+      RegExp(r'^(\s*)- \[[ xX]\]\s?', multiLine: true),
+      (m) => m.group(1) ?? '');
   // Bullet markers: - / * / +
-  s = s.replaceAll(RegExp(r'^(\s*)[-*+]\s', multiLine: true), r'$1');
+  s = s.replaceAllMapped(
+      RegExp(r'^(\s*)[-*+]\s', multiLine: true),
+      (m) => m.group(1) ?? '');
   return s.trim();
 }

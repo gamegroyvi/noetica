@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/body_utils.dart';
+import '../../utils/subtask_utils.dart';
 import '../../utils/time_utils.dart';
 import 'entry_editor_sheet.dart';
+import 'markdown_body_editor.dart';
 
 /// A single entry card. Used by the dashboard, the notes list and any other
 /// screen that shows entries in card form.
@@ -65,10 +67,14 @@ class EntryCard extends ConsumerWidget {
             ),
             if (entry.body.isNotEmpty) ...[
               const SizedBox(height: 6),
-              Text(
-                bodyToPlainText(entry.body),
+              MarkdownPreview(
+                // Render markdown so the preview shows **bold**, headings,
+                // tags, [[wiki]]-link text etc. without the raw markers
+                // showing up as garbage. Stripping subtasks first keeps
+                // the preview focused on prose; checkbox lines are still
+                // counted via the task chip elsewhere.
+                body: stripSubtasks(bodyToMarkdown(entry.body)),
                 maxLines: dense ? 2 : 4,
-                overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
             ],
