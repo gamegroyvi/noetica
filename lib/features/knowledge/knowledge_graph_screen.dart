@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -8,6 +9,7 @@ import '../../data/models.dart';
 import '../../data/personal_knowledge_service.dart';
 import '../../providers.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/body_utils.dart';
 import '../entry/entry_editor_sheet.dart';
 
 // ---------------------------------------------------------------------------
@@ -230,6 +232,7 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
   final _searchController = TextEditingController();
   bool _loading = true;
   String? _error;
+  StreamSubscription<PersonalKnowledge>? _changesSub;
 
   // Graph state.
   List<_GraphNode> _nodes = [];
@@ -252,11 +255,15 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
       duration: const Duration(seconds: 1),
     )..repeat();
     _ticker.addListener(_stepSimulation);
+    _changesSub = PersonalKnowledgeService.changes.listen((k) {
+      if (mounted) setState(() => _knowledge = k);
+    });
     _load();
   }
 
   @override
   void dispose() {
+    _changesSub?.cancel();
     _ticker.removeListener(_stepSimulation);
     _ticker.dispose();
     _zoom.dispose();
@@ -485,7 +492,12 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
       nodes.add(_GraphNode(
         id: e.id,
         label: e.title.isEmpty
-            ? (e.body.length > 30 ? '${e.body.substring(0, 30)}…' : e.body)
+            ? (() {
+                final plain = bodyToPlainText(e.body);
+                return plain.length > 30
+                    ? '${plain.substring(0, 30)}…'
+                    : plain;
+              })()
             : e.title,
         color: _entryColor(e),
         isCentre: false,

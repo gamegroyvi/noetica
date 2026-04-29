@@ -1,8 +1,9 @@
-"""OpenAI-compatible LLM client used for roadmap generation.
+"""Groq LLM client used for roadmap generation.
 
-Works against OpenRouter (default) — same shape works with OmniRoute self-hosted
-if `LLM_BASE_URL` is overridden. Keeps the request/response surface minimal
-because we only need non-streaming chat completions with JSON output.
+Uses Groq's OpenAI-compatible endpoint so the request/response surface
+stays the standard chat-completions shape. Only `GROQ_API_KEY` is
+required — free tier gives 30 RPM / 14 400 RPD for
+llama-3.3-70b-versatile.
 """
 
 from __future__ import annotations
@@ -53,36 +54,10 @@ def _knowledge_lines(knowledge: KnowledgeInput | None) -> list[str]:
             lines.append(f"  - {snippet}")
     return lines
 
-DEFAULT_BASE_URL = "https://api.openai.com/v1"
-DEFAULT_MODEL = "gpt-4o-mini"
+# Groq — free, fast, OpenAI-compatible.
+GROQ_BASE_URL = "https://api.groq.com/openai/v1"
+GROQ_MODEL = "llama-3.3-70b-versatile"
 REQUEST_TIMEOUT = 45.0
-
-# Gemini (Google AI) endpoint. OpenAI-compatible gateway — same request
-# shape, just a different base URL and model name. Free tier with
-# generous limits (250k tokens/min). Preferred when GEMINI_API_KEY is set.
-GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai"
-GEMINI_MODEL = "gemini-2.5-flash"
-
-# DeepSeek-native endpoint. When DEEPSEEK_API_KEY is set and no explicit
-# LLM_BASE_URL / LLM_MODEL override is provided, we route to DeepSeek
-# automatically — it's OpenAI-compatible and significantly cheaper, so
-# it makes sense as the default when available.
-DEEPSEEK_BASE_URL = "https://api.deepseek.com/v1"
-DEEPSEEK_MODEL = "deepseek-chat"
-
-# Deploy-time fallback for the DeepSeek key; see LlmClient.__init__ for
-# the rationale. Committed copy is empty — only populated in the local
-# working tree of the deployer's session when the hosting platform can't
-# inject real secrets.
-_BAKED_DEEPSEEK_KEY = ""
-
-# Same mechanism for the Gemini key. When the Devin-managed deploy tool
-# creates a fresh Fly app there's no `flyctl secrets set` path available,
-# so the only way to hand the deployed container a real key is via
-# module-level constant. Committed copy MUST stay empty — the key is
-# only populated in the local working tree right before `deploy backend`
-# runs and reverted to "" in the same commit batch.
-_BAKED_GEMINI_KEY = ""
 
 
 class LlmConfigError(RuntimeError):
@@ -208,88 +183,16 @@ def _user_prompt(
 
 class LlmClient:
     def __init__(self) -> None:
-        # Key resolution order:
-        #   1. GEMINI_API_KEY — if present, use Google Gemini (free tier,
-        #      OpenAI-compatible endpoint, strong multilingual output).
-        #   2. DEEPSEEK_API_KEY — DeepSeek (cheap, OpenAI-compatible).
-        #   3. OPENAI_API_KEY / OPENROUTER_API_KEY / LLM_API_KEY — fallback.
-        # LLM_BASE_URL / LLM_MODEL overrides always win over these
-        # defaults, so an ops override stays authoritative.
-        gemini_key = os.getenv("GEMINI_API_KEY") or _BAKED_GEMINI_KEY
-        deepseek_key = os.getenv("DEEPSEEK_API_KEY") or _BAKED_DEEPSEEK_KEY
-        if gemini_key:
-            self.api_key = gemini_key
-            self.base_url = os.getenv(
-                "LLM_BASE_URL", GEMINI_BASE_URL
-            ).rstrip("/")
-            self.model = os.getenv("LLM_MODEL", GEMINI_MODEL)
-        elif deepseek_key:
-            self.api_key = deepseek_key
-            self.base_url = os.getenv(
-                "LLM_BASE_URL", DEEPSEEK_BASE_URL
-            ).rstrip("/")
-            self.model = os.getenv("LLM_MODEL", DEEPSEEK_MODEL)
-        else:
-            self.api_key = (
-                os.getenv("OPENAI_API_KEY")
-                or os.getenv("OPENROUTER_API_KEY")
-                or os.getenv("LLM_API_KEY")
-            )
-            self.base_url = os.getenv(
-                "LLM_BASE_URL", DEFAULT_BASE_URL
-            ).rstrip("/")
-            self.model = os.getenv("LLM_MODEL", DEFAULT_MODEL)
+        self.api_key = os.getenv("GROQ_API_KEY", "")
         if not self.api_key:
             raise LlmConfigError(
-                "No API key configured (GEMINI_API_KEY / DEEPSEEK_API_KEY"
-                " / OPENAI_API_KEY / OPENROUTER_API_KEY / LLM_API_KEY)."
+                "No API key configured. Set the GROQ_API_KEY "
+                "environment variable (https://console.groq.com/keys)."
             )
-        self.referer = os.getenv(
-            "LLM_HTTP_REFERER", "https://noetica.app"
-        )
-        self.title = os.getenv("LLM_APP_TITLE", "Noetica")
-
-    async def chat(
-        self,
-        messages: list[dict[str, str]],
-        temperature: float = 0.6,
-        max_tokens: int = 1000,
-    ) -> str:
-        """Generic chat completion — returns the raw text response."""
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json",
-            "HTTP-Referer": self.referer,
-            "X-Title": self.title,
-        }
-        payload: dict[str, Any] = {
-            "model": self.model,
-            "messages": messages,
-            "temperature": temperature,
-            "max_tokens": max_tokens,
-        }
-
-        url = f"{self.base_url}/chat/completions"
-        async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
-            response = await client.post(url, json=payload, headers=headers)
-
-        if response.status_code >= 400:
-            raise LlmUpstreamError(
-                status=response.status_code,
-                message=response.text[:300],
-            )
-
-        data = response.json()
-        try:
-            return data["choices"][0]["message"]["content"]
-        except (KeyError, IndexError, TypeError) as exc:
-            # Match the defensive style of `generate_roadmap` below so
-            # future callers get a clean `LlmUpstreamError` instead of
-            # a raw KeyError when the upstream returns a malformed body.
-            raise LlmUpstreamError(
-                status=502,
-                message=f"Malformed LLM response: {exc}",
-            ) from exc
+        self.base_url = os.getenv(
+            "LLM_BASE_URL", GROQ_BASE_URL
+        ).rstrip("/")
+        self.model = os.getenv("LLM_MODEL", GROQ_MODEL)
 
     async def generate_roadmap(
         self,
@@ -303,9 +206,6 @@ class LlmClient:
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
-            # OpenRouter-specific attribution headers (ignored by OmniRoute).
-            "HTTP-Referer": self.referer,
-            "X-Title": self.title,
         }
         payload: dict[str, Any] = {
             "model": self.model,
@@ -328,10 +228,6 @@ class LlmClient:
             ],
             "response_format": {"type": "json_object"},
             "temperature": 0.6,
-            # 1400 is enough for 6–8 tasks from gpt-4o-mini but gets
-            # truncated by verbose models (DeepSeek, Llama) on 10-task
-            # requests with bodies + steps. 3000 lets those complete
-            # cleanly without blowing latency up noticeably.
             "max_tokens": 3000,
         }
 
@@ -389,8 +285,6 @@ class LlmClient:
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
-            "HTTP-Referer": self.referer,
-            "X-Title": self.title,
         }
         payload: dict[str, Any] = {
             "model": self.model,
@@ -407,10 +301,6 @@ class LlmClient:
             ],
             "response_format": {"type": "json_object"},
             "temperature": 0.7,
-            # 700 was fine for gpt-4o-mini but tight for DeepSeek/Llama
-            # when asked for 6–7 axes each with a full description —
-            # the tail of the JSON array gets truncated. 1200 gives
-            # enough headroom without meaningfully hurting latency.
             "max_tokens": 1200,
         }
         url = f"{self.base_url}/chat/completions"
@@ -430,10 +320,6 @@ class LlmClient:
                 502, f"Malformed LLM response: {exc}: {data!r}"
             ) from exc
         if finish == "length":
-            # Mirror the safeguard from generate_roadmap — verbose
-            # models (DeepSeek/Llama) can truncate a partially-emitted
-            # axes array and produce unparseable JSON; surface the real
-            # reason instead of a cryptic "LLM did not return valid JSON".
             raise LlmUpstreamError(
                 502,
                 "LLM axes response was truncated "

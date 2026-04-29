@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/body_utils.dart';
 import '../../utils/time_utils.dart';
 import 'entry_editor_sheet.dart';
 
@@ -65,7 +66,7 @@ class EntryCard extends ConsumerWidget {
             if (entry.body.isNotEmpty) ...[
               const SizedBox(height: 6),
               Text(
-                entry.body,
+                bodyToPlainText(entry.body),
                 maxLines: dense ? 2 : 4,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodyMedium,
