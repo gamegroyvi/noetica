@@ -32,6 +32,240 @@ import '../../providers.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/subtask_utils.dart';
 
+/// `TextEditingController` that overrides `buildTextSpan` to style
+/// markdown syntax inline so the text looks like it does in preview
+/// while the user is still typing raw markdown — Obsidian "live
+/// preview" style. Markers (`**`, `#`, `[[`, …) are kept visible but
+/// dimmed; content between them is rendered bold / italic / larger /
+/// etc. The underlying text stays plain markdown so every existing
+/// parser (`subtask_utils`, `extractWikiLinks`, the preview widget) is
+/// unaffected.
+class LiveMarkdownController extends TextEditingController {
+  LiveMarkdownController({super.text, required this.palette});
+
+  NoeticaPalette palette;
+
+  /// Update palette on theme changes — callers should invoke this
+  /// from `didChangeDependencies` so the dimmed-marker color follows
+  /// light/dark mode.
+  void setPalette(NoeticaPalette p) {
+    if (p.fg == palette.fg && p.muted == palette.muted) return;
+    palette = p;
+    notifyListeners();
+  }
+
+  static final _inlineRegex = RegExp(
+    // Keep this list in sync with the list in `_applyInline` below.
+    r'(\*\*(?:[^*\n]|\*(?!\*))+\*\*)'    // 1: **bold**
+    r'|(\*(?:[^*\n])+\*)'                 // 2: *italic*
+    r'|(~~(?:[^~\n])+~~)'                 // 3: ~~strike~~
+    r'|(`[^`\n]+`)'                       // 4: `code`
+    r'|(\[\[[^\[\]\n]+\]\])'              // 5: [[wiki]]
+    r'|(\[[^\[\]\n]+\]\([^\s)]+\))'       // 6: [text](url)
+    r'|(?<=^|[\s(])(#[\p{L}\d_-]+)',       // 7: #tag
+    unicode: true,
+  );
+
+  @override
+  TextSpan buildTextSpan({
+    required BuildContext context,
+    TextStyle? style,
+    required bool withComposing,
+  }) {
+    final base = style ?? const TextStyle();
+    final dim = base.copyWith(
+      color: palette.muted,
+      fontWeight: FontWeight.w400,
+    );
+    final spans = <InlineSpan>[];
+    final lines = text.split('\n');
+    for (var i = 0; i < lines.length; i++) {
+      _appendLineSpans(lines[i], base, dim, spans);
+      if (i < lines.length - 1) {
+        spans.add(TextSpan(text: '\n', style: base));
+      }
+    }
+    return TextSpan(style: base, children: spans);
+  }
+
+  void _appendLineSpans(
+    String line,
+    TextStyle base,
+    TextStyle dim,
+    List<InlineSpan> out,
+  ) {
+    if (line.isEmpty) return;
+
+    // Heading: `#`, `##`, `###` + space
+    final heading = RegExp(r'^(#{1,3}) ').firstMatch(line);
+    if (heading != null) {
+      final level = heading.group(1)!.length;
+      final headingStyle = base.copyWith(
+        fontSize: switch (level) { 1 => 22.0, 2 => 19.0, _ => 16.0 },
+        fontWeight: FontWeight.w700,
+        height: 1.3,
+      );
+      out.add(TextSpan(text: heading.group(0), style: dim));
+      _applyInline(line.substring(heading.end), headingStyle, dim, out);
+      return;
+    }
+
+    // Blockquote: `> `
+    if (line.startsWith('> ')) {
+      final quoteStyle = base.copyWith(
+        fontStyle: FontStyle.italic,
+        color: palette.muted,
+      );
+      out.add(TextSpan(text: '> ', style: dim));
+      _applyInline(line.substring(2), quoteStyle, dim, out);
+      return;
+    }
+
+    // Task item: `- [ ] ` / `- [x] `
+    final task = RegExp(r'^(\s*)- \[( |x|X)\] ').firstMatch(line);
+    if (task != null) {
+      final indent = task.group(1) ?? '';
+      final done = task.group(2)!.toLowerCase() == 'x';
+      out.add(TextSpan(text: indent, style: base));
+      out.add(TextSpan(text: '- [', style: dim));
+      out.add(TextSpan(
+        text: done ? 'x' : ' ',
+        style: dim.copyWith(fontWeight: FontWeight.w700),
+      ));
+      out.add(TextSpan(text: '] ', style: dim));
+      final content = line.substring(task.end);
+      final contentStyle = done
+          ? base.copyWith(
+              decoration: TextDecoration.lineThrough,
+              color: palette.muted,
+            )
+          : base;
+      _applyInline(content, contentStyle, dim, out);
+      return;
+    }
+
+    // Unordered list item: `- ` / `* ` / `+ `
+    final bullet = RegExp(r'^(\s*)([-*+]) ').firstMatch(line);
+    if (bullet != null) {
+      out.add(TextSpan(text: bullet.group(1), style: base));
+      out.add(TextSpan(
+        text: '${bullet.group(2)} ',
+        style: dim.copyWith(fontWeight: FontWeight.w700),
+      ));
+      _applyInline(line.substring(bullet.end), base, dim, out);
+      return;
+    }
+
+    // Ordered list item: `1. `
+    final ordered = RegExp(r'^(\s*)(\d+\.) ').firstMatch(line);
+    if (ordered != null) {
+      out.add(TextSpan(text: ordered.group(1), style: base));
+      out.add(TextSpan(text: '${ordered.group(2)} ', style: dim));
+      _applyInline(line.substring(ordered.end), base, dim, out);
+      return;
+    }
+
+    _applyInline(line, base, dim, out);
+  }
+
+  void _applyInline(
+    String text,
+    TextStyle base,
+    TextStyle dim,
+    List<InlineSpan> out,
+  ) {
+    var cursor = 0;
+    for (final m in _inlineRegex.allMatches(text)) {
+      if (m.start > cursor) {
+        out.add(TextSpan(text: text.substring(cursor, m.start), style: base));
+      }
+      final match = m.group(0)!;
+      if (m.group(1) != null) {
+        // **bold**
+        final inner = match.substring(2, match.length - 2);
+        out.add(TextSpan(text: '**', style: dim));
+        out.add(TextSpan(
+          text: inner,
+          style: base.copyWith(fontWeight: FontWeight.w700),
+        ));
+        out.add(TextSpan(text: '**', style: dim));
+      } else if (m.group(2) != null) {
+        // *italic*
+        final inner = match.substring(1, match.length - 1);
+        out.add(TextSpan(text: '*', style: dim));
+        out.add(TextSpan(
+          text: inner,
+          style: base.copyWith(fontStyle: FontStyle.italic),
+        ));
+        out.add(TextSpan(text: '*', style: dim));
+      } else if (m.group(3) != null) {
+        // ~~strike~~
+        final inner = match.substring(2, match.length - 2);
+        out.add(TextSpan(text: '~~', style: dim));
+        out.add(TextSpan(
+          text: inner,
+          style: base.copyWith(decoration: TextDecoration.lineThrough),
+        ));
+        out.add(TextSpan(text: '~~', style: dim));
+      } else if (m.group(4) != null) {
+        // `code`
+        final inner = match.substring(1, match.length - 1);
+        out.add(TextSpan(text: '`', style: dim));
+        out.add(TextSpan(
+          text: inner,
+          style: base.copyWith(
+            fontFamily: 'monospace',
+            backgroundColor: palette.surface,
+          ),
+        ));
+        out.add(TextSpan(text: '`', style: dim));
+      } else if (m.group(5) != null) {
+        // [[wiki]]
+        final inner = match.substring(2, match.length - 2);
+        out.add(TextSpan(text: '[[', style: dim));
+        out.add(TextSpan(
+          text: inner,
+          style: base.copyWith(
+            color: palette.fg,
+            decoration: TextDecoration.underline,
+            decorationColor: palette.muted,
+          ),
+        ));
+        out.add(TextSpan(text: ']]', style: dim));
+      } else if (m.group(6) != null) {
+        // [text](url)
+        final closeBracket = match.indexOf(']');
+        final linkText = match.substring(1, closeBracket);
+        final urlPart = match.substring(closeBracket); // `](url)`
+        out.add(TextSpan(text: '[', style: dim));
+        out.add(TextSpan(
+          text: linkText,
+          style: base.copyWith(
+            color: palette.fg,
+            decoration: TextDecoration.underline,
+            decorationColor: palette.muted,
+          ),
+        ));
+        out.add(TextSpan(text: urlPart, style: dim));
+      } else if (m.group(7) != null) {
+        // #tag
+        out.add(TextSpan(
+          text: match,
+          style: base.copyWith(
+            color: palette.fg,
+            fontWeight: FontWeight.w600,
+            backgroundColor: palette.surface,
+          ),
+        ));
+      }
+      cursor = m.end;
+    }
+    if (cursor < text.length) {
+      out.add(TextSpan(text: text.substring(cursor), style: base));
+    }
+  }
+}
+
 /// Multi-line markdown editor used inside `_EntryEditor`.
 class MarkdownBodyEditor extends ConsumerStatefulWidget {
   const MarkdownBodyEditor({
@@ -83,7 +317,17 @@ class _MarkdownBodyEditorState extends ConsumerState<MarkdownBodyEditor> {
   }
 
   void _onFocusChanged() {
-    if (!_focusNode.hasFocus) _hideSuggestions();
+    if (!_focusNode.hasFocus) {
+      // Defer the hide by one frame: when the user taps the suggestion
+      // overlay the TextField briefly loses focus, but we immediately
+      // restore it from `_insertWikiLink`. If we hid the overlay
+      // synchronously here the InkWell would be disposed before its
+      // tap gesture resolves and the selection would be lost — which
+      // was the "popup shows suggestions but isn't tappable" bug.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!_focusNode.hasFocus) _hideSuggestions();
+      });
+    }
   }
 
   void _onTextChanged() {
@@ -143,20 +387,29 @@ class _MarkdownBodyEditorState extends ConsumerState<MarkdownBodyEditor> {
         link: _layerLink,
         showWhenUnlinked: false,
         offset: const Offset(8, 24),
-        child: Material(
-          color: Colors.transparent,
-          child: Consumer(
-            builder: (context, ref, _) {
-              final entries = ref.watch(entriesProvider).valueOrNull ??
-                  const <Entry>[];
-              return _WikiLinkSuggestions(
-                query: _wikiQuery,
-                allEntries: entries,
-                excludeEntryId: widget.entryId,
-                onSelect: (title) => _insertWikiLink(title),
-                onDismiss: _hideSuggestions,
-              );
-            },
+        // `canRequestFocus: false` + `descendantsAreFocusable: false`
+        // keep the TextField's focus when the user taps a suggestion.
+        // Without this, InkWell / Material would grab focus on tap,
+        // which races `_onFocusChanged` and could hide the overlay
+        // before the tap resolves.
+        child: Focus(
+          canRequestFocus: false,
+          descendantsAreFocusable: false,
+          child: Material(
+            color: Colors.transparent,
+            child: Consumer(
+              builder: (context, ref, _) {
+                final entries = ref.watch(entriesProvider).valueOrNull ??
+                    const <Entry>[];
+                return _WikiLinkSuggestions(
+                  query: _wikiQuery,
+                  allEntries: entries,
+                  excludeEntryId: widget.entryId,
+                  onSelect: (title) => _insertWikiLink(title),
+                  onDismiss: _hideSuggestions,
+                );
+              },
+            ),
           ),
         ),
       ),
@@ -165,20 +418,35 @@ class _MarkdownBodyEditorState extends ConsumerState<MarkdownBodyEditor> {
 
   void _insertWikiLink(String title) {
     final ctrl = widget.controller;
-    final caret = ctrl.selection.baseOffset;
+    // We may have lost the TextField's selection when the user tapped
+    // the overlay, so derive the replacement range from the trigger
+    // marker (still pointing at the `[` right after `[[`) and scan
+    // forward to the first newline / end — whatever the user had
+    // typed as the query is what we replace.
     final text = ctrl.text;
-    if (_wikiTriggerStart < 0 || caret < _wikiTriggerStart) {
+    if (_wikiTriggerStart < 0 || _wikiTriggerStart > text.length) {
       _hideSuggestions();
       return;
     }
+    int end = ctrl.selection.baseOffset;
+    if (end < _wikiTriggerStart) {
+      // Selection was invalidated by the overlay tap — fall back to
+      // the first newline or end of text as the range to replace.
+      final nl = text.indexOf('\n', _wikiTriggerStart);
+      end = nl == -1 ? text.length : nl;
+    }
     final replacement = '$title]] ';
-    final next = text.replaceRange(_wikiTriggerStart, caret, replacement);
+    final next = text.replaceRange(_wikiTriggerStart, end, replacement);
     final newCaret = _wikiTriggerStart + replacement.length;
     ctrl.value = TextEditingValue(
       text: next,
       selection: TextSelection.collapsed(offset: newCaret),
     );
     _hideSuggestions();
+    // Restore focus so the user can keep typing without another tap.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _focusNode.requestFocus();
+    });
   }
 
   // ----- toolbar actions -----
@@ -782,67 +1050,80 @@ class _WikiLinkSuggestions extends StatelessWidget {
               ),
             ),
           for (final s in top)
-            InkWell(
-              onTap: () => onSelect(s.title),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-                child: Row(
-                  children: [
-                    Icon(Icons.note_outlined,
-                        size: 14, color: palette.muted),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        s.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: palette.fg, fontSize: 13),
+            // `Listener` + `onPointerDown` fires immediately on touch,
+            // before any focus-change cascade — this is what makes the
+            // suggestion reliably tappable on mobile and desktop.
+            MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: Listener(
+                behavior: HitTestBehavior.opaque,
+                onPointerDown: (_) => onSelect(s.title),
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                  color: Colors.transparent,
+                  child: Row(
+                    children: [
+                      Icon(Icons.note_outlined,
+                          size: 14, color: palette.muted),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          s.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: palette.fg, fontSize: 13),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
           if (q.isNotEmpty && !exists)
-            InkWell(
-              onTap: () => onSelect(query.trim()),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-                child: Row(
-                  children: [
-                    Icon(Icons.add, size: 14, color: palette.muted),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text.rich(
-                        TextSpan(
-                          children: [
-                            TextSpan(
-                              text: 'Создать «',
-                              style: TextStyle(
-                                color: palette.muted,
-                                fontSize: 13,
+            MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: Listener(
+                behavior: HitTestBehavior.opaque,
+                onPointerDown: (_) => onSelect(query.trim()),
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+                  color: Colors.transparent,
+                  child: Row(
+                    children: [
+                      Icon(Icons.add, size: 14, color: palette.muted),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text.rich(
+                          TextSpan(
+                            children: [
+                              TextSpan(
+                                text: 'Создать «',
+                                style: TextStyle(
+                                  color: palette.muted,
+                                  fontSize: 13,
+                                ),
                               ),
-                            ),
-                            TextSpan(
-                              text: query.trim(),
-                              style: TextStyle(
-                                color: palette.fg,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
+                              TextSpan(
+                                text: query.trim(),
+                                style: TextStyle(
+                                  color: palette.fg,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
-                            ),
-                            TextSpan(
-                              text: '»',
-                              style: TextStyle(
-                                color: palette.muted,
-                                fontSize: 13,
+                              TextSpan(
+                                text: '»',
+                                style: TextStyle(
+                                  color: palette.muted,
+                                  fontSize: 13,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

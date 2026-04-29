@@ -66,7 +66,7 @@ class _EntryEditor extends ConsumerStatefulWidget {
 
 class _EntryEditorState extends ConsumerState<_EntryEditor> {
   late final TextEditingController _title;
-  late final TextEditingController _body;
+  late final LiveMarkdownController _body;
   late final TextEditingController _tagInput;
   late EntryKind _kind;
   late Set<String> _selectedAxes;
@@ -80,7 +80,21 @@ class _EntryEditorState extends ConsumerState<_EntryEditor> {
     super.initState();
     final e = widget.existing;
     _title = TextEditingController(text: e?.title ?? '');
-    _body = TextEditingController(text: e?.body ?? '');
+    // `LiveMarkdownController` renders bold / italic / headings / wiki
+    // links / tags inline while the user is still typing raw markdown,
+    // so notes feel WYSIWYG without us changing the storage format.
+    // We seed it with a placeholder palette; the real palette is
+    // injected from `didChangeDependencies` once the theme is known.
+    _body = LiveMarkdownController(
+      text: e?.body ?? '',
+      palette: const NoeticaPalette(
+        fg: Color(0xFF000000),
+        bg: Color(0xFFFFFFFF),
+        surface: Color(0xFFF2F2F2),
+        muted: Color(0xFF757575),
+        line: Color(0xFFCCCCCC),
+      ),
+    );
     _tagInput = TextEditingController();
     // Editing an existing entry keeps its kind. Creating a new entry
     // prefers the caller's hint (e.g. Calendar's "schedule task" CTA)
@@ -92,6 +106,14 @@ class _EntryEditorState extends ConsumerState<_EntryEditor> {
     // we're scheduling a task for a given calendar day) we honour it.
     _due = e?.dueAt ?? widget.initialDueAt;
     _xp = e?.xp ?? 10;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Keep the live-markdown controller's dim color in sync with the
+    // active theme so light/dark modes both render tastefully.
+    _body.setPalette(context.palette);
   }
 
   @override
