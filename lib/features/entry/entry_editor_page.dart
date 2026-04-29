@@ -115,8 +115,9 @@ class _EntryEditorContentState extends ConsumerState<EntryEditorContent> {
       final repo = await ref.read(repositoryProvider.future);
       final body = _documentToBody();
       final existing = widget.existing;
+      Entry saved;
       if (existing == null) {
-        await repo.createEntry(
+        saved = await repo.createEntry(
           title: _title.text.trim(),
           body: body,
           kind: _kind,
@@ -128,7 +129,7 @@ class _EntryEditorContentState extends ConsumerState<EntryEditorContent> {
         final demotedFromTask =
             _kind == EntryKind.note && existing.isCompleted;
         final baseXpChanged = _xp != existing.baseXp;
-        await repo.upsertEntry(existing.copyWith(
+        saved = existing.copyWith(
           title: _title.text.trim(),
           body: body,
           kind: _kind,
@@ -139,8 +140,12 @@ class _EntryEditorContentState extends ConsumerState<EntryEditorContent> {
           baseXp: baseXpChanged ? _xp : null,
           axisIds: _selectedAxes.toList(),
           updatedAt: DateTime.now(),
-        ));
+        );
+        await repo.upsertEntry(saved);
       }
+      try {
+        await repo.syncBodyLinks(saved);
+      } catch (_) {}
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (mounted) {
@@ -159,6 +164,20 @@ class _EntryEditorContentState extends ConsumerState<EntryEditorContent> {
     final repo = await ref.read(repositoryProvider.future);
     await repo.deleteEntry(existing.id);
     if (mounted) Navigator.of(context).pop();
+  }
+
+  void _toggle(Attribute attr) {
+    final style = _quill.getSelectionStyle();
+    if (style.containsKey(attr.key)) {
+      _quill.formatSelection(Attribute.clone(attr, null));
+    } else {
+      _quill.formatSelection(attr);
+    }
+  }
+
+  bool _isActive(Attribute attr) {
+    final style = _quill.getSelectionStyle();
+    return style.containsKey(attr.key);
   }
 
   @override
@@ -183,7 +202,7 @@ class _EntryEditorContentState extends ConsumerState<EntryEditorContent> {
           ),
         ),
 
-        // Header row: title label + actions.
+        // Header row.
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 4, 8, 0),
           child: Row(
@@ -250,54 +269,64 @@ class _EntryEditorContentState extends ConsumerState<EntryEditorContent> {
           ),
         ),
 
-        // Quill toolbar.
+        // Minimal toolbar — small icons, no background, project style.
         Container(
+          padding: const EdgeInsets.symmetric(vertical: 2),
           decoration: BoxDecoration(
             border: Border(
               top: BorderSide(color: palette.line, width: 0.5),
               bottom: BorderSide(color: palette.line, width: 0.5),
             ),
           ),
-          child: QuillSimpleToolbar(
-            controller: _quill,
-            configurations: const QuillSimpleToolbarConfigurations(
-              showBoldButton: true,
-              showItalicButton: true,
-              showUnderLineButton: true,
-              showStrikeThrough: false,
-              showListBullets: true,
-              showListNumbers: true,
-              showListCheck: true,
-              showHeaderStyle: true,
-              showCodeBlock: false,
-              showInlineCode: true,
-              showLink: true,
-              showQuote: true,
-              showDividers: false,
-              showFontFamily: false,
-              showFontSize: false,
-              showBackgroundColorButton: false,
-              showColorButton: false,
-              showIndent: false,
-              showAlignmentButtons: false,
-              showDirection: false,
-              showSearchButton: false,
-              showSubscript: false,
-              showSuperscript: false,
-              showClipboardCut: false,
-              showClipboardCopy: false,
-              showClipboardPaste: false,
-              showUndo: false,
-              showRedo: false,
-              showClearFormat: false,
-              multiRowsDisplay: false,
-              buttonOptions: QuillSimpleToolbarButtonOptions(
-                base: QuillToolbarBaseButtonOptions(
-                  iconSize: 18,
-                  iconButtonFactor: 1.2,
-                ),
+          child: Row(
+            children: [
+              const SizedBox(width: 12),
+              _ToolbarBtn(
+                icon: Icons.format_bold,
+                active: _isActive(Attribute.bold),
+                palette: palette,
+                onTap: () => _toggle(Attribute.bold),
               ),
-            ),
+              _ToolbarBtn(
+                icon: Icons.format_italic,
+                active: _isActive(Attribute.italic),
+                palette: palette,
+                onTap: () => _toggle(Attribute.italic),
+              ),
+              _ToolbarBtn(
+                icon: Icons.format_underline,
+                active: _isActive(Attribute.underline),
+                palette: palette,
+                onTap: () => _toggle(Attribute.underline),
+              ),
+              _ToolbarSep(palette: palette),
+              _ToolbarBtn(
+                icon: Icons.format_list_bulleted,
+                active: _isActive(Attribute.ul),
+                palette: palette,
+                onTap: () => _toggle(Attribute.ul),
+              ),
+              _ToolbarBtn(
+                icon: Icons.checklist,
+                active: _isActive(Attribute.unchecked),
+                palette: palette,
+                onTap: () => _toggle(Attribute.unchecked),
+              ),
+              _ToolbarSep(palette: palette),
+              _ToolbarBtn(
+                icon: Icons.format_quote,
+                active: _isActive(Attribute.blockQuote),
+                palette: palette,
+                onTap: () => _toggle(Attribute.blockQuote),
+              ),
+              _ToolbarBtn(
+                icon: Icons.code,
+                active: _isActive(Attribute.inlineCode),
+                palette: palette,
+                onTap: () => _toggle(Attribute.inlineCode),
+              ),
+              const Spacer(),
+            ],
           ),
         ),
 
@@ -317,6 +346,13 @@ class _EntryEditorContentState extends ConsumerState<EntryEditorContent> {
             ),
           ),
         ),
+
+        // Backlinks panel (only for existing entries).
+        if (widget.existing != null)
+          _BacklinksPanel(
+            palette: palette,
+            entryId: widget.existing!.id,
+          ),
 
         // Bottom panel — axes + task controls, collapsible.
         _BottomPanel(
@@ -351,6 +387,140 @@ class _EntryEditorContentState extends ConsumerState<EntryEditorContent> {
           }),
         ),
       ],
+    );
+  }
+}
+
+class _ToolbarBtn extends StatelessWidget {
+  const _ToolbarBtn({
+    required this.icon,
+    required this.active,
+    required this.palette,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final bool active;
+  final NoeticaPalette palette;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 32,
+        height: 32,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: active ? palette.fg : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Icon(
+          icon,
+          size: 18,
+          color: active ? palette.bg : palette.muted,
+        ),
+      ),
+    );
+  }
+}
+
+class _ToolbarSep extends StatelessWidget {
+  const _ToolbarSep({required this.palette});
+  final NoeticaPalette palette;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 1,
+      height: 18,
+      margin: const EdgeInsets.symmetric(horizontal: 6),
+      color: palette.line,
+    );
+  }
+}
+
+class _BacklinksPanel extends ConsumerWidget {
+  const _BacklinksPanel({
+    required this.palette,
+    required this.entryId,
+  });
+
+  final NoeticaPalette palette;
+  final String entryId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final repoAsync = ref.watch(repositoryProvider);
+    return repoAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (repo) => FutureBuilder<List<Entry>>(
+        future: repo.listBacklinks(entryId),
+        builder: (context, snap) {
+          final items = snap.data ?? const <Entry>[];
+          if (items.isEmpty) return const SizedBox.shrink();
+          return Container(
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+            decoration: BoxDecoration(
+              color: palette.surface,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: palette.line),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.subdirectory_arrow_left,
+                        size: 14, color: palette.muted),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Ссылаются сюда (${items.length})',
+                      style: TextStyle(
+                        color: palette.muted,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                for (final e in items)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        Icon(
+                          e.kind == EntryKind.task
+                              ? Icons.check_circle_outline
+                              : Icons.note_outlined,
+                          size: 14,
+                          color: palette.muted,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            e.title.isEmpty ? '(без названия)' : e.title,
+                            style: TextStyle(
+                              color: palette.fg,
+                              fontSize: 13,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }
