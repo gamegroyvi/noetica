@@ -759,7 +759,29 @@ class NoeticaRepository {
       limit: 1,
     );
     if (rows.isNotEmpty) {
-      return m.Entry.fromMap(rows.first);
+      // Same axis-join as listEntries / listBacklinks / searchEntries:
+      // without it, editing today's daily note would rewrite
+      // `entry_axes` with an empty list and silently drop any axes
+      // the user previously associated with it.
+      final row = rows.first;
+      final axisRows = await _db.raw.query(
+        'entry_axes',
+        where: 'entry_id = ?',
+        whereArgs: [row['id']! as String],
+      );
+      final axisIds = <String>[];
+      final axisWeights = <String, double>{};
+      for (final l in axisRows) {
+        final aid = l['axis_id']! as String;
+        axisIds.add(aid);
+        final w = l['weight'];
+        if (w is num && w != 1.0) axisWeights[aid] = w.toDouble();
+      }
+      return m.Entry.fromMap(
+        row,
+        axisIds: axisIds,
+        axisWeights: axisWeights,
+      );
     }
     return createEntry(
       title: title,
