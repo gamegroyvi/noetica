@@ -196,6 +196,78 @@ void main() {
   );
 
   test(
+    'Test 5 (regression): syncBodyLinks prunes stale links when [[refs]] are removed',
+    () async {
+      // Devin Review bug: if the user saved a note with `[[Alpha]]`
+      // and then edited the body to drop that link, `syncBodyLinks`
+      // never removed the existing entry_links row — the graph
+      // accumulated phantom edges. This test pins the new prune
+      // behaviour.
+      final db = await _openIsolatedDb();
+      final repo = NoeticaRepository(db);
+
+      final alpha = await repo.createEntry(
+        title: 'Alpha',
+        kind: EntryKind.note,
+      );
+      final beta = await repo.createEntry(
+        title: 'Beta',
+        kind: EntryKind.note,
+      );
+
+      // 1. Source references both. After sync, we expect 4 rows
+      //    (forward + reverse for each target).
+      final withBoth = await repo.createEntry(
+        title: 'Source',
+        body: '[[Alpha]] and [[Beta]]',
+        kind: EntryKind.note,
+      );
+      await repo.syncBodyLinks(withBoth);
+      final after1 = await db.raw.query('entry_links');
+      expect(after1.length, 4,
+          reason: 'Two refs => 2 forward + 2 reverse = 4 rows.');
+
+      // 2. User deletes `[[Alpha]]` and saves again. We expect Alpha
+      //    to be pruned (both directions) but Beta to stay.
+      final withBetaOnly = withBoth.copyWith(
+        body: 'only [[Beta]]',
+        updatedAt: DateTime.now(),
+      );
+      await repo.upsertEntry(withBetaOnly);
+      await repo.syncBodyLinks(withBetaOnly);
+      final after2 = await db.raw.query('entry_links');
+      expect(after2.length, 2,
+          reason: 'After pruning Alpha, only Beta<->Source should remain.');
+      final toAlpha = after2.where((r) =>
+          r['source_id'] == withBoth.id && r['target_id'] == alpha.id);
+      expect(toAlpha, isEmpty,
+          reason: 'Forward edge Source->Alpha must be pruned.');
+      final fromAlpha = after2.where((r) =>
+          r['source_id'] == alpha.id && r['target_id'] == withBoth.id);
+      expect(fromAlpha, isEmpty,
+          reason: 'Reverse edge Alpha->Source must be pruned.');
+      final toBeta = after2.where((r) =>
+          r['source_id'] == withBoth.id && r['target_id'] == beta.id);
+      expect(toBeta, hasLength(1),
+          reason: 'Beta link must still be present.');
+
+      // 3. User removes the last link. Expect all outgoing links gone.
+      final blank = withBetaOnly.copyWith(
+        body: 'no links here',
+        updatedAt: DateTime.now(),
+      );
+      await repo.upsertEntry(blank);
+      await repo.syncBodyLinks(blank);
+      final after3 = await db.raw.query('entry_links');
+      final fromSource = after3.where((r) => r['source_id'] == withBoth.id);
+      expect(fromSource, isEmpty,
+          reason:
+              'When every `[[…]]` is removed, all outgoing links must be '
+              'pruned — early-return on empty refs was the bug.');
+    },
+  );
+
+  test(
     'Test 4 (regression): listBacklinks returns entries with axisIds populated',
     () async {
       // Devin Review caught this: listBacklinks used to call

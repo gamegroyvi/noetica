@@ -272,7 +272,16 @@ class LlmClient:
             )
 
         data = response.json()
-        return data["choices"][0]["message"]["content"]
+        try:
+            return data["choices"][0]["message"]["content"]
+        except (KeyError, IndexError, TypeError) as exc:
+            # Match the defensive style of `generate_roadmap` below so
+            # future callers get a clean `LlmUpstreamError` instead of
+            # a raw KeyError when the upstream returns a malformed body.
+            raise LlmUpstreamError(
+                status=502,
+                message=f"Malformed LLM response: {exc}",
+            ) from exc
 
     async def generate_roadmap(
         self,

@@ -705,14 +705,22 @@ class NoeticaRepository {
       whereArgs: ids,
     );
     final byEntry = <String, List<String>>{};
+    final weightsByEntry = <String, Map<String, double>>{};
     for (final l in links) {
-      byEntry
-          .putIfAbsent(l['entry_id']! as String, () => [])
-          .add(l['axis_id']! as String);
+      final eid = l['entry_id']! as String;
+      final aid = l['axis_id']! as String;
+      byEntry.putIfAbsent(eid, () => []).add(aid);
+      final w = l['weight'];
+      if (w is num && w != 1.0) {
+        weightsByEntry.putIfAbsent(eid, () => {})[aid] = w.toDouble();
+      }
     }
     return rows
-        .map((r) =>
-            m.Entry.fromMap(r, axisIds: byEntry[r['id']] ?? const []))
+        .map((r) => m.Entry.fromMap(
+              r,
+              axisIds: byEntry[r['id']] ?? const [],
+              axisWeights: weightsByEntry[r['id']] ?? const {},
+            ))
         .toList();
   }
 
@@ -800,12 +808,16 @@ class NoeticaRepository {
   }
 
   /// Sync the entry_links table based on `[[...]]` references in the
-  /// body. Creates target entries if they don't exist yet (Obsidian-style).
+  /// body. Creates target entries if they don't exist yet (Obsidian-style)
+  /// AND prunes any stale links whose `[[…]]` reference was removed from
+  /// the body since the previous save.
   Future<void> syncBodyLinks(m.Entry entry) async {
     final refs = extractWikiLinks(entry.body);
-    if (refs.isEmpty) return;
+
+    // Resolve current references to target IDs (creating stub entries
+    // for unknown titles, same Obsidian behaviour as before).
+    final desiredTargetIds = <String>{};
     for (final ref in refs) {
-      // Find an existing entry whose title matches the reference.
       final rows = await _db.raw.query(
         'entries',
         where: 'title = ? AND deleted_at IS NULL',
@@ -816,13 +828,32 @@ class NoeticaRepository {
       if (rows.isNotEmpty) {
         targetId = rows.first['id']! as String;
       } else {
-        // Create a stub entry for the reference (Obsidian-style).
         final stub = await createEntry(title: ref, body: '');
         targetId = stub.id;
       }
-      if (targetId != entry.id) {
-        await linkEntries(entry.id, targetId);
-      }
+      if (targetId == entry.id) continue;
+      desiredTargetIds.add(targetId);
+    }
+
+    // Query existing outgoing links so we can prune any that no longer
+    // correspond to a `[[…]]` in the body — without this the graph
+    // accumulates phantom edges when the user deletes a wiki link
+    // (Devin Review bug BUG_pr-review-job-03fd7440081141f190487d3ad0f0edb0_0001).
+    final existing = await _db.raw.query(
+      'entry_links',
+      columns: ['target_id'],
+      where: 'source_id = ?',
+      whereArgs: [entry.id],
+    );
+    final existingTargetIds = existing
+        .map((r) => r['target_id']! as String)
+        .toSet();
+
+    for (final stale in existingTargetIds.difference(desiredTargetIds)) {
+      await unlinkEntries(entry.id, stale);
+    }
+    for (final fresh in desiredTargetIds.difference(existingTargetIds)) {
+      await linkEntries(entry.id, fresh);
     }
   }
 

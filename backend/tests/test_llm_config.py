@@ -18,6 +18,7 @@ from app.llm import (
     GEMINI_MODEL,
     LlmClient,
     LlmConfigError,
+    LlmUpstreamError,
 )
 
 
@@ -92,3 +93,47 @@ def test_missing_key_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     _clear_env(monkeypatch)
     with pytest.raises(LlmConfigError):
         LlmClient()
+
+
+@pytest.mark.asyncio
+async def test_chat_raises_on_malformed_response(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Regression for Devin Review: `chat()` used to access
+    `data["choices"][0]["message"]["content"]` with no guard, so an
+    upstream that returned e.g. `{}` would surface as a raw `KeyError`
+    instead of the clean `LlmUpstreamError` the rest of the client
+    uses. This test feeds an empty-body response and asserts the
+    defensive branch is taken."""
+    _clear_env(monkeypatch)
+    monkeypatch.setenv("GEMINI_API_KEY", "AIza-test-key")
+    c = LlmClient()
+
+    class _FakeResponse:
+        status_code = 200
+
+        def json(self) -> dict:
+            return {}  # Malformed: missing `choices`.
+
+        @property
+        def text(self) -> str:
+            return "{}"
+
+    class _FakeClient:
+        async def __aenter__(self) -> "_FakeClient":
+            return self
+
+        async def __aexit__(self, *_: object) -> None:
+            return None
+
+        async def post(self, *_args: object, **_kwargs: object) -> _FakeResponse:
+            return _FakeResponse()
+
+    import app.llm as llm_module
+
+    monkeypatch.setattr(llm_module.httpx, "AsyncClient", lambda **_: _FakeClient())
+
+    with pytest.raises(LlmUpstreamError) as excinfo:
+        await c.chat(messages=[{"role": "user", "content": "hi"}])
+    assert excinfo.value.status == 502
+    assert "Malformed" in str(excinfo.value)
