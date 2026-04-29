@@ -862,12 +862,11 @@ packages:
     source: hosted
     version: "0.0.2"
   quill_native_bridge_windows:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: quill_native_bridge_windows
-      sha256: "3f96ced19e3206ddf4f6f7dde3eb16bdd05e10294964009ea3a806d995aa7caa"
-      url: "https://pub.dev"
-    source: hosted
+      path: "packages/quill_native_bridge_windows"
+      relative: true
+    source: path
     version: "0.0.2"
   quiver:
     dependency: transitive
