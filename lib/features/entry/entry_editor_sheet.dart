@@ -928,18 +928,26 @@ class _SubtaskEditor extends StatelessWidget {
                             : null,
                       ),
                       Expanded(
-                        child: Text(
-                          subs[i].text.isEmpty ? '—' : subs[i].text,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: subs[i].checked
-                                ? palette.muted
-                                : palette.fg,
-                            decoration: subs[i].checked
-                                ? TextDecoration.lineThrough
-                                : null,
-                          ),
-                        ),
+                        child: subs[i].text.isEmpty
+                            ? Text(
+                                '—',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: palette.muted,
+                                ),
+                              )
+                            : MarkdownPreview(
+                                body: subs[i].text,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: subs[i].checked
+                                      ? palette.muted
+                                      : palette.fg,
+                                  decoration: subs[i].checked
+                                      ? TextDecoration.lineThrough
+                                      : null,
+                                ),
+                              ),
                       ),
                     ],
                   ),
