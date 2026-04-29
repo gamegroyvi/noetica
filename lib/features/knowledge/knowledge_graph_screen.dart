@@ -818,35 +818,6 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
     }
   }
 
-  Future<void> _editLeaf({
-    required String branch,
-    required int index,
-    required List<String> source,
-    required PersonalKnowledge Function(List<String> next) apply,
-  }) async {
-    if (index < 0 || index >= source.length) return;
-    final next = await _editSheet(
-      title: branch,
-      hint: 'Опиши коротко',
-      initial: source[index],
-      maxLines: 3,
-      allowDelete: true,
-    );
-    if (next == null || _knowledge == null) return;
-    final updated = [...source];
-    if (next.isEmpty) {
-      updated.removeAt(index);
-    } else {
-      updated[index] = next;
-    }
-    final upd = apply(updated);
-    await _service.save(upd);
-    if (mounted) {
-      setState(() => _knowledge = upd);
-      _rebuildGraph();
-    }
-  }
-
   Future<String?> _editSheet({
     required String title,
     required String hint,
