@@ -3,15 +3,22 @@
 /// Override at build time:
 ///   flutter build apk --dart-define=NOETICA_BACKEND_URL=https://api.example.com
 ///
-/// Two fly apps exist in this org: `noetica-backend-rxecvoov` (current —
-/// has auth + sync + roadmap + onboarding routes deployed) and
-/// `noetica-backend-nzlazosh` (older — only has roadmap + onboarding,
-/// missing /auth and /sync). Earlier the client had `rxecvoov` for
-/// auth/sync but `nzlazosh` for roadmap/axes, which made roadmap/axes
-/// hit a host that didn't recognise the JWT (auth was issued by
-/// `rxecvoov`) and silently broke after-onboarding flows. We unify on
-/// `rxecvoov` since it's the only one with the full surface.
+/// Deployment history:
+/// - `noetica-backend-nzlazosh` (original) — only had roadmap + onboarding,
+///   no /auth or /sync; early builds accidentally split traffic between it
+///   and `rxecvoov`, which made roadmap calls hit a host that couldn't
+///   recognise the JWT issued by `rxecvoov` and silently broke
+///   after-onboarding flows.
+/// - `noetica-backend-rxecvoov` — first unified host (auth + sync + roadmap
+///   + onboarding). Has DEEPSEEK_API_KEY as its only LLM secret, so the
+///   Gemini resolver never kicked in there.
+/// - `noetica-backend-agscjxvt` (current) — Devin-managed redeploy with
+///   the Gemini baked-in-key path triggered. `/healthz/llm` returns
+///   `provider=gemini, model=gemini-2.5-flash`. Switch the default here
+///   and the Flutter client picks it up everywhere via the existing
+///   `_resolveBaseUrl()` helpers in `axes_api.dart` / `roadmap_api.dart`
+///   / `sync_service.dart` / `auth_service.dart`.
 const String kDefaultBackendUrl = String.fromEnvironment(
   'NOETICA_BACKEND_URL',
-  defaultValue: 'https://noetica-backend-rxecvoov.fly.dev',
+  defaultValue: 'https://noetica-backend-agscjxvt.fly.dev',
 );

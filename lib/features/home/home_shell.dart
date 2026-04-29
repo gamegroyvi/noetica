@@ -3,7 +3,6 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lottie/lottie.dart';
 
 import '../../services/pomodoro_service.dart';
 import '../../theme/app_theme.dart';
@@ -21,8 +20,13 @@ import '../tasks/tasks_screen.dart';
 /// Layout breakpoints. Below `_kRailMin`: bottom navigation bar. Between
 /// `_kRailMin` and `_kRailExtended`: compact NavigationRail (icons only).
 /// At/above `_kRailExtended`: extended NavigationRail with text labels.
-const double _kRailMin = 900;
-const double _kRailExtended = 1200;
+///
+/// `_kRailMin` was bumped from 900 → 720 so tablets and the smaller
+/// foldable form factors get a real sidebar instead of the cramped
+/// floating tab bar (which collides with our wider editor sheet at
+/// those widths).
+const double _kRailMin = 720;
+const double _kRailExtended = 1100;
 
 /// Geometry of the floating capsule tab bar — exported so screens can
 /// add the reserve to their own scroll paddings (so the last items
@@ -181,27 +185,16 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       icon: Icons.dashboard_outlined,
       selectedIcon: Icons.dashboard,
       label: 'Сейчас',
-      lottie: 'assets/icons/tab_home.json',
-      lottieScale: 1.4,
     ),
     _Destination(
       icon: Icons.auto_graph_outlined,
       selectedIcon: Icons.auto_graph,
       label: 'Я',
-      lottie: 'assets/icons/tab_profile.json',
-      // Two-tone (black faces + white edges) — don't tint, just dim.
-      // Source canvas has ≈32% content, so blow up to fill cell.
-      tintWithPalette: false,
-      lottieScale: 2.2,
     ),
     _Destination(
       icon: Icons.checklist_outlined,
       selectedIcon: Icons.checklist,
       label: 'Задачи',
-      lottie: 'assets/icons/tab_tasks.json',
-      // Two-tone like profile. Source content occupies ≈27% of canvas.
-      tintWithPalette: false,
-      lottieScale: 2.6,
     ),
   ];
 
@@ -316,28 +309,11 @@ class _Destination {
     required this.icon,
     required this.selectedIcon,
     required this.label,
-    required this.lottie,
-    this.tintWithPalette = true,
-    this.lottieScale = 1.0,
   });
 
   final IconData icon;
   final IconData selectedIcon;
   final String label;
-  /// Path to a Lottie JSON file that plays once when the tab is
-  /// activated and rests on the final frame otherwise. Desktop
-  /// sidebar still uses [icon] / [selectedIcon].
-  final String lottie;
-  /// When true, the entire Lottie composition is repainted with the
-  /// palette foreground/muted colour via BlendMode.srcIn. When false,
-  /// the source colours are preserved (used for two-tone icons whose
-  /// internal colour relationships matter).
-  final bool tintWithPalette;
-  /// Visual blow-up factor applied via Transform.scale. Compensates
-  /// for source assets whose content occupies only a small fraction
-  /// of their declared 256×256 canvas (causing them to look tiny
-  /// when laid out via BoxFit.contain into our 28-px tab cell).
-  final double lottieScale;
 }
 
 /// Custom sidebar — `NavigationRail` doesn't support a "secondary" group of
@@ -650,13 +626,11 @@ class _FloatingTabBar extends StatelessWidget {
   }
 }
 
-/// Per-tab item: an animated Lottie icon + label. Kept as a stateful
-/// widget so we own a single `AnimationController` per icon — when the
-/// tab is selected we loop the JSON animation; when it's deselected we
-/// reset to frame 0 (icon stays still). No InkWell / ripple / hover —
-/// the user explicitly asked for a flat hit area, only the active tab
-/// is highlighted (via colour + bold label).
-class _FloatingTabItem extends StatefulWidget {
+/// Per-tab item: icon + label. Uses the same Material icons as the
+/// desktop sidebar. No InkWell / ripple / hover — the user explicitly
+/// asked for a flat hit area, only the active tab is highlighted
+/// (via colour + bold label).
+class _FloatingTabItem extends StatelessWidget {
   const _FloatingTabItem({
     required this.palette,
     required this.destination,
@@ -670,101 +644,30 @@ class _FloatingTabItem extends StatefulWidget {
   final VoidCallback onTap;
 
   @override
-  State<_FloatingTabItem> createState() => _FloatingTabItemState();
-}
-
-class _FloatingTabItemState extends State<_FloatingTabItem>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl =
-      AnimationController(vsync: this, duration: const Duration(seconds: 2));
-
-  @override
-  void initState() {
-    super.initState();
-    // Rest pose is the FINAL frame so icons that draw themselves
-    // from zero (profile) stay visible. When selected, animation
-    // plays once forward — not on a loop.
-    _ctrl.value = 1;
-    if (widget.selected) {
-      _replay();
-    }
-  }
-
-  void _replay() {
-    _ctrl
-      ..stop()
-      ..value = 0;
-    _ctrl.forward();
-  }
-
-  @override
-  void didUpdateWidget(covariant _FloatingTabItem oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.selected && !oldWidget.selected) {
-      _replay();
-    } else if (!widget.selected && oldWidget.selected) {
-      _ctrl
-        ..stop()
-        ..value = 1;
-    }
-  }
-
-  void _handleTap() {
-    widget.onTap();
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final color = widget.selected ? widget.palette.fg : widget.palette.muted;
-    final lottie = Transform.scale(
-      scale: widget.destination.lottieScale,
-      child: Lottie.asset(
-        widget.destination.lottie,
-        controller: _ctrl,
-        fit: BoxFit.contain,
-        onLoaded: (composition) {
-          _ctrl.duration = composition.duration;
-          if (widget.selected && !_ctrl.isAnimating && _ctrl.value == 1) {
-            _replay();
-          }
-        },
-      ),
-    );
-    final Widget tinted = widget.destination.tintWithPalette
-        ? ColorFiltered(
-            colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
-            child: lottie,
-          )
-        : Opacity(opacity: widget.selected ? 1.0 : 0.45, child: lottie);
-    // Source Lottie canvases (256×256) sometimes have huge padding
-    // around their glyphs — we blow them up via Transform.scale and
-    // clip the overflow so the rendered icon stays inside the tab
-    // cell instead of bleeding into the capsule.
-    final Widget icon = ClipRect(child: tinted);
+    final color = selected ? palette.fg : palette.muted;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: _handleTap,
+      onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(width: 28, height: 28, child: icon),
+            Icon(
+              selected ? destination.selectedIcon : destination.icon,
+              color: color,
+              size: 24,
+            ),
             const SizedBox(height: 1),
             Text(
-              widget.destination.label,
+              destination.label,
               style: TextStyle(
                 color: color,
                 fontSize: 10,
                 height: 1.05,
-                fontWeight: widget.selected ? FontWeight.w700 : FontWeight.w500,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,

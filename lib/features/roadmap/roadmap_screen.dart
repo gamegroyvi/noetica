@@ -27,6 +27,42 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
   List<bool>? _picked;
   String? _error;
   bool _importing = false;
+  // True after the user explicitly cleared the prefilled aspiration.
+  // Suppresses re-prefill until they navigate away.
+  bool _prefilled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Prefill the goal field with the user's onboarding aspiration on
+    // first build. Without this the user lands on an empty prompt and
+    // has to retype something they already told us at signup. The
+    // "Из онбординга" / "Очистить" chip lets them wipe it if needed.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final profile = ref.read(profileProvider).valueOrNull;
+      final aspiration = profile?.aspiration.trim() ?? '';
+      if (aspiration.isNotEmpty && _goalCtrl.text.isEmpty && !_prefilled) {
+        setState(() {
+          _goalCtrl.text = aspiration;
+          _prefilled = true;
+          // Smart defaults: scale task count + horizon by weekly hours.
+          // 0–5 ч/нед → 30 дней, 4 задачи; 6–14 → 30/6 (current default);
+          // 15+ → 90/10 (must match `_SegmentedRow` options 7/30/90
+          // so the selected chip is visually highlighted — using 60
+          // here left no button selected).
+          final hours = profile?.weeklyHours ?? 0;
+          if (hours <= 5) {
+            _horizonDays = 30;
+            _taskCount = 4;
+          } else if (hours >= 15) {
+            _horizonDays = 90;
+            _taskCount = 10;
+          }
+        });
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -180,6 +216,33 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
           ),
           onChanged: (_) => setState(() {}),
         ),
+        if (_prefilled && _goalCtrl.text.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              _PrefillBadge(palette: palette),
+              TextButton.icon(
+                style: TextButton.styleFrom(
+                  foregroundColor: palette.muted,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 4),
+                  minimumSize: const Size(0, 28),
+                ),
+                onPressed: () {
+                  setState(() {
+                    _goalCtrl.clear();
+                    _prefilled = false;
+                  });
+                },
+                icon: const Icon(Icons.close, size: 14),
+                label: const Text('Очистить'),
+              ),
+            ],
+          ),
+        ],
         const SizedBox(height: 20),
         _Section(label: 'Горизонт', palette: palette),
         const SizedBox(height: 8),
@@ -602,6 +665,35 @@ class _Pill extends StatelessWidget {
           fontSize: 12,
           fontWeight: FontWeight.w500,
         ),
+      ),
+    );
+  }
+}
+
+class _PrefillBadge extends StatelessWidget {
+  const _PrefillBadge({required this.palette});
+
+  final NoeticaPalette palette;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: palette.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: palette.line),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.auto_awesome, size: 12, color: palette.muted),
+          const SizedBox(width: 6),
+          Text(
+            'Из онбординга',
+            style: TextStyle(color: palette.muted, fontSize: 12),
+          ),
+        ],
       ),
     );
   }

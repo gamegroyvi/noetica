@@ -6,6 +6,7 @@ import '../../data/models.dart';
 import '../../data/personal_knowledge_service.dart';
 import '../../providers.dart';
 import '../../theme/app_theme.dart';
+import '../roadmap/roadmap_screen.dart';
 
 class _AxisDraft {
   _AxisDraft({required this.name, required this.symbol, this.description = ''});
@@ -105,6 +106,53 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     }
   }
 
+  Future<void> _maybeOfferRoadmapKickoff() async {
+    final profile = ref.read(profileProvider).valueOrNull;
+    final aspiration = profile?.aspiration.trim() ?? '';
+    if (aspiration.isEmpty) return;
+    if (!mounted) return;
+    final palette = context.palette;
+    final accept = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: palette.bg,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(color: palette.line),
+        ),
+        title: Text(
+          'Сразу набросать план?',
+          style: TextStyle(color: palette.fg),
+        ),
+        content: Text(
+          'AI разложит «$aspiration» на 4–10 конкретных задач, '
+          'привязанных к осям, которые ты только что собрала. '
+          'Промпт уже заполнен — можно отредактировать, прежде чем '
+          'запускать генерацию.',
+          style: TextStyle(color: palette.muted, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text('Позже', style: TextStyle(color: palette.muted)),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: palette.fg,
+              foregroundColor: palette.bg,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Сгенерировать'),
+          ),
+        ],
+      ),
+    );
+    if (accept != true || !mounted) return;
+    await Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => const RoadmapScreen(),
+    ));
+  }
+
   void _addAxis() {
     if (_drafts.length >= 8) return;
     setState(() => _drafts.add(_AxisDraft(name: '', symbol: '·')));
@@ -171,6 +219,13 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       );
       if (wasPushed) {
         Navigator.of(context).pop();
+      } else {
+        // First-run path: AuthGate is about to swap to the home shell.
+        // Before it does, give the user the opportunity to immediately
+        // turn their onboarding aspiration into a real task plan, so
+        // they don't land on an empty dashboard with no idea what to
+        // do next. Skip silently if they have no aspiration text.
+        await _maybeOfferRoadmapKickoff();
       }
     } catch (e) {
       if (mounted) {

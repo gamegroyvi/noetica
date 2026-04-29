@@ -71,7 +71,9 @@ _SCHEMA_STATEMENTS = [
         due_at INTEGER,
         completed_at INTEGER,
         xp INTEGER NOT NULL DEFAULT 10,
-        deleted_at INTEGER
+        deleted_at INTEGER,
+        tags TEXT NOT NULL DEFAULT '',
+        bookmarked INTEGER NOT NULL DEFAULT 0
     )
     """,
     "CREATE INDEX IF NOT EXISTS idx_entries_user ON entries(user_id, updated_at)",
@@ -84,13 +86,49 @@ _SCHEMA_STATEMENTS = [
     """,
     "CREATE INDEX IF NOT EXISTS idx_entry_axes_entry ON entry_axes(entry_id)",
     "CREATE INDEX IF NOT EXISTS idx_entry_axes_axis ON entry_axes(axis_id)",
+    """
+    CREATE TABLE IF NOT EXISTS entry_links (
+        source_id TEXT NOT NULL REFERENCES entries(id) ON DELETE CASCADE,
+        target_id TEXT NOT NULL REFERENCES entries(id) ON DELETE CASCADE,
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at INTEGER NOT NULL,
+        PRIMARY KEY (source_id, target_id)
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_entry_links_source ON entry_links(source_id)",
+    "CREATE INDEX IF NOT EXISTS idx_entry_links_target ON entry_links(target_id)",
 ]
+
+
+# Idempotent ALTER TABLE migrations for already-existing databases.
+# `CREATE TABLE IF NOT EXISTS` above is a no-op if the table already exists,
+# so newly-added columns must be ALTERed in. SQLite has no
+# `ADD COLUMN IF NOT EXISTS`, so we read `PRAGMA table_info` first.
+async def _ensure_column(
+    db: aiosqlite.Connection,
+    table: str,
+    column: str,
+    coldef: str,
+) -> None:
+    cursor = await db.execute(f"PRAGMA table_info({table})")
+    rows = await cursor.fetchall()
+    existing = {row[1] for row in rows}  # row[1] is the column name.
+    if column in existing:
+        return
+    await db.execute(f"ALTER TABLE {table} ADD COLUMN {coldef}")
 
 
 async def _init_schema(db: aiosqlite.Connection) -> None:
     await db.execute("PRAGMA foreign_keys = ON")
     for stmt in _SCHEMA_STATEMENTS:
         await db.execute(stmt)
+    # Migrations for databases created before these columns existed.
+    await _ensure_column(
+        db, "entries", "tags", "tags TEXT NOT NULL DEFAULT ''"
+    )
+    await _ensure_column(
+        db, "entries", "bookmarked", "bookmarked INTEGER NOT NULL DEFAULT 0"
+    )
     await db.commit()
 
 
