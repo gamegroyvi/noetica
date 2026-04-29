@@ -522,43 +522,16 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
       }
     }
 
-    // Connect every entry component to the centre.
-    //
-    // The previous behaviour only linked "orphan" entries (ones with zero
-    // edges) to я. That meant two notes linked by a single [[wiki]] ref
-    // formed an isolated island floating next to a disconnected centre,
-    // which looked broken — the user reads it as "the graph lost the
-    // connection to я". Instead, run union-find on the current edges and
-    // anchor one representative from each entry-only component to the
-    // centre. This guarantees a single connected graph without fanning
-    // every single note out to я (which would drown the wiki-link
-    // structure in a hub-and-spoke mess).
-    final parent = List<int>.generate(nodes.length, (i) => i);
-    int find(int x) {
-      while (parent[x] != x) {
-        parent[x] = parent[parent[x]];
-        x = parent[x];
-      }
-      return x;
-    }
-
-    void union(int a, int b) {
-      final ra = find(a);
-      final rb = find(b);
-      if (ra != rb) parent[ra] = rb;
-    }
-
-    for (final e in graphEdges) {
-      union(e.from, e.to);
-    }
-    final representatives = <int>{};
+    // Every entry is always anchored to the "я" centre — whether it's
+    // standalone or sits inside a wiki-linked cluster. The previous
+    // "orphan-only" rule produced the surprising effect that adding a
+    // single `[[wiki]]` ref between two notes caused both to detach
+    // from the centre (since they were no longer orphans). The user
+    // expected the opposite: linking two notes shouldn't break either
+    // note's connection to the core. Hub-and-spoke is fine — the force
+    // simulation still renders the wiki-link edges clearly on top.
     for (final idx in idToIndex.values) {
-      final root = find(idx);
-      if (root == find(0)) continue; // already connected to centre
-      if (representatives.add(root)) {
-        graphEdges.add(_GraphEdge(0, idx));
-        union(0, idx);
-      }
+      graphEdges.add(_GraphEdge(0, idx));
     }
 
     // `_rebuildGraph` is async and awaits repositoryProvider +
