@@ -498,6 +498,12 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
       }
     }
 
+    // `_rebuildGraph` is async and awaits repositoryProvider +
+    // repo.allLinks(); if the user leaves the screen mid-flight the
+    // callback would hit setState-after-dispose. Sibling `_performSearch`
+    // already follows this pattern (Devin Review
+    // BUG_pr-review-job-30b43c75…_0001).
+    if (!mounted) return;
     setState(() {
       _nodes = nodes;
       _edges = graphEdges;
