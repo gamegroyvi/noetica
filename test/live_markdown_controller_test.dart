@@ -82,7 +82,9 @@ void main() {
       expect(helloSpan.$2?.fontWeight, FontWeight.w700);
       final markerSpans = parts.where((p) => p.$1 == '**').toList();
       expect(markerSpans, hasLength(2));
-      expect(markerSpans.first.$2?.color, _palette.muted);
+      // WYSIWYG: markers are invisible (transparent, near-zero size).
+      expect(markerSpans.first.$2?.color, Colors.transparent);
+      expect(markerSpans.first.$2?.fontSize, 0.01);
     });
 
     testWidgets('heading sized up, hash dim', (t) async {
@@ -98,7 +100,9 @@ void main() {
       );
       final parts = _flatten(span);
       final hash = parts.firstWhere((p) => p.$1 == '## ');
-      expect(hash.$2?.color, _palette.muted);
+      // WYSIWYG: heading prefix is invisible.
+      expect(hash.$2?.color, Colors.transparent);
+      expect(hash.$2?.fontSize, 0.01);
       final body = parts.firstWhere((p) => p.$1 == 'Section');
       expect(body.$2?.fontSize, 19.0);
       expect(body.$2?.fontWeight, FontWeight.w700);

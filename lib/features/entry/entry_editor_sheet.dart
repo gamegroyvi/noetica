@@ -9,6 +9,33 @@ import '../../utils/subtask_utils.dart';
 import '../../utils/time_utils.dart';
 import 'markdown_body_editor.dart';
 
+/// Sentinel popped from the bottom sheet when the user taps "expand".
+class _ExpandIntent {
+  _ExpandIntent({
+    required this.title,
+    required this.body,
+    required this.kind,
+    required this.due,
+    required this.xp,
+    required this.selectedAxes,
+    required this.tags,
+    required this.existing,
+    required this.initialDueAt,
+    required this.initialKind,
+  });
+
+  final String title;
+  final String body;
+  final EntryKind kind;
+  final DateTime? due;
+  final int xp;
+  final Set<String> selectedAxes;
+  final List<String> tags;
+  final Entry? existing;
+  final DateTime? initialDueAt;
+  final EntryKind? initialKind;
+}
+
 Future<void> showEntryEditor(
   BuildContext context,
   WidgetRef ref, {
@@ -16,7 +43,7 @@ Future<void> showEntryEditor(
   DateTime? initialDueAt,
   EntryKind? initialKind,
 }) async {
-  final result = await showModalBottomSheet<Entry?>(
+  final result = await showModalBottomSheet<Object?>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -25,40 +52,109 @@ Future<void> showEntryEditor(
     ),
     builder: (ctx) {
       final size = MediaQuery.of(ctx).size;
-      final maxH = size.width >= 1100 ? size.height * 0.92 : size.height * 0.85;
+      final maxH =
+          size.width >= 1100 ? size.height * 0.92 : size.height * 0.85;
       return Padding(
         padding: EdgeInsets.only(
           bottom: MediaQuery.of(ctx).viewInsets.bottom,
         ),
         child: ConstrainedBox(
           constraints: BoxConstraints(maxHeight: maxH),
-          child: _EntryEditor(
+          child: _EntryEditorForm(
             existing: existing,
             initialDueAt: initialDueAt,
             initialKind: initialKind,
+            isFullScreen: false,
           ),
         ),
       );
     },
   );
-  if (result != null && context.mounted) {
+
+  if (!context.mounted) return;
+
+  if (result is Entry) {
+    // Wiki-link navigation — open linked entry
     await Future<void>.delayed(const Duration(milliseconds: 120));
     if (!context.mounted) return;
     await showEntryEditor(context, ref, existing: result);
+  } else if (result is _ExpandIntent) {
+    // Expand to full screen
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => _FullScreenEditorPage(intent: result),
+      ),
+    );
   }
 }
 
-class _EntryEditor extends ConsumerStatefulWidget {
-  const _EntryEditor({this.existing, this.initialDueAt, this.initialKind});
+/// Full-screen editor page (pushed when user taps expand).
+class _FullScreenEditorPage extends StatelessWidget {
+  const _FullScreenEditorPage({required this.intent});
+  final _ExpandIntent intent;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    return Scaffold(
+      backgroundColor: palette.bg,
+      body: SafeArea(
+        child: _EntryEditorForm(
+          existing: intent.existing,
+          initialDueAt: intent.initialDueAt,
+          initialKind: intent.initialKind,
+          isFullScreen: true,
+          restoredTitle: intent.title,
+          restoredBody: intent.body,
+          restoredKind: intent.kind,
+          restoredDue: intent.due,
+          restoredXp: intent.xp,
+          restoredAxes: intent.selectedAxes,
+          restoredTags: intent.tags,
+        ),
+      ),
+    );
+  }
+}
+
+// -------------------------------------------------------------------
+// Shared editor form used by both bottom-sheet and full-screen modes.
+// -------------------------------------------------------------------
+
+class _EntryEditorForm extends ConsumerStatefulWidget {
+  const _EntryEditorForm({
+    this.existing,
+    this.initialDueAt,
+    this.initialKind,
+    required this.isFullScreen,
+    this.restoredTitle,
+    this.restoredBody,
+    this.restoredKind,
+    this.restoredDue,
+    this.restoredXp,
+    this.restoredAxes,
+    this.restoredTags,
+  });
+
   final Entry? existing;
   final DateTime? initialDueAt;
   final EntryKind? initialKind;
+  final bool isFullScreen;
+
+  // State restored from bottom-sheet when expanding to full screen.
+  final String? restoredTitle;
+  final String? restoredBody;
+  final EntryKind? restoredKind;
+  final DateTime? restoredDue;
+  final int? restoredXp;
+  final Set<String>? restoredAxes;
+  final List<String>? restoredTags;
 
   @override
-  ConsumerState<_EntryEditor> createState() => _EntryEditorState();
+  ConsumerState<_EntryEditorForm> createState() => _EntryEditorFormState();
 }
 
-class _EntryEditorState extends ConsumerState<_EntryEditor> {
+class _EntryEditorFormState extends ConsumerState<_EntryEditorForm> {
   late final TextEditingController _title;
   late final LiveMarkdownController _body;
   late final TextEditingController _tagInput;
@@ -73,9 +169,13 @@ class _EntryEditorState extends ConsumerState<_EntryEditor> {
   void initState() {
     super.initState();
     final e = widget.existing;
-    _title = TextEditingController(text: e?.title ?? '');
+
+    // Use restored state if coming from expand, otherwise from entry.
+    _title = TextEditingController(
+      text: widget.restoredTitle ?? e?.title ?? '',
+    );
     _body = LiveMarkdownController(
-      text: _migrateDeltaBody(e?.body ?? ''),
+      text: widget.restoredBody ?? _migrateDeltaBody(e?.body ?? ''),
       palette: const NoeticaPalette(
         fg: Color(0xFF000000),
         bg: Color(0xFFFFFFFF),
@@ -85,14 +185,20 @@ class _EntryEditorState extends ConsumerState<_EntryEditor> {
       ),
     );
     _tagInput = TextEditingController();
-    _kind = e?.kind ?? widget.initialKind ?? EntryKind.note;
-    _selectedAxes = Set<String>.from(e?.axisIds ?? const <String>[]);
-    _tags = List<String>.from(e?.tags ?? const <String>[]);
-    _due = e?.dueAt ?? widget.initialDueAt;
-    _xp = e?.xp ?? 10;
+    _kind = widget.restoredKind ??
+        e?.kind ??
+        widget.initialKind ??
+        EntryKind.note;
+    _selectedAxes = widget.restoredAxes != null
+        ? Set<String>.from(widget.restoredAxes!)
+        : Set<String>.from(e?.axisIds ?? const <String>[]);
+    _tags = widget.restoredTags != null
+        ? List<String>.from(widget.restoredTags!)
+        : List<String>.from(e?.tags ?? const <String>[]);
+    _due = widget.restoredDue ?? e?.dueAt ?? widget.initialDueAt;
+    _xp = widget.restoredXp ?? e?.xp ?? 10;
   }
 
-  /// Convert a Quill Delta JSON body to plain text if needed.
   String _migrateDeltaBody(String body) {
     if (body.isEmpty) return '';
     if (body.startsWith('[')) return bodyToPlainText(body);
@@ -218,6 +324,23 @@ class _EntryEditorState extends ConsumerState<_EntryEditor> {
     if (mounted) Navigator.of(context).pop();
   }
 
+  void _expand() {
+    Navigator.of(context).pop(
+      _ExpandIntent(
+        title: _title.text,
+        body: _body.text,
+        kind: _kind,
+        due: _due,
+        xp: _xp,
+        selectedAxes: Set<String>.from(_selectedAxes),
+        tags: List<String>.from(_tags),
+        existing: widget.existing,
+        initialDueAt: widget.initialDueAt,
+        initialKind: widget.initialKind,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
@@ -228,16 +351,17 @@ class _EntryEditorState extends ConsumerState<_EntryEditor> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Center(
-            child: Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: palette.line,
-                borderRadius: BorderRadius.circular(2),
+          if (!widget.isFullScreen)
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: palette.line,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
-          ),
           const SizedBox(height: 16),
           Row(
             children: [
@@ -246,6 +370,18 @@ class _EntryEditorState extends ConsumerState<_EntryEditor> {
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const Spacer(),
+              if (!widget.isFullScreen)
+                IconButton(
+                  icon: Icon(Icons.open_in_full, color: palette.fg, size: 20),
+                  tooltip: 'Развернуть',
+                  onPressed: _expand,
+                ),
+              if (widget.isFullScreen)
+                IconButton(
+                  icon: Icon(Icons.close, color: palette.fg, size: 20),
+                  tooltip: 'Закрыть',
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
               if (widget.existing != null)
                 IconButton(
                   icon: Icon(Icons.delete_outline, color: palette.fg),
@@ -266,6 +402,8 @@ class _EntryEditorState extends ConsumerState<_EntryEditor> {
           MarkdownBodyEditor(
             controller: _body,
             entryId: widget.existing?.id,
+            minLines: widget.isFullScreen ? 12 : 6,
+            maxLines: widget.isFullScreen ? 40 : 14,
           ),
           _SubtaskEditor(
             body: _body.text,
@@ -290,8 +428,7 @@ class _EntryEditorState extends ConsumerState<_EntryEditor> {
             _BacklinksPanel(
               palette: palette,
               entryId: widget.existing!.id,
-              onTapEntry: (entry) =>
-                  Navigator.of(context).pop(entry),
+              onTapEntry: (entry) => Navigator.of(context).pop(entry),
             ),
           ],
           const SizedBox(height: 16),
@@ -305,7 +442,8 @@ class _EntryEditorState extends ConsumerState<_EntryEditor> {
           const SizedBox(height: 8),
           axesAsync.when(
             loading: () => const SizedBox(
-                height: 32, child: Center(child: CircularProgressIndicator())),
+                height: 32,
+                child: Center(child: CircularProgressIndicator())),
             error: (e, _) => Text('$e'),
             data: (axes) {
               if (axes.isEmpty) {
@@ -376,7 +514,7 @@ class _EntryEditorState extends ConsumerState<_EntryEditor> {
                               Text(
                                 isTask
                                     ? 'Дедлайн и XP при выполнении'
-                                    : 'По умолчанию рассматривается как заметка',
+                                    : 'По умолчанию — заметка',
                                 style: Theme.of(context)
                                     .textTheme
                                     .bodySmall
@@ -489,6 +627,10 @@ class _EntryEditorState extends ConsumerState<_EntryEditor> {
   }
 }
 
+// -------------------------------------------------------------------
+// Helper widgets
+// -------------------------------------------------------------------
+
 class _AxisToggleChip extends StatelessWidget {
   const _AxisToggleChip({
     required this.axis,
@@ -592,10 +734,13 @@ class _TagsField extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('#', style: TextStyle(color: palette.muted, fontSize: 11)),
+                        Text('#',
+                            style: TextStyle(
+                                color: palette.muted, fontSize: 11)),
                         Text(
                           tag,
-                          style: TextStyle(color: palette.fg, fontSize: 12),
+                          style:
+                              TextStyle(color: palette.fg, fontSize: 12),
                         ),
                         const SizedBox(width: 4),
                         Icon(Icons.close, size: 11, color: palette.muted),
@@ -611,7 +756,8 @@ class _TagsField extends StatelessWidget {
                     style: TextStyle(color: palette.fg, fontSize: 13),
                     decoration: InputDecoration(
                       hintText: tags.isEmpty ? 'добавить тег…' : '+',
-                      hintStyle: TextStyle(color: palette.muted, fontSize: 12),
+                      hintStyle:
+                          TextStyle(color: palette.muted, fontSize: 12),
                       isDense: true,
                       border: InputBorder.none,
                       contentPadding: const EdgeInsets.symmetric(
@@ -698,7 +844,9 @@ class _BacklinksPanel extends ConsumerWidget {
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              e.title.isEmpty ? '(без названия)' : e.title,
+                              e.title.isEmpty
+                                  ? '(без названия)'
+                                  : e.title,
                               style: TextStyle(
                                 color: palette.fg,
                                 fontSize: 13,
@@ -767,8 +915,8 @@ class _SubtaskEditor extends StatelessWidget {
                         height: 18,
                         margin: const EdgeInsets.only(top: 2, right: 10),
                         decoration: BoxDecoration(
-                          border:
-                              Border.all(color: palette.line, width: 1.3),
+                          border: Border.all(
+                              color: palette.line, width: 1.3),
                           borderRadius: BorderRadius.circular(4),
                           color: subs[i].checked
                               ? palette.fg
