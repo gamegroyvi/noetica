@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models.dart';
 import '../../providers.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/body_utils.dart';
 import '../entry/entry_card.dart';
 
 /// "Заметки" tab — fast capture + searchable list.
@@ -204,5 +205,5 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
 bool _matches(Entry e, String q) {
   if (q.isEmpty) return true;
   return e.title.toLowerCase().contains(q) ||
-      e.body.toLowerCase().contains(q);
+      bodyToPlainText(e.body).toLowerCase().contains(q);
 }

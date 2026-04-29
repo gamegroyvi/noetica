@@ -9,6 +9,7 @@ import '../../data/models.dart';
 import '../../data/personal_knowledge_service.dart';
 import '../../providers.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/body_utils.dart';
 import '../entry/entry_editor_sheet.dart';
 
 // ---------------------------------------------------------------------------
@@ -491,7 +492,12 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
       nodes.add(_GraphNode(
         id: e.id,
         label: e.title.isEmpty
-            ? (e.body.length > 30 ? '${e.body.substring(0, 30)}…' : e.body)
+            ? (() {
+                final plain = bodyToPlainText(e.body);
+                return plain.length > 30
+                    ? '${plain.substring(0, 30)}…'
+                    : plain;
+              })()
             : e.title,
         color: _entryColor(e),
         isCentre: false,

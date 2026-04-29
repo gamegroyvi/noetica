@@ -5,6 +5,7 @@ import '../../data/models.dart';
 import '../../data/personal_knowledge_service.dart';
 import '../../providers.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/body_utils.dart';
 
 /// Result returned by the Reflection sheet. `null` if the user dismissed
 /// without saving (the task should still complete with default XP).
@@ -52,7 +53,7 @@ Future<ReflectionResult?> showReflectionSheet(
 /// scheme.
 bool shouldOfferReflection(Entry task) {
   if (task.xp >= 25) return true;
-  if (task.body.trim().length >= 60) return true;
+  if (bodyToPlainText(task.body).trim().length >= 60) return true;
   return false;
 }
 
