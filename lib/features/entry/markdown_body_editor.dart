@@ -477,7 +477,13 @@ class _MarkdownBodyEditorState extends ConsumerState<MarkdownBodyEditor> {
     final sel = ctrl.selection;
     final text = ctrl.text;
     if (!sel.isValid) return;
-    final lineStart = text.lastIndexOf('\n', sel.start - 1) + 1;
+    // Guard against sel.start == 0: `String.lastIndexOf(needle, -1)`
+    // throws RangeError in Dart, so every prefix-based toolbar action
+    // (H1/H2/H3, bullet list, numbered list, checkbox, blockquote)
+    // would crash whenever the caret is at the very beginning of the
+    // field. See Devin Review BUG_pr-review-job-fbc41d256…_0001.
+    final lineStart =
+        sel.start == 0 ? 0 : text.lastIndexOf('\n', sel.start - 1) + 1;
     final lineEnd = () {
       final idx = text.indexOf('\n', sel.start);
       return idx == -1 ? text.length : idx;
