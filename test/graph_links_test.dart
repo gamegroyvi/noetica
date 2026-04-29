@@ -86,9 +86,10 @@ Future<NoeticaDb> _openIsolatedDb() async {
   return NoeticaDb.test(raw);
 }
 
-/// Mirror of the edge-building logic in `_rebuildGraph`. Kept here so
-/// the test can verify the same `idToIndex`-style pipeline the screen
-/// uses without needing to pump the whole widget tree.
+/// Mirror of the wiki-edge part of `_rebuildGraph`. Kept here so the
+/// test can verify the same `idToIndex`-style pipeline the screen uses
+/// without needing to pump the whole widget tree. Does NOT include the
+/// synthetic centre anchor — use [buildGraphEdgesWithCentre] for that.
 List<({String from, String to})> buildGraphEdges({
   required List<Entry> entries,
   required List<({String source, String target})> links,
@@ -102,6 +103,51 @@ List<({String from, String to})> buildGraphEdges({
     final ti = byId[l.target];
     if (si != null && ti != null) {
       out.add((from: entries[si].id, to: entries[ti].id));
+    }
+  }
+  return out;
+}
+
+/// Full graph with the centre "я" anchor: one representative from each
+/// connected component of entry nodes gets an edge to the centre, so
+/// a pair of notes joined by a single wiki-link doesn't drift off as an
+/// isolated island.
+List<({String from, String to})> buildGraphEdgesWithCentre({
+  required List<Entry> entries,
+  required List<({String source, String target})> links,
+  String centreId = '__centre__',
+}) {
+  final out = buildGraphEdges(entries: entries, links: links).toList();
+  final allIds = [centreId, ...entries.map((e) => e.id)];
+  final byId = <String, int>{
+    for (var i = 0; i < allIds.length; i++) allIds[i]: i,
+  };
+  final parent = List<int>.generate(allIds.length, (i) => i);
+  int find(int x) {
+    while (parent[x] != x) {
+      parent[x] = parent[parent[x]];
+      x = parent[x];
+    }
+    return x;
+  }
+
+  void union(int a, int b) {
+    final ra = find(a);
+    final rb = find(b);
+    if (ra != rb) parent[ra] = rb;
+  }
+
+  for (final e in out) {
+    union(byId[e.from]!, byId[e.to]!);
+  }
+  final seenRoots = <int>{};
+  for (final e in entries) {
+    final idx = byId[e.id]!;
+    final root = find(idx);
+    if (root == find(0)) continue;
+    if (seenRoots.add(root)) {
+      out.add((from: centreId, to: e.id));
+      union(0, idx);
     }
   }
   return out;
@@ -216,6 +262,41 @@ void main() {
     expect(edges, hasLength(1));
     expect({edges.first.from, edges.first.to},
         {source.id, stub.first.id});
+  });
+
+  test(
+      'wiki-linked cluster still gets anchored to the "я" centre',
+      () async {
+    // Regression for the user-reported bug: "between themselves they
+    // connected but for some reason not to the main core." When two
+    // notes are joined by a `[[wiki]]` the pair must still be attached
+    // to the centre — otherwise the graph looks disconnected.
+    final db = await _openIsolatedDb();
+    final repo = NoeticaRepository(db);
+
+    await repo.createEntry(title: 'Alpha', kind: EntryKind.note);
+    final b = await repo.createEntry(
+      title: 'Beta',
+      body: '[[Alpha]]',
+      kind: EntryKind.note,
+    );
+    await repo.syncBodyLinks(b);
+
+    // A third, totally unrelated note exercises multi-component anchoring.
+    await repo.createEntry(title: 'Gamma', kind: EntryKind.note);
+
+    final edges = buildGraphEdgesWithCentre(
+      entries: await repo.listEntries(),
+      links: await repo.allLinks(),
+    );
+
+    // 1 wiki edge (Alpha↔Beta) + 1 anchor for that cluster + 1 anchor
+    // for the standalone Gamma = 3 edges total.
+    expect(edges, hasLength(3));
+    final centreEdges =
+        edges.where((e) => e.from == '__centre__').length;
+    expect(centreEdges, 2,
+        reason: 'exactly one anchor per connected component');
   });
 
   test('many spokes pointing at one hub render every edge', () async {
