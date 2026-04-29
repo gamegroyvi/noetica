@@ -550,6 +550,12 @@ class NoeticaRepository {
 
   /// Apply a remote entry row + its axis_ids using LWW. Returns true if
   /// accepted.
+  ///
+  /// CRITICAL: uses UPDATE for known IDs, INSERT otherwise — never
+  /// REPLACE. REPLACE is DELETE+INSERT which triggers the
+  /// task_reflections(entry_id) ON DELETE CASCADE foreign key and
+  /// silently destroys all reflection data for the entry on every
+  /// sync pull.
   Future<bool> mergeRemoteEntry(m.Entry remote) async {
     final existing = await _db.raw.query(
       'entries',

@@ -215,13 +215,18 @@ class _EntryEditorState extends ConsumerState<_EntryEditor> {
           tags: _tags,
         );
       } else {
+        final demotedFromTask =
+            _kind == EntryKind.note && existing.isCompleted;
+        final baseXpChanged = _xp != existing.baseXp;
         saved = existing.copyWith(
           title: _title.text.trim(),
           body: _body.text.trim(),
           kind: _kind,
           dueAt: _due,
           clearDue: _due == null,
+          clearCompleted: demotedFromTask,
           xp: _xp,
+          baseXp: baseXpChanged ? _xp : null,
           axisIds: _selectedAxes.toList(),
           tags: _tags,
           updatedAt: DateTime.now(),

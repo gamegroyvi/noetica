@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -230,6 +231,7 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
   final _searchController = TextEditingController();
   bool _loading = true;
   String? _error;
+  StreamSubscription<PersonalKnowledge>? _changesSub;
 
   // Graph state.
   List<_GraphNode> _nodes = [];
@@ -252,11 +254,15 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
       duration: const Duration(seconds: 1),
     )..repeat();
     _ticker.addListener(_stepSimulation);
+    _changesSub = PersonalKnowledgeService.changes.listen((k) {
+      if (mounted) setState(() => _knowledge = k);
+    });
     _load();
   }
 
   @override
   void dispose() {
+    _changesSub?.cancel();
     _ticker.removeListener(_stepSimulation);
     _ticker.dispose();
     _zoom.dispose();
@@ -799,6 +805,35 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
     );
     if (next == null || _knowledge == null) return;
     final upd = _knowledge!.copyWith(summary: next, updatedAt: DateTime.now());
+    await _service.save(upd);
+    if (mounted) {
+      setState(() => _knowledge = upd);
+      _rebuildGraph();
+    }
+  }
+
+  Future<void> _editLeaf({
+    required String branch,
+    required int index,
+    required List<String> source,
+    required PersonalKnowledge Function(List<String> next) apply,
+  }) async {
+    if (index < 0 || index >= source.length) return;
+    final next = await _editSheet(
+      title: branch,
+      hint: 'Опиши коротко',
+      initial: source[index],
+      maxLines: 3,
+      allowDelete: true,
+    );
+    if (next == null || _knowledge == null) return;
+    final updated = [...source];
+    if (next.isEmpty) {
+      updated.removeAt(index);
+    } else {
+      updated[index] = next;
+    }
+    final upd = apply(updated);
     await _service.save(upd);
     if (mounted) {
       setState(() => _knowledge = upd);
