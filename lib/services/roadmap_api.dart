@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -162,6 +163,16 @@ class RoadmapApi {
           message = decoded['detail'] as String;
         }
       } catch (_) {}
+      if (response.statusCode == 401) {
+        // Clear stale JWT so AuthGate kicks the user back to sign-in,
+        // mirroring axes_api.dart. Happens when JWT_SECRET rotates or
+        // we switch Fly apps.
+        unawaited(_auth?.handleUnauthorized() ?? Future.value());
+        throw RoadmapApiException(
+          'Сессия истекла. Зайдите через Google ещё раз.',
+          status: 401,
+        );
+      }
       throw RoadmapApiException(message, status: response.statusCode);
     }
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models.dart';
@@ -8,6 +9,16 @@ import '../../utils/subtask_utils.dart';
 import '../../utils/time_utils.dart';
 import 'markdown_body_editor.dart';
 
+/// Marker the editor sheet returns when the user taps one of the
+/// quick-create affordances inside the reader view. The top-level
+/// `showEntryEditor` closure sees it, dismisses the current sheet, and
+/// reopens a fresh editor of the right kind so the user keeps flowing
+/// through their notes without back-tracking through the dashboard.
+class _QuickCreateIntent {
+  const _QuickCreateIntent(this.kind);
+  final EntryKind kind;
+}
+
 Future<void> showEntryEditor(
   BuildContext context,
   WidgetRef ref, {
@@ -15,10 +26,12 @@ Future<void> showEntryEditor(
   DateTime? initialDueAt,
   EntryKind? initialKind,
 }) async {
-  // The editor pops with a non-null `Entry` value when the user taps an
-  // unresolved [[wiki link]] inside the markdown preview. We then open
-  // a fresh editor for that target so navigation feels natural.
-  final result = await showModalBottomSheet<Entry?>(
+  // The editor pops with:
+  //  - `Entry` → user tapped a [[wiki link]]; open that target next;
+  //  - `_QuickCreateIntent` → user tapped "+ Заметка" / "+ Задача" in
+  //    reader mode; open a fresh editor for that kind;
+  //  - `null` → plain close.
+  final result = await showModalBottomSheet<Object?>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -45,12 +58,15 @@ Future<void> showEntryEditor(
       );
     },
   );
-  if (result != null && context.mounted) {
-    // Allow the previous sheet to fully dismiss before pushing the next
-    // one so animations don't overlap.
-    await Future<void>.delayed(const Duration(milliseconds: 120));
-    if (!context.mounted) return;
+  if (result == null || !context.mounted) return;
+  // Allow the previous sheet to fully dismiss before pushing the next
+  // one so animations don't overlap.
+  await Future<void>.delayed(const Duration(milliseconds: 120));
+  if (!context.mounted) return;
+  if (result is Entry) {
     await showEntryEditor(context, ref, existing: result);
+  } else if (result is _QuickCreateIntent) {
+    await showEntryEditor(context, ref, initialKind: result.kind);
   }
 }
 
@@ -74,11 +90,18 @@ class _EntryEditorState extends ConsumerState<_EntryEditor> {
   DateTime? _due;
   int _xp = 10;
   bool _saving = false;
+  // When opening an existing entry we land in *read* mode first — a
+  // clean Markdown-rendered view with only the entry contents — and
+  // require the user to tap "Редактировать" before any editor chrome
+  // (toolbar, axis chips, tag input, due-date picker, …) is shown.
+  // Creating a new entry skips this and goes straight to edit mode.
+  late bool _editing;
 
   @override
   void initState() {
     super.initState();
     final e = widget.existing;
+    _editing = e == null;
     _title = TextEditingController(text: e?.title ?? '');
     // `LiveMarkdownController` renders bold / italic / headings / wiki
     // links / tags inline while the user is still typing raw markdown,
@@ -238,7 +261,194 @@ class _EntryEditorState extends ConsumerState<_EntryEditor> {
     final isTask = _kind == EntryKind.task;
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-      child: _buildEditorBody(context, palette, axesAsync, isTask),
+      child: _editing
+          ? _buildEditorBody(context, palette, axesAsync, isTask)
+          : _buildReaderBody(context, palette),
+    );
+  }
+
+  Widget _buildReaderBody(BuildContext context, NoeticaPalette palette) {
+    final e = widget.existing!;
+    final title = e.title.trim().isEmpty ? 'Без названия' : e.title;
+    final hasBody = e.body.trim().isNotEmpty;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Center(
+          child: Container(
+            width: 36,
+            height: 4,
+            decoration: BoxDecoration(
+              color: palette.line,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        // Header: title + delete; tap title also flips to edit mode.
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: () => setState(() => _editing = true),
+                child: Text(
+                  title,
+                  style: Theme.of(context)
+                      .textTheme
+                      .headlineSmall
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+            IconButton(
+              tooltip: 'Удалить',
+              icon: Icon(Icons.delete_outline, color: palette.muted),
+              onPressed: _delete,
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        // Meta row: kind + due
+        Row(
+          children: [
+            _ReaderChip(
+              icon: e.kind == EntryKind.task
+                  ? Icons.check_circle_outline
+                  : Icons.notes_outlined,
+              label: e.kind == EntryKind.task ? 'Задача' : 'Заметка',
+              palette: palette,
+            ),
+            if (_due != null) ...[
+              const SizedBox(width: 8),
+              _ReaderChip(
+                icon: Icons.event_outlined,
+                label: formatTimestamp(_due!),
+                palette: palette,
+              ),
+            ],
+            const Spacer(),
+            if (e.bookmarked)
+              Icon(Icons.bookmark, color: palette.fg, size: 18),
+          ],
+        ),
+        if (_tags.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (final t in _tags)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: palette.surface,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '#$t',
+                    style: TextStyle(
+                      color: palette.muted,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
+        const SizedBox(height: 16),
+        // Body — fully rendered Markdown with no editor chrome. Tapping
+        // the empty area or the dedicated "Редактировать" button below
+        // flips to edit mode.
+        GestureDetector(
+          onTap: hasBody ? null : () => setState(() => _editing = true),
+          behavior: HitTestBehavior.opaque,
+          child: hasBody
+              ? MarkdownBody(
+                  data: e.body,
+                  selectable: true,
+                  styleSheet: MarkdownStyleSheet.fromTheme(
+                    Theme.of(context),
+                  ).copyWith(
+                    p: TextStyle(
+                      color: palette.fg,
+                      fontSize: 15,
+                      height: 1.5,
+                    ),
+                  ),
+                )
+              : Container(
+                  padding: const EdgeInsets.symmetric(vertical: 32),
+                  alignment: Alignment.center,
+                  child: Text(
+                    'Запись пуста — нажми чтобы написать.',
+                    style: TextStyle(color: palette.muted),
+                  ),
+                ),
+        ),
+        const SizedBox(height: 24),
+        // Primary CTA — open the actual editor.
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            icon: const Icon(Icons.edit_outlined),
+            label: const Text('Редактировать'),
+            style: FilledButton.styleFrom(
+              backgroundColor: palette.fg,
+              foregroundColor: palette.bg,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+            onPressed: () => setState(() => _editing = true),
+          ),
+        ),
+        const SizedBox(height: 16),
+        // Backlinks under the reader so the user can hop to related
+        // notes without entering edit mode at all.
+        _BacklinksPanel(
+          palette: palette,
+          entryId: e.id,
+          onTapEntry: (entry) => Navigator.of(context).pop(entry),
+        ),
+        const SizedBox(height: 12),
+        // Quick-create row: while reading, the user can launch a new
+        // note / task in one tap without back-tracking through the
+        // dashboard. Pop with a `_QuickCreateIntent` — `showEntryEditor`
+        // replaces the current sheet with a fresh editor for that kind.
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.add_outlined, size: 18),
+                label: const Text('Заметка'),
+                onPressed: () => Navigator.of(context).pop(
+                  const _QuickCreateIntent(EntryKind.note),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: palette.fg,
+                  side: BorderSide(color: palette.line),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.check_box_outlined, size: 18),
+                label: const Text('Задача'),
+                onPressed: () => Navigator.of(context).pop(
+                  const _QuickCreateIntent(EntryKind.task),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: palette.fg,
+                  side: BorderSide(color: palette.line),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -827,6 +1037,44 @@ class _SubtaskEditor extends StatelessWidget {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ReaderChip extends StatelessWidget {
+  const _ReaderChip({
+    required this.icon,
+    required this.label,
+    required this.palette,
+  });
+
+  final IconData icon;
+  final String label;
+  final NoeticaPalette palette;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: palette.surface,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: palette.muted),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: palette.muted,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
       ),
     );
   }

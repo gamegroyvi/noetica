@@ -764,14 +764,52 @@ class _ChipsReply extends StatelessWidget {
         ],
         if (allowMultiple && submitLabel != null) ...[
           const SizedBox(height: 12),
-          FilledButton(
-            onPressed: onSubmit,
-            style: FilledButton.styleFrom(
-              backgroundColor: palette.fg,
-              foregroundColor: palette.bg,
-              padding: const EdgeInsets.symmetric(vertical: 12),
-            ),
-            child: Text(submitLabel!),
+          // UX fix: a ton of users tap "+ своё", type their custom
+          // answer, then immediately tap "Далее" without pressing the
+          // `+` / arrow confirm button first. Under the old flow their
+          // text was silently discarded (and on step 1 the button was
+          // disabled entirely since `selected` was still empty). We
+          // listen to `customCtrl` so the button reacts live to typing,
+          // flush any pending custom text through `onSubmitCustom`
+          // before delegating to the normal submit, and treat that
+          // pending text as a "virtual" selection for enabling the
+          // button.
+          AnimatedBuilder(
+            animation: customCtrl ?? const AlwaysStoppedAnimation(0),
+            builder: (context, _) {
+              final pendingCustom = customOpen &&
+                  (customCtrl?.text.trim().isNotEmpty ?? false);
+              final canAdvance = onSubmit != null ||
+                  (pendingCustom && onSubmitCustom != null);
+              return FilledButton(
+                onPressed: canAdvance
+                    ? () {
+                        if (pendingCustom) {
+                          onSubmitCustom?.call();
+                        }
+                        if (onSubmit != null) {
+                          onSubmit!();
+                        } else if (pendingCustom) {
+                          // Parent lifts `selected` on the next build;
+                          // schedule the actual advance after that
+                          // frame so the parent's `_canAdvance`
+                          // reflects the new chip. Without this you
+                          // can end up needing to press Далее twice.
+                          WidgetsBinding.instance
+                              .addPostFrameCallback((_) {
+                            onSubmit?.call();
+                          });
+                        }
+                      }
+                    : null,
+                style: FilledButton.styleFrom(
+                  backgroundColor: palette.fg,
+                  foregroundColor: palette.bg,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                child: Text(submitLabel!),
+              );
+            },
           ),
         ],
       ],

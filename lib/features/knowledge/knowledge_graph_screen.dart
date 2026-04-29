@@ -307,9 +307,18 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
   // ======================== graph construction ========================
 
   Future<void> _rebuildGraph() async {
-    final entries =
-        ref.read(entriesProvider).valueOrNull ?? const <Entry>[];
     final repo = await ref.read(repositoryProvider.future);
+
+    // Read entries directly from the repository instead of via
+    // `entriesProvider.valueOrNull`. The stream provider propagates
+    // through microtasks, so right after `showEntryEditor(...).then(...)`
+    // returns from a save the provider may still hold the pre-save
+    // snapshot — a freshly-created note would get its entry_links row
+    // via `syncBodyLinks` but the graph wouldn't see the note itself
+    // in `idToIndex`, silently dropping the edge. User-visible symptom:
+    // "I created a note and linked it to another, but it floats
+    // disconnected from the graph."
+    final entries = await repo.listEntries();
 
     // Get all links from DB.
     final links = await repo.allLinks();
@@ -405,10 +414,25 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
         }
       }
 
-      final branchCount = _Branch.values.length;
+      // Hide branches whose user-authored list is empty. Previously we
+      // drew all five branches (Цели/Ограничения/Достижения/Рефлексии/
+      // Предпочтения) unconditionally — which created a star of empty
+      // skeleton nodes for every new user and made the graph look
+      // cluttered and fake. In "knowledge"-only filter we still render
+      // ALL branches so the user can discover and fill them via taps
+      // (the empty-state CTA flow). Other modes ("all") show only the
+      // branches that actually have content.
+      final renderedBranches = _filter == _FilterMode.knowledge
+          ? _Branch.values
+          : _Branch.values
+              .where((b) => (branchItems[b] ?? const []).isNotEmpty)
+              .toList();
+      final branchCount = renderedBranches.length;
       for (var bi = 0; bi < branchCount; bi++) {
-        final b = _Branch.values[bi];
-        final angle = bi * 2 * math.pi / branchCount - math.pi / 2;
+        final b = renderedBranches[bi];
+        final angle = branchCount == 0
+            ? 0.0
+            : bi * 2 * math.pi / branchCount - math.pi / 2;
         final headerIdx = nodes.length;
         nodes.add(_GraphNode(
           id: '__branch_${b.name}__',
