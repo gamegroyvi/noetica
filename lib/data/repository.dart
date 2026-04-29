@@ -638,7 +638,35 @@ class NoeticaRepository {
       whereArgs: ids,
       orderBy: 'updated_at DESC',
     );
-    return entries.map(m.Entry.fromMap).toList();
+    if (entries.isEmpty) return const [];
+    // Join `entry_axes` so returned entries carry their axis IDs and
+    // weights — without this, opening a backlink in the editor would
+    // re-save with axisIds = [] and silently wipe existing associations
+    // (Devin Review bug BUG_pr-review-job-567c5fd4c2f84900be8e0ce8d7e84bdd_0001).
+    final entryIds = entries.map((r) => r['id'] as String).toList();
+    final links = await _db.raw.query(
+      'entry_axes',
+      where: 'entry_id IN (${List.filled(entryIds.length, '?').join(',')})',
+      whereArgs: entryIds,
+    );
+    final byEntry = <String, List<String>>{};
+    final weightsByEntry = <String, Map<String, double>>{};
+    for (final l in links) {
+      final eid = l['entry_id']! as String;
+      final aid = l['axis_id']! as String;
+      byEntry.putIfAbsent(eid, () => []).add(aid);
+      final w = l['weight'];
+      if (w is num && w != 1.0) {
+        weightsByEntry.putIfAbsent(eid, () => {})[aid] = w.toDouble();
+      }
+    }
+    return entries
+        .map((r) => m.Entry.fromMap(
+              r,
+              axisIds: byEntry[r['id']] ?? const [],
+              axisWeights: weightsByEntry[r['id']] ?? const {},
+            ))
+        .toList();
   }
 
   /// Get all links in the database (for graph rendering).

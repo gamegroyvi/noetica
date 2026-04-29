@@ -196,6 +196,61 @@ void main() {
   );
 
   test(
+    'Test 4 (regression): listBacklinks returns entries with axisIds populated',
+    () async {
+      // Devin Review caught this: listBacklinks used to call
+      // `entries.map(m.Entry.fromMap).toList()` without joining
+      // `entry_axes`, so every returned Entry had `axisIds = []`. If
+      // the user opened a backlink in the editor and saved, it would
+      // silently wipe all axis associations. This test reproduces the
+      // scenario and asserts the fix loads axisIds like listEntries.
+      final db = await _openIsolatedDb();
+      final repo = NoeticaRepository(db);
+
+      // Seed two axes directly via SQL — repository doesn't expose a
+      // createAxis method and we only need them as FK targets for the
+      // entry_axes join.
+      final nowMs = DateTime.now().millisecondsSinceEpoch;
+      for (final a in const [
+        ('axis-body', 'Body', 0),
+        ('axis-mind', 'Mind', 1),
+      ]) {
+        await db.raw.insert('axes', {
+          'id': a.$1,
+          'name': a.$2,
+          'symbol': '*',
+          'position': a.$3,
+          'created_at': nowMs,
+          'updated_at': nowMs,
+        });
+      }
+
+      // Create a target and a source that links to it; both carry
+      // axis associations.
+      final target = await repo.createEntry(
+        title: 'Target',
+        kind: EntryKind.note,
+        axisIds: const ['axis-body'],
+      );
+      final source = await repo.createEntry(
+        title: 'Source',
+        body: '[[Target]]',
+        kind: EntryKind.note,
+        axisIds: const ['axis-mind'],
+      );
+      await repo.syncBodyLinks(source);
+
+      final backlinks = await repo.listBacklinks(target.id);
+      expect(backlinks.length, 1);
+      expect(backlinks.first.id, source.id);
+      expect(backlinks.first.axisIds, equals(['axis-mind']),
+          reason:
+              'Entry returned from listBacklinks must carry its axisIds — '
+              'otherwise saving via the backlinks panel would wipe them.');
+    },
+  );
+
+  test(
     'Test 3: tags round-trip through createEntry / upsertEntry / listEntries',
     () async {
       final db = await _openIsolatedDb();
