@@ -325,6 +325,7 @@ class _MarkdownBodyEditorState extends ConsumerState<MarkdownBodyEditor> {
       // tap gesture resolves and the selection would be lost — which
       // was the "popup shows suggestions but isn't tappable" bug.
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
         if (!_focusNode.hasFocus) _hideSuggestions();
       });
     }
