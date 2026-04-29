@@ -8,10 +8,10 @@ axis distinctiveness, axis↔goal fit, task difficulty calibration, and
 per-axis coverage.
 
 Usage:
-    DEEPSEEK_API_KEY=sk-... python -m tests.persona_goldens
+    GOOGLE_AI_KEY=... python -m tests.persona_goldens
 
 Requires the `backend` venv with httpx + pydantic installed and a valid
-DEEPSEEK_API_KEY (or OPENAI_API_KEY) in the environment.
+GOOGLE_AI_KEY in the environment.
 """
 
 from __future__ import annotations

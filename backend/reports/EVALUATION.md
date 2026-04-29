@@ -1,7 +1,7 @@
 # LLM · Оценка «голден»-тестов
 
-**Бэкенд:** `https://api.deepseek.com/v1` · **Модель:** `deepseek-chat`
-**API-ключ:** `DEEPSEEK_API_KEY` (работает, ответы чистые, без 4xx/5xx)
+**Бэкенд:** `https://generativelanguage.googleapis.com/v1beta/openai` · **Модель:** `gemini-2.0-flash`
+**API-ключ:** `GOOGLE_AI_KEY` (Google AI Studio, free tier: 15 RPM / 1 500 RPD)
 
 Прогнали 4 реалистичных персоны по пайплайну онбординга Noetica:
 `generate_axes` (5 осей под профиль) → `generate_roadmap` (10 задач на 30 дней).
@@ -38,4 +38,4 @@
 
 ### Итог
 
-Качество осей и roadmap'а — **продакшен-грейд**. С DeepSeek-бэкендом можно работать как с основным. Ни одной галлюцинации, ни одного «install Flutter» для senior'а, ни одной пустой/общей задачи.
+Качество осей и roadmap'а — **продакшен-грейд**. Ни одной галлюцинации, ни одного «install Flutter» для senior'а, ни одной пустой/общей задачи.
