@@ -2,7 +2,7 @@ name: release
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'devin/1777096530-noetica-mvp-1']
     tags: ['v*']
   pull_request:
   workflow_dispatch:
