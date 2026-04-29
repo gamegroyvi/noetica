@@ -76,6 +76,14 @@ DEEPSEEK_MODEL = "deepseek-chat"
 # inject real secrets.
 _BAKED_DEEPSEEK_KEY = ""
 
+# Same mechanism for the Gemini key. When the Devin-managed deploy tool
+# creates a fresh Fly app there's no `flyctl secrets set` path available,
+# so the only way to hand the deployed container a real key is via
+# module-level constant. Committed copy MUST stay empty — the key is
+# only populated in the local working tree right before `deploy backend`
+# runs and reverted to "" in the same commit batch.
+_BAKED_GEMINI_KEY = ""
+
 
 class LlmConfigError(RuntimeError):
     pass
@@ -207,7 +215,7 @@ class LlmClient:
         #   3. OPENAI_API_KEY / OPENROUTER_API_KEY / LLM_API_KEY — fallback.
         # LLM_BASE_URL / LLM_MODEL overrides always win over these
         # defaults, so an ops override stays authoritative.
-        gemini_key = os.getenv("GEMINI_API_KEY")
+        gemini_key = os.getenv("GEMINI_API_KEY") or _BAKED_GEMINI_KEY
         deepseek_key = os.getenv("DEEPSEEK_API_KEY") or _BAKED_DEEPSEEK_KEY
         if gemini_key:
             self.api_key = gemini_key
