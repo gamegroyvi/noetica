@@ -117,28 +117,21 @@ void main() {
         kind: EntryKind.note,
       );
 
-      // Step 1: simulate _save's syncBodyLinks call. linkEntries is
-      // bidirectional, so we expect 2 rows: one (beta -> alpha)
-      // forward, one (alpha -> beta) reverse.
+      // Step 1: simulate _save's syncBodyLinks call. Links are stored
+      // unidirectionally (one row per `[[…]]` reference), so we expect
+      // a single forward edge Beta -> Alpha.
       await repo.syncBodyLinks(beta);
 
       final links = await db.raw.query('entry_links');
-      expect(links.length, 2,
+      expect(links.length, 1,
           reason:
-              'linkEntries inserts 2 rows per logical link '
-              '(forward + reverse). One [[Alpha]] reference => 2 rows.');
-      final forward = links.firstWhere(
-        (r) => r['source_id'] == beta.id,
-        orElse: () => throw StateError('Missing forward link Beta->Alpha'),
-      );
+              'Unidirectional storage: one [[Alpha]] reference in Beta => '
+              '1 forward row.');
+      final forward = links.first;
+      expect(forward['source_id'], beta.id,
+          reason: 'Forward edge must originate from Beta (the body owner).');
       expect(forward['target_id'], alpha.id,
           reason: 'Forward edge must point Beta -> Alpha.');
-      final reverse = links.firstWhere(
-        (r) => r['source_id'] == alpha.id,
-        orElse: () => throw StateError('Missing reverse link Alpha->Beta'),
-      );
-      expect(reverse['target_id'], beta.id,
-          reason: 'Reverse edge must point Alpha -> Beta.');
 
       // Step 2: backlinks query must return Beta as a referrer of Alpha.
       final backlinks = await repo.listBacklinks(alpha.id);
@@ -174,24 +167,15 @@ void main() {
           reason: 'Stub entries are notes by default.');
 
       final links = await db.raw.query('entry_links');
-      expect(links.length, 2,
+      expect(links.length, 1,
           reason:
-              'One [[BrandNewTarget]] reference creates 2 bidirectional '
-              'rows (source <-> stub).');
-      final forward = links.firstWhere(
-        (r) => r['source_id'] == source.id,
-        orElse: () =>
-            throw StateError('Missing forward link Source -> stub'),
-      );
+              'Unidirectional storage: one [[BrandNewTarget]] reference '
+              'creates a single forward row source -> stub.');
+      final forward = links.single;
+      expect(forward['source_id'], source.id,
+          reason: 'Forward edge must originate from Source (body owner).');
       expect(forward['target_id'], stub.id,
           reason: 'Forward edge must point Source -> stub.');
-      final reverse = links.firstWhere(
-        (r) => r['source_id'] == stub.id,
-        orElse: () =>
-            throw StateError('Missing reverse link stub -> Source'),
-      );
-      expect(reverse['target_id'], source.id,
-          reason: 'Reverse edge must point stub -> Source.');
     },
   );
 
@@ -215,8 +199,9 @@ void main() {
         kind: EntryKind.note,
       );
 
-      // 1. Source references both. After sync, we expect 4 rows
-      //    (forward + reverse for each target).
+      // 1. Source references both. Links are stored unidirectionally
+      //    now (one row per `[[…]]` reference, owned by the body text
+      //    that contains it). Two refs => 2 forward rows.
       final withBoth = await repo.createEntry(
         title: 'Source',
         body: '[[Alpha]] and [[Beta]]',
@@ -224,11 +209,11 @@ void main() {
       );
       await repo.syncBodyLinks(withBoth);
       final after1 = await db.raw.query('entry_links');
-      expect(after1.length, 4,
-          reason: 'Two refs => 2 forward + 2 reverse = 4 rows.');
+      expect(after1.length, 2,
+          reason: 'Unidirectional storage: two refs => 2 forward rows.');
 
-      // 2. User deletes `[[Alpha]]` and saves again. We expect Alpha
-      //    to be pruned (both directions) but Beta to stay.
+      // 2. User deletes `[[Alpha]]` and saves again. We expect the
+      //    forward Source->Alpha edge to be pruned; Beta unchanged.
       final withBetaOnly = withBoth.copyWith(
         body: 'only [[Beta]]',
         updatedAt: DateTime.now(),
@@ -236,16 +221,12 @@ void main() {
       await repo.upsertEntry(withBetaOnly);
       await repo.syncBodyLinks(withBetaOnly);
       final after2 = await db.raw.query('entry_links');
-      expect(after2.length, 2,
-          reason: 'After pruning Alpha, only Beta<->Source should remain.');
+      expect(after2.length, 1,
+          reason: 'Only Source->Beta should remain after pruning Alpha.');
       final toAlpha = after2.where((r) =>
           r['source_id'] == withBoth.id && r['target_id'] == alpha.id);
       expect(toAlpha, isEmpty,
           reason: 'Forward edge Source->Alpha must be pruned.');
-      final fromAlpha = after2.where((r) =>
-          r['source_id'] == alpha.id && r['target_id'] == withBoth.id);
-      expect(fromAlpha, isEmpty,
-          reason: 'Reverse edge Alpha->Source must be pruned.');
       final toBeta = after2.where((r) =>
           r['source_id'] == withBoth.id && r['target_id'] == beta.id);
       expect(toBeta, hasLength(1),
@@ -358,6 +339,61 @@ void main() {
           reason:
               'upsertEntry must overwrite tags exactly — partial merge or '
               'append-on-update would leave growth in the list.');
+    },
+  );
+
+  test(
+    "Test 6 (regression): syncBodyLinks doesn't destroy OTHER entries' links",
+    () async {
+      // Devin Review BUG_pr-review-job-39c67f0a…_0001: the previous
+      // bidirectional storage model plus `source_id = ?` prune query
+      // meant that when Entry A (with empty body) was re-saved,
+      // syncBodyLinks would treat the reverse row inserted by Entry C's
+      // `[[A]]` reference as a stale A-initiated link and delete both
+      // directions — silently dropping C's legitimate link to A.
+      // With unidirectional storage that class of bug can't happen:
+      // A's syncBodyLinks only sees rows where source=A, and C's
+      // wiki-link lives in a row with source=C.
+      final db = await _openIsolatedDb();
+      final repo = NoeticaRepository(db);
+
+      // Seed: C's body has [[A]]. A has nothing.
+      final a = await repo.createEntry(title: 'A', kind: EntryKind.note);
+      final c = await repo.createEntry(
+        title: 'C',
+        body: '[[A]]',
+        kind: EntryKind.note,
+      );
+      await repo.syncBodyLinks(c);
+
+      expect(
+        (await db.raw.query('entry_links')).length,
+        1,
+        reason: 'Only C->A forward row should exist.',
+      );
+
+      // Act: user opens A and saves with still-empty body. Under the
+      // old bidirectional logic this would have deleted C->A. Under
+      // unidirectional storage A's syncBodyLinks sees nothing to prune
+      // because no row has source=A.
+      final aReopened = a.copyWith(
+        body: 'still nothing',
+        updatedAt: DateTime.now(),
+      );
+      await repo.upsertEntry(aReopened);
+      await repo.syncBodyLinks(aReopened);
+
+      final after = await db.raw.query('entry_links');
+      expect(after.length, 1,
+          reason:
+              "Saving A with an empty body must NOT remove C's "
+              "forward link to A — C's body text owns that row.");
+      expect(after.single['source_id'], c.id);
+      expect(after.single['target_id'], a.id);
+
+      // And backlinks on A should still return C.
+      final backlinksToA = await repo.listBacklinks(a.id);
+      expect(backlinksToA.map((e) => e.id).toList(), [c.id]);
     },
   );
 }

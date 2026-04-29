@@ -313,11 +313,29 @@ class NoeticaRepository {
 
   Future<m.Entry> upsertEntry(m.Entry entry) async {
     await _db.raw.transaction((txn) async {
-      await txn.insert(
+      // CRITICAL: don't use `INSERT OR REPLACE` on `entries`. REPLACE
+      // does DELETE+INSERT under the hood, which trips the
+      // entry_links(source_id/target_id) ON DELETE CASCADE foreign keys
+      // and wipes every wiki-link row referencing this entry on every
+      // save. Branch on existence (same pattern as `mergeRemoteAxis`
+      // above): UPDATE for known IDs, INSERT otherwise.
+      final existing = await txn.query(
         'entries',
-        entry.toMap(),
-        conflictAlgorithm: ConflictAlgorithm.replace,
+        columns: ['id'],
+        where: 'id = ?',
+        whereArgs: [entry.id],
+        limit: 1,
       );
+      if (existing.isEmpty) {
+        await txn.insert('entries', entry.toMap());
+      } else {
+        await txn.update(
+          'entries',
+          entry.toMap(),
+          where: 'id = ?',
+          whereArgs: [entry.id],
+        );
+      }
       await txn
           .delete('entry_axes', where: 'entry_id = ?', whereArgs: [entry.id]);
       for (final aid in entry.axisIds) {
@@ -546,11 +564,19 @@ class NoeticaRepository {
       }
     }
     await _db.raw.transaction((txn) async {
-      await txn.insert(
-        'entries',
-        remote.toMap(),
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+      // Same rationale as `upsertEntry`: avoid INSERT OR REPLACE on
+      // `entries` because REPLACE cascade-deletes entry_links. Branch
+      // on existence and UPDATE-or-INSERT instead.
+      if (existing.isEmpty) {
+        await txn.insert('entries', remote.toMap());
+      } else {
+        await txn.update(
+          'entries',
+          remote.toMap(),
+          where: 'id = ?',
+          whereArgs: [remote.id],
+        );
+      }
       await txn.delete(
         'entry_axes',
         where: 'entry_id = ?',
@@ -578,46 +604,51 @@ class NoeticaRepository {
 
   // ---------- knowledge base: links ----------
 
-  /// Create a bidirectional link between two entries.
+  /// Create a directed wiki-style link from [sourceId] to [targetId]
+  /// (one row only — the body text owns the outgoing edge, same as
+  /// Obsidian). Storing a single row avoids the previous
+  /// "syncBodyLinks destroys links created by OTHER entries" bug where
+  /// a bidirectional row inserted by A's wiki-link appeared as a stale
+  /// outgoing edge when B later saved (Devin Review
+  /// BUG_pr-review-job-39c67f0a…_0001).
   Future<void> linkEntries(String sourceId, String targetId) async {
     final now = DateTime.now().millisecondsSinceEpoch;
-    await _db.raw.transaction((txn) async {
-      await txn.insert('entry_links', {
+    await _db.raw.insert(
+      'entry_links',
+      {
         'source_id': sourceId,
         'target_id': targetId,
         'created_at': now,
-      }, conflictAlgorithm: ConflictAlgorithm.ignore);
-      await txn.insert('entry_links', {
-        'source_id': targetId,
-        'target_id': sourceId,
-        'created_at': now,
-      }, conflictAlgorithm: ConflictAlgorithm.ignore);
-    });
-    _markDirty();
-  }
-
-  /// Remove a bidirectional link between two entries.
-  Future<void> unlinkEntries(String sourceId, String targetId) async {
-    await _db.raw.transaction((txn) async {
-      await txn.delete('entry_links',
-          where: 'source_id = ? AND target_id = ?',
-          whereArgs: [sourceId, targetId]);
-      await txn.delete('entry_links',
-          where: 'source_id = ? AND target_id = ?',
-          whereArgs: [targetId, sourceId]);
-    });
-    _markDirty();
-  }
-
-  /// Get all entry IDs linked to a given entry (both directions).
-  Future<List<String>> linkedEntryIds(String entryId) async {
-    final rows = await _db.raw.query(
-      'entry_links',
-      columns: ['target_id'],
-      where: 'source_id = ?',
-      whereArgs: [entryId],
+      },
+      conflictAlgorithm: ConflictAlgorithm.ignore,
     );
-    return rows.map((r) => r['target_id']! as String).toList();
+    _markDirty();
+  }
+
+  /// Remove the directed link from [sourceId] to [targetId]. The reverse
+  /// row (if any) is owned by the other entry's body text and stays
+  /// intact — deleting both directions here would silently drop links
+  /// legitimately created by that other entry's `[[…]]` references.
+  Future<void> unlinkEntries(String sourceId, String targetId) async {
+    await _db.raw.delete(
+      'entry_links',
+      where: 'source_id = ? AND target_id = ?',
+      whereArgs: [sourceId, targetId],
+    );
+    _markDirty();
+  }
+
+  /// Get all entry IDs connected to [entryId] via a wiki-link, in either
+  /// direction. Backwards-compatible with callers that expected the old
+  /// bidirectional storage model.
+  Future<List<String>> linkedEntryIds(String entryId) async {
+    final rows = await _db.raw.rawQuery(
+      'SELECT target_id AS other FROM entry_links WHERE source_id = ? '
+      'UNION '
+      'SELECT source_id AS other FROM entry_links WHERE target_id = ?',
+      [entryId, entryId],
+    );
+    return rows.map((r) => r['other']! as String).toList();
   }
 
   /// All entries that link _to_ [entryId] via `[[…]]`. Used to drive
@@ -669,16 +700,21 @@ class NoeticaRepository {
         .toList();
   }
 
-  /// Get all links in the database (for graph rendering).
+  /// Get all links in the database (for graph rendering). Links are
+  /// stored unidirectionally (A's body → B creates one row `A→B`); to
+  /// avoid drawing A↔B twice when the two entries reference each other
+  /// mutually we normalise to unordered `(min, max)` pairs and DISTINCT.
   Future<List<({String source, String target})>> allLinks() async {
     final rows = await _db.raw.rawQuery(
-      'SELECT DISTINCT source_id, target_id FROM entry_links '
-      'WHERE source_id < target_id',
+      'SELECT DISTINCT '
+      '  CASE WHEN source_id < target_id THEN source_id ELSE target_id END AS a, '
+      '  CASE WHEN source_id < target_id THEN target_id ELSE source_id END AS b '
+      'FROM entry_links',
     );
     return rows
         .map((r) => (
-              source: r['source_id']! as String,
-              target: r['target_id']! as String,
+              source: r['a']! as String,
+              target: r['b']! as String,
             ))
         .toList();
   }
