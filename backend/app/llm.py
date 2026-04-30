@@ -441,10 +441,17 @@ class LlmClient:
         data = response.json()
         try:
             content = data["choices"][0]["message"]["content"]
+            finish = data["choices"][0].get("finish_reason")
         except (KeyError, IndexError, TypeError) as exc:
             raise LlmUpstreamError(
                 502, f"Malformed LLM response: {exc}: {data!r}"
             ) from exc
+        if finish == "length":
+            raise LlmUpstreamError(
+                502,
+                "LLM recipe response was truncated (finish_reason=length). "
+                "Increase max_tokens or simplify the request.",
+            )
         markdown = str(content).strip()
         # Strip accidental code-fence wrappers — Groq sometimes wraps
         # markdown content in triple backticks despite instruction.
