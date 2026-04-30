@@ -88,31 +88,28 @@ Future<void> showEntryEditor(
   }
 }
 
-/// Full-screen editor page (pushed when user taps expand).
+/// Full-screen editor page (pushed when user taps expand). The form
+/// itself owns the [Scaffold] / [AppBar] in document mode so it can
+/// switch between a wide-screen side rail and a narrow-screen end
+/// drawer; we deliberately do NOT wrap it in another Scaffold here.
 class _FullScreenEditorPage extends StatelessWidget {
   const _FullScreenEditorPage({required this.intent});
   final _ExpandIntent intent;
 
   @override
   Widget build(BuildContext context) {
-    final palette = context.palette;
-    return Scaffold(
-      backgroundColor: palette.bg,
-      body: SafeArea(
-        child: _EntryEditorForm(
-          existing: intent.existing,
-          initialDueAt: intent.initialDueAt,
-          initialKind: intent.initialKind,
-          isFullScreen: true,
-          restoredTitle: intent.title,
-          restoredBody: intent.body,
-          restoredKind: intent.kind,
-          restoredDue: intent.due,
-          restoredXp: intent.xp,
-          restoredAxes: intent.selectedAxes,
-          restoredTags: intent.tags,
-        ),
-      ),
+    return _EntryEditorForm(
+      existing: intent.existing,
+      initialDueAt: intent.initialDueAt,
+      initialKind: intent.initialKind,
+      isFullScreen: true,
+      restoredTitle: intent.title,
+      restoredBody: intent.body,
+      restoredKind: intent.kind,
+      restoredDue: intent.due,
+      restoredXp: intent.xp,
+      restoredAxes: intent.selectedAxes,
+      restoredTags: intent.tags,
     );
   }
 }
@@ -343,25 +340,140 @@ class _EntryEditorFormState extends ConsumerState<_EntryEditorForm> {
 
   @override
   Widget build(BuildContext context) {
-    final palette = context.palette;
-    final axesAsync = ref.watch(axesProvider);
+    if (widget.isFullScreen) return _buildFullScreen(context);
+    return _buildSheet(context);
+  }
+
+  // ------------------------------------------------------------------
+  // Shared section builders. Each returns a self-contained Column so
+  // both the bottom-sheet layout and the document layout can compose
+  // them differently without duplicating widget trees.
+  // ------------------------------------------------------------------
+
+  Widget _buildTitleField(BuildContext context, {bool large = false}) {
     final isTask = _kind == EntryKind.task;
+    final theme = Theme.of(context);
+    return TextField(
+      controller: _title,
+      autofocus: widget.existing == null && !widget.isFullScreen,
+      style: large
+          ? theme.textTheme.headlineSmall
+              ?.copyWith(fontWeight: FontWeight.w600)
+          : theme.textTheme.titleMedium,
+      decoration: InputDecoration(
+        hintText: isTask ? 'Что нужно сделать?' : 'Заголовок',
+        border: large ? InputBorder.none : null,
+        enabledBorder: large ? InputBorder.none : null,
+        focusedBorder: large ? InputBorder.none : null,
+        contentPadding: large
+            ? const EdgeInsets.symmetric(vertical: 4)
+            : null,
+      ),
+    );
+  }
+
+  Widget _buildSubtaskSection() {
+    return _SubtaskEditor(
+      body: _body.text,
+      onChanged: (next) {
+        setState(() {
+          _body.text = next;
+          _body.selection =
+              TextSelection.collapsed(offset: next.length);
+        });
+      },
+    );
+  }
+
+  Widget _buildTagsSection(NoeticaPalette palette) {
+    return _TagsField(
+      palette: palette,
+      tags: _tags,
+      controller: _tagInput,
+      onCommit: _commitTagInput,
+      onRemove: _removeTag,
+    );
+  }
+
+  Widget _buildBacklinksSection(NoeticaPalette palette) {
+    if (widget.existing == null) return const SizedBox.shrink();
+    return _BacklinksPanel(
+      palette: palette,
+      entryId: widget.existing!.id,
+      onTapEntry: (entry) => Navigator.of(context).pop(entry),
+    );
+  }
+
+  Widget _buildAxesSection(BuildContext context, NoeticaPalette palette) {
+    final axesAsync = ref.watch(axesProvider);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Оси',
+          style: Theme.of(context)
+              .textTheme
+              .labelLarge
+              ?.copyWith(color: palette.muted, letterSpacing: 1.4),
+        ),
+        const SizedBox(height: 8),
+        axesAsync.when(
+          loading: () => const SizedBox(
+              height: 32,
+              child: Center(child: CircularProgressIndicator())),
+          error: (e, _) => Text('$e'),
+          data: (axes) {
+            if (axes.isEmpty) {
+              return Text(
+                'Сначала добавь оси в онбординге.',
+                style: TextStyle(color: palette.muted),
+              );
+            }
+            return Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final a in axes)
+                  _AxisToggleChip(
+                    axis: a,
+                    selected: _selectedAxes.contains(a.id),
+                    onTap: () => setState(() {
+                      if (_selectedAxes.contains(a.id)) {
+                        _selectedAxes.remove(a.id);
+                      } else {
+                        _selectedAxes.add(a.id);
+                      }
+                    }),
+                  ),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  // ------------------------------------------------------------------
+  // Bottom-sheet layout (compact, vertical scroll, draggable handle).
+  // ------------------------------------------------------------------
+
+  Widget _buildSheet(BuildContext context) {
+    final palette = context.palette;
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (!widget.isFullScreen)
-            Center(
-              child: Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: palette.line,
-                  borderRadius: BorderRadius.circular(2),
-                ),
+          Center(
+            child: Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: palette.line,
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
+          ),
           const SizedBox(height: 16),
           Row(
             children: [
@@ -370,18 +482,11 @@ class _EntryEditorFormState extends ConsumerState<_EntryEditorForm> {
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const Spacer(),
-              if (!widget.isFullScreen)
-                IconButton(
-                  icon: Icon(Icons.open_in_full, color: palette.fg, size: 20),
-                  tooltip: 'Развернуть',
-                  onPressed: _expand,
-                ),
-              if (widget.isFullScreen)
-                IconButton(
-                  icon: Icon(Icons.close, color: palette.fg, size: 20),
-                  tooltip: 'Закрыть',
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
+              IconButton(
+                icon: Icon(Icons.open_in_full, color: palette.fg, size: 20),
+                tooltip: 'Развернуть',
+                onPressed: _expand,
+              ),
               if (widget.existing != null)
                 IconButton(
                   icon: Icon(Icons.delete_outline, color: palette.fg),
@@ -390,229 +495,25 @@ class _EntryEditorFormState extends ConsumerState<_EntryEditorForm> {
             ],
           ),
           const SizedBox(height: 12),
-          TextField(
-            controller: _title,
-            autofocus: widget.existing == null,
-            style: Theme.of(context).textTheme.titleMedium,
-            decoration: InputDecoration(
-              hintText: isTask ? 'Что нужно сделать?' : 'Заголовок',
-            ),
-          ),
+          _buildTitleField(context),
           const SizedBox(height: 12),
           MarkdownBodyEditor(
             controller: _body,
             entryId: widget.existing?.id,
-            minLines: widget.isFullScreen ? 12 : 6,
-            maxLines: widget.isFullScreen ? 40 : 14,
+            minLines: 6,
+            maxLines: 14,
           ),
-          _SubtaskEditor(
-            body: _body.text,
-            onChanged: (next) {
-              setState(() {
-                _body.text = next;
-                _body.selection =
-                    TextSelection.collapsed(offset: next.length);
-              });
-            },
-          ),
+          _buildSubtaskSection(),
           const SizedBox(height: 16),
-          _TagsField(
-            palette: palette,
-            tags: _tags,
-            controller: _tagInput,
-            onCommit: _commitTagInput,
-            onRemove: _removeTag,
-          ),
+          _buildTagsSection(palette),
           if (widget.existing != null) ...[
             const SizedBox(height: 16),
-            _BacklinksPanel(
-              palette: palette,
-              entryId: widget.existing!.id,
-              onTapEntry: (entry) => Navigator.of(context).pop(entry),
-            ),
+            _buildBacklinksSection(palette),
           ],
           const SizedBox(height: 16),
-          Text(
-            'Оси',
-            style: Theme.of(context)
-                .textTheme
-                .labelLarge
-                ?.copyWith(color: palette.muted, letterSpacing: 1.4),
-          ),
-          const SizedBox(height: 8),
-          axesAsync.when(
-            loading: () => const SizedBox(
-                height: 32,
-                child: Center(child: CircularProgressIndicator())),
-            error: (e, _) => Text('$e'),
-            data: (axes) {
-              if (axes.isEmpty) {
-                return Text(
-                  'Сначала добавь оси в онбординге.',
-                  style: TextStyle(color: palette.muted),
-                );
-              }
-              return Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final a in axes)
-                    _AxisToggleChip(
-                      axis: a,
-                      selected: _selectedAxes.contains(a.id),
-                      onTap: () => setState(() {
-                        if (_selectedAxes.contains(a.id)) {
-                          _selectedAxes.remove(a.id);
-                        } else {
-                          _selectedAxes.add(a.id);
-                        }
-                      }),
-                    ),
-                ],
-              );
-            },
-          ),
+          _buildAxesSection(context, palette),
           const SizedBox(height: 16),
-          Container(
-            decoration: BoxDecoration(
-              border: Border.all(color: palette.line),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Column(
-              children: [
-                InkWell(
-                  onTap: () => setState(() {
-                    if (isTask) {
-                      _kind = EntryKind.note;
-                      _due = null;
-                    } else {
-                      _kind = EntryKind.task;
-                    }
-                  }),
-                  borderRadius: BorderRadius.circular(8),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
-                    child: Row(
-                      children: [
-                        Icon(
-                          isTask
-                              ? Icons.check_circle_outline
-                              : Icons.notes_outlined,
-                          size: 18,
-                          color: palette.fg,
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Сделать задачей',
-                                style: Theme.of(context).textTheme.bodyLarge,
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                isTask
-                                    ? 'Дедлайн и XP при выполнении'
-                                    : 'По умолчанию — заметка',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
-                                    ?.copyWith(color: palette.muted),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Switch(
-                          value: isTask,
-                          activeColor: palette.bg,
-                          activeTrackColor: palette.fg,
-                          inactiveThumbColor: palette.muted,
-                          inactiveTrackColor: palette.surface,
-                          onChanged: (v) => setState(() {
-                            _kind = v ? EntryKind.task : EntryKind.note;
-                            if (!v) _due = null;
-                          }),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                AnimatedSize(
-                  duration: const Duration(milliseconds: 220),
-                  curve: Curves.easeOutCubic,
-                  alignment: Alignment.topCenter,
-                  child: !isTask
-                      ? const SizedBox.shrink()
-                      : Padding(
-                          padding:
-                              const EdgeInsets.fromLTRB(14, 0, 14, 14),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Divider(color: palette.line, height: 16),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: OutlinedButton.icon(
-                                      onPressed: _pickDue,
-                                      icon: const Icon(
-                                          Icons.calendar_today_outlined,
-                                          size: 16),
-                                      label: Text(
-                                        _due == null
-                                            ? 'Без дедлайна'
-                                            : formatTimestamp(_due!),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ),
-                                  if (_due != null) ...[
-                                    const SizedBox(width: 8),
-                                    IconButton(
-                                      icon: const Icon(Icons.close, size: 18),
-                                      onPressed: () =>
-                                          setState(() => _due = null),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                              const SizedBox(height: 14),
-                              Row(
-                                children: [
-                                  Text(
-                                    'XP при выполнении',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelLarge
-                                        ?.copyWith(
-                                            color: palette.muted,
-                                            letterSpacing: 1.4),
-                                  ),
-                                  const Spacer(),
-                                  Text('$_xp',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleMedium),
-                                ],
-                              ),
-                              Slider(
-                                min: 1,
-                                max: 100,
-                                divisions: 99,
-                                value: _xp.toDouble(),
-                                activeColor: palette.fg,
-                                inactiveColor: palette.line,
-                                onChanged: (v) =>
-                                    setState(() => _xp = v.round()),
-                              ),
-                            ],
-                          ),
-                        ),
-                ),
-              ],
-            ),
-          ),
+          _buildKindAndDuePanel(context, palette),
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
@@ -623,6 +524,332 @@ class _EntryEditorFormState extends ConsumerState<_EntryEditorForm> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildKindAndDuePanel(
+      BuildContext context, NoeticaPalette palette) {
+    final isTask = _kind == EntryKind.task;
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: palette.line),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          InkWell(
+            onTap: () => setState(() {
+              if (isTask) {
+                _kind = EntryKind.note;
+                _due = null;
+              } else {
+                _kind = EntryKind.task;
+              }
+            }),
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+              child: Row(
+                children: [
+                  Icon(
+                    isTask
+                        ? Icons.check_circle_outline
+                        : Icons.notes_outlined,
+                    size: 18,
+                    color: palette.fg,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Сделать задачей',
+                          style: Theme.of(context).textTheme.bodyLarge,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          isTask
+                              ? 'Дедлайн и XP при выполнении'
+                              : 'По умолчанию — заметка',
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(color: palette.muted),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Switch(
+                    value: isTask,
+                    activeColor: palette.bg,
+                    activeTrackColor: palette.fg,
+                    inactiveThumbColor: palette.muted,
+                    inactiveTrackColor: palette.surface,
+                    onChanged: (v) => setState(() {
+                      _kind = v ? EntryKind.task : EntryKind.note;
+                      if (!v) _due = null;
+                    }),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            alignment: Alignment.topCenter,
+            child: !isTask
+                ? const SizedBox.shrink()
+                : Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Divider(color: palette.line, height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: _pickDue,
+                                icon: const Icon(
+                                    Icons.calendar_today_outlined,
+                                    size: 16),
+                                label: Text(
+                                  _due == null
+                                      ? 'Без дедлайна'
+                                      : formatTimestamp(_due!),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+                            if (_due != null) ...[
+                              const SizedBox(width: 8),
+                              IconButton(
+                                icon: const Icon(Icons.close, size: 18),
+                                onPressed: () =>
+                                    setState(() => _due = null),
+                              ),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            Text(
+                              'XP при выполнении',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelLarge
+                                  ?.copyWith(
+                                      color: palette.muted,
+                                      letterSpacing: 1.4),
+                            ),
+                            const Spacer(),
+                            Text('$_xp',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleMedium),
+                          ],
+                        ),
+                        Slider(
+                          min: 1,
+                          max: 100,
+                          divisions: 99,
+                          value: _xp.toDouble(),
+                          activeColor: palette.fg,
+                          inactiveColor: palette.line,
+                          onChanged: (v) =>
+                              setState(() => _xp = v.round()),
+                        ),
+                      ],
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ------------------------------------------------------------------
+  // Full-screen "document mode": Word-like editor with a tall body
+  // that fills the viewport and metadata pushed to a side rail (wide
+  // screens) or a dismissable end-drawer (narrow screens).
+  // ------------------------------------------------------------------
+
+  Widget _buildFullScreen(BuildContext context) {
+    final palette = context.palette;
+    final width = MediaQuery.of(context).size.width;
+    // Wide enough to fit a 720-px document column AND a 320-px metadata
+    // rail without crowding either. Below this break we collapse the
+    // rail into an end-drawer accessed from the app bar.
+    final wide = width >= 1024;
+
+    final scaffold = Scaffold(
+      backgroundColor: palette.bg,
+      appBar: AppBar(
+        backgroundColor: palette.bg,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.close, color: palette.fg),
+          tooltip: 'Закрыть',
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(
+          widget.existing == null ? 'Новая запись' : 'Запись',
+          style: Theme.of(context)
+              .textTheme
+              .titleMedium
+              ?.copyWith(color: palette.muted),
+        ),
+        actions: [
+          if (!wide)
+            Builder(
+              builder: (ctx) => IconButton(
+                icon: Icon(Icons.tune, color: palette.fg),
+                tooltip: 'Параметры',
+                onPressed: () => Scaffold.of(ctx).openEndDrawer(),
+              ),
+            ),
+          if (widget.existing != null)
+            IconButton(
+              icon: Icon(Icons.delete_outline, color: palette.fg),
+              tooltip: 'Удалить',
+              onPressed: _delete,
+            ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            child: FilledButton(
+              onPressed: _saving ? null : _save,
+              child: Text(_saving ? '...' : 'Сохранить'),
+            ),
+          ),
+        ],
+      ),
+      endDrawer: wide ? null : _buildMetadataDrawer(context, palette),
+      body: SafeArea(
+        top: false,
+        child: wide
+            ? _buildFullScreenWide(context, palette)
+            : _buildFullScreenNarrow(context, palette),
+      ),
+    );
+
+    return scaffold;
+  }
+
+  Widget _buildFullScreenWide(
+      BuildContext context, NoeticaPalette palette) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(child: _buildDocumentColumn(context, palette)),
+        Container(width: 1, color: palette.line),
+        SizedBox(
+          width: 340,
+          child: _buildMetadataPanel(context, palette,
+              embedded: true),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFullScreenNarrow(
+      BuildContext context, NoeticaPalette palette) {
+    return _buildDocumentColumn(context, palette);
+  }
+
+  /// Centred "page" with title at the top and the body editor filling
+  /// the remaining height. Padded so it reads like a Word document.
+  Widget _buildDocumentColumn(
+      BuildContext context, NoeticaPalette palette) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 760),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(28, 16, 28, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildTitleField(context, large: true),
+              const SizedBox(height: 12),
+              Expanded(
+                child: MarkdownBodyEditor(
+                  controller: _body,
+                  entryId: widget.existing?.id,
+                  expand: true,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMetadataDrawer(
+      BuildContext context, NoeticaPalette palette) {
+    return Drawer(
+      backgroundColor: palette.bg,
+      width: 340,
+      child: SafeArea(
+        child: _buildMetadataPanel(context, palette, embedded: false),
+      ),
+    );
+  }
+
+  /// Right-rail content shared by the wide layout (`embedded=true`,
+  /// flush against the document) and the narrow drawer (`embedded=false`,
+  /// gets its own header with a close button).
+  Widget _buildMetadataPanel(
+      BuildContext context, NoeticaPalette palette,
+      {required bool embedded}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (!embedded)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
+            child: Row(
+              children: [
+                Text(
+                  'Параметры',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: Icon(Icons.close, color: palette.fg),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ],
+            ),
+          ),
+        Expanded(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(20, embedded ? 24 : 0, 20, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildKindAndDuePanel(context, palette),
+                const SizedBox(height: 20),
+                if (parseSubtasks(_body.text).isNotEmpty) ...[
+                  _buildSubtaskSection(),
+                  const SizedBox(height: 20),
+                ],
+                _buildAxesSection(context, palette),
+                const SizedBox(height: 20),
+                _buildTagsSection(palette),
+                if (widget.existing != null) ...[
+                  const SizedBox(height: 20),
+                  _buildBacklinksSection(palette),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

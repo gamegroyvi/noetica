@@ -374,6 +374,8 @@ class MarkdownBodyEditor extends ConsumerStatefulWidget {
     this.hintText,
     this.minLines = 6,
     this.maxLines = 14,
+    this.expand = false,
+    this.fontSize = 14,
   });
 
   final TextEditingController controller;
@@ -381,6 +383,17 @@ class MarkdownBodyEditor extends ConsumerStatefulWidget {
   final String? hintText;
   final int minLines;
   final int maxLines;
+
+  /// When true the inner [TextField] uses `expands: true` and the
+  /// editor fills all the vertical space its parent gives it — used by
+  /// the full-screen "document mode" so the body looks like a Word
+  /// page, not a 14-line text box. Caller must wrap this widget in a
+  /// box with bounded height (e.g. [Expanded] inside a [Column]).
+  final bool expand;
+
+  /// Base font size for the body. The full-screen view uses a slightly
+  /// larger size so longer prose reads more like a document.
+  final double fontSize;
 
   @override
   ConsumerState<MarkdownBodyEditor> createState() =>
@@ -607,28 +620,59 @@ class _MarkdownBodyEditorState extends ConsumerState<MarkdownBodyEditor> {
       onQuote: () => _prefixCurrentLine('> '),
     );
 
+    final field = TextField(
+      controller: widget.controller,
+      focusNode: _focusNode,
+      // `expands: true` requires both line counts to be null. Switching
+      // between bounded ("sheet") and document ("full-screen") modes is
+      // the whole reason this flag exists — see [MarkdownBodyEditor.expand].
+      minLines: widget.expand ? null : widget.minLines,
+      maxLines: widget.expand ? null : widget.maxLines,
+      expands: widget.expand,
+      textAlignVertical: TextAlignVertical.top,
+      textInputAction: TextInputAction.newline,
+      keyboardType: TextInputType.multiline,
+      style: TextStyle(height: 1.5, fontSize: widget.fontSize),
+      decoration: InputDecoration(
+        hintText: widget.hintText ??
+            'Что у тебя на уме?\n'
+                'Форматирование: жирный, курсив, заголовки, '
+                'чек-листы, [[ссылки на заметки]].',
+        alignLabelWithHint: true,
+        // In full-screen "document mode" the field has to paint its
+        // border around the entire scrolling area, otherwise the
+        // border collapses to a thin strip at the top.
+        border: widget.expand
+            ? OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: palette.line),
+              )
+            : null,
+        enabledBorder: widget.expand
+            ? OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: palette.line),
+              )
+            : null,
+        focusedBorder: widget.expand
+            ? OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: palette.fg, width: 1.4),
+              )
+            : null,
+        contentPadding: widget.expand
+            ? const EdgeInsets.fromLTRB(20, 18, 20, 18)
+            : null,
+      ),
+      onChanged: (_) => setState(() {}),
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         toolbar,
         const SizedBox(height: 8),
-        TextField(
-          controller: widget.controller,
-          focusNode: _focusNode,
-          minLines: widget.minLines,
-          maxLines: widget.maxLines,
-          textInputAction: TextInputAction.newline,
-          keyboardType: TextInputType.multiline,
-          style: const TextStyle(height: 1.45, fontSize: 14),
-          decoration: InputDecoration(
-            hintText: widget.hintText ??
-                'Что у тебя на уме?\n'
-                    'Форматирование: жирный, курсив, заголовки, '
-                    'чек-листы, [[ссылки на заметки]].',
-            alignLabelWithHint: true,
-          ),
-          onChanged: (_) => setState(() {}),
-        ),
+        if (widget.expand) Expanded(child: field) else field,
         if (_showingSuggestions)
           _WikiLinkSuggestions(
             query: _wikiQuery,
