@@ -126,3 +126,79 @@ class ErrorResponse(BaseModel):
     kind: Literal["upstream_error", "validation_error", "config_error"] = (
         "upstream_error"
     )
+
+
+# ---------- /tools/menu ----------
+
+# Допустимые цели питания. Дублируется в `prompts_menu.GOAL_DESCRIPTIONS`,
+# но Pydantic-валидация даёт ранний 422 на уровне FastAPI — без раунд-трипа
+# к LLM при опечатках.
+MenuGoal = Literal[
+    "lose_weight",
+    "health",
+    "muscle",
+    "energy",
+    "classic",
+]
+
+
+class MenuIngredient(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    amount: str = Field(default="", max_length=40)
+
+
+class MenuMeal(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    ingredients: list[MenuIngredient] = Field(default_factory=list)
+    calories: int = Field(default=0, ge=0, le=5000)
+    protein: int = Field(default=0, ge=0, le=400)
+    fat: int = Field(default=0, ge=0, le=400)
+    carbs: int = Field(default=0, ge=0, le=800)
+
+
+class MenuDay(BaseModel):
+    day_name: str = Field(min_length=1, max_length=24)
+    breakfast: MenuMeal | None = None
+    lunch: MenuMeal | None = None
+    dinner: MenuMeal | None = None
+    snack: MenuMeal | None = None
+
+
+class MenuRequest(BaseModel):
+    goal: MenuGoal = "classic"
+    servings: int = Field(default=2, ge=1, le=8)
+    restrictions: str = Field(default="", max_length=400)
+    extra_notes: str = Field(default="", max_length=600)
+
+
+class MenuPlan(BaseModel):
+    """Stage-1 response: structure only, no recipes.
+
+    `shopping_list` is keyed by category (Мясо и рыба / Молочные / etc.)
+    and is sized for the whole week × servings — the client renders it
+    as a single «Список покупок» note when the user imports.
+    """
+
+    model: str
+    days: list[MenuDay]
+    daily_avg_calories: int = Field(default=0, ge=0, le=5000)
+    notes: str = ""
+    shopping_list: dict[str, list[MenuIngredient]] = Field(default_factory=dict)
+
+
+class MenuRecipeRequest(BaseModel):
+    meal_name: str = Field(min_length=1, max_length=120)
+    ingredients: list[MenuIngredient] = Field(default_factory=list)
+    goal: MenuGoal = "classic"
+    servings: int = Field(default=2, ge=1, le=8)
+
+
+class MenuRecipeResponse(BaseModel):
+    """Stage-2 response: a single recipe rendered as markdown.
+
+    We return markdown directly (not JSON) so it slots into Noetica's
+    note body without any client-side post-processing.
+    """
+
+    model: str
+    markdown: str

@@ -18,8 +18,18 @@ from .schemas import (
     AxisDraft,
     AxisInput,
     KnowledgeInput,
+    MenuDay,
+    MenuIngredient,
+    MenuMeal,
+    MenuPlan,
     ProfileInput,
     RoadmapTask,
+)
+from .prompts_menu import (
+    menu_system_prompt,
+    menu_user_prompt,
+    recipe_system_prompt,
+    recipe_user_prompt,
 )
 
 
@@ -329,6 +339,121 @@ class LlmClient:
         parsed = _parse_json(content)
         return _normalize_axes(parsed.get("axes", []), count)
 
+    async def generate_menu_plan(
+        self,
+        goal: str,
+        servings: int,
+        restrictions: str,
+        extra_notes: str,
+    ) -> MenuPlan:
+        """Stage 1 — full week structure (names + ingredients + macros).
+
+        Returns a `MenuPlan` ready to be normalised into Entry-y on the
+        client. The model is asked for strict JSON; we hard-fail with a
+        502 if it doesn't parse so callers can surface a retry button.
+        """
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        payload: dict[str, Any] = {
+            "model": self.model,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": menu_system_prompt(servings, goal, restrictions),
+                },
+                {
+                    "role": "user",
+                    "content": menu_user_prompt(extra_notes),
+                },
+            ],
+            "response_format": {"type": "json_object"},
+            "temperature": 0.7,
+            # 21 meals + shopping list comfortably fit; bump if we ever
+            # add a snack-by-default mode.
+            "max_tokens": 6000,
+        }
+        url = f"{self.base_url}/chat/completions"
+        async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+            response = await client.post(url, json=payload, headers=headers)
+        if response.status_code >= 400:
+            raise LlmUpstreamError(
+                response.status_code,
+                f"LLM upstream error ({response.status_code}): {response.text[:500]}",
+            )
+        data = response.json()
+        try:
+            content = data["choices"][0]["message"]["content"]
+            finish = data["choices"][0].get("finish_reason")
+        except (KeyError, IndexError, TypeError) as exc:
+            raise LlmUpstreamError(
+                502, f"Malformed LLM response: {exc}: {data!r}"
+            ) from exc
+        if finish == "length":
+            raise LlmUpstreamError(
+                502,
+                "LLM menu response was truncated (finish_reason=length). "
+                "Increase max_tokens or simplify the request.",
+            )
+        parsed = _parse_json(content)
+        return _normalize_menu_plan(parsed, model=self.model)
+
+    async def generate_meal_recipe(
+        self,
+        meal_name: str,
+        ingredients: list[dict[str, str]],
+        goal: str,
+        servings: int,
+    ) -> str:
+        """Stage 2 — single meal recipe rendered as markdown.
+
+        Returns the raw markdown body. `temperature` is slightly lower
+        than stage 1 so we get terse recipes that respect the template
+        rather than chatty re-introductions.
+        """
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        payload: dict[str, Any] = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": recipe_system_prompt()},
+                {
+                    "role": "user",
+                    "content": recipe_user_prompt(
+                        meal_name, ingredients, goal, servings,
+                    ),
+                },
+            ],
+            "temperature": 0.5,
+            "max_tokens": 900,
+        }
+        url = f"{self.base_url}/chat/completions"
+        async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+            response = await client.post(url, json=payload, headers=headers)
+        if response.status_code >= 400:
+            raise LlmUpstreamError(
+                response.status_code,
+                f"LLM upstream error ({response.status_code}): {response.text[:500]}",
+            )
+        data = response.json()
+        try:
+            content = data["choices"][0]["message"]["content"]
+        except (KeyError, IndexError, TypeError) as exc:
+            raise LlmUpstreamError(
+                502, f"Malformed LLM response: {exc}: {data!r}"
+            ) from exc
+        markdown = str(content).strip()
+        # Strip accidental code-fence wrappers — Groq sometimes wraps
+        # markdown content in triple backticks despite instruction.
+        if markdown.startswith("```"):
+            markdown = markdown.strip("`").lstrip("markdown\n").strip()
+        if not markdown:
+            raise LlmUpstreamError(502, "Empty recipe content from LLM.")
+        return markdown
+
 
 def _axes_system_prompt(count: int) -> str:
     return (
@@ -555,3 +680,101 @@ def _normalize_tasks(
             )
         )
     return out
+
+
+def _normalize_menu_plan(parsed: dict[str, Any], *, model: str) -> MenuPlan:
+    """Coerce the LLM's stage-1 JSON into our Pydantic schema.
+
+    The model occasionally returns numbers as strings or wraps `null`
+    meals as empty objects. We swallow those quirks here so the
+    `/tools/menu/generate` route always returns a clean shape.
+    """
+    raw_days = parsed.get("days") or []
+    days: list[MenuDay] = []
+    if isinstance(raw_days, list):
+        for d in raw_days:
+            if not isinstance(d, dict):
+                continue
+            day_name = str(d.get("day_name") or "").strip()
+            if not day_name:
+                continue
+            days.append(
+                MenuDay(
+                    day_name=day_name[:24],
+                    breakfast=_normalize_meal(d.get("breakfast")),
+                    lunch=_normalize_meal(d.get("lunch")),
+                    dinner=_normalize_meal(d.get("dinner")),
+                    snack=_normalize_meal(d.get("snack")),
+                )
+            )
+
+    avg = parsed.get("daily_avg_calories", 0)
+    try:
+        avg_int = max(0, min(5000, int(avg)))
+    except (TypeError, ValueError):
+        avg_int = 0
+
+    notes = str(parsed.get("notes") or "").strip()[:600]
+
+    raw_shop = parsed.get("shopping_list") or {}
+    shopping: dict[str, list[MenuIngredient]] = {}
+    if isinstance(raw_shop, dict):
+        for category, items in raw_shop.items():
+            if not isinstance(category, str) or not isinstance(items, list):
+                continue
+            cleaned = [
+                ing for ing in (_normalize_ingredient(it) for it in items) if ing
+            ]
+            if cleaned:
+                shopping[category[:40]] = cleaned
+
+    return MenuPlan(
+        model=model,
+        days=days,
+        daily_avg_calories=avg_int,
+        notes=notes,
+        shopping_list=shopping,
+    )
+
+
+def _normalize_meal(raw: Any) -> MenuMeal | None:
+    """Return None for missing / null / empty meals — matches schema."""
+    if not isinstance(raw, dict):
+        return None
+    name = str(raw.get("name") or "").strip()
+    if not name:
+        return None
+
+    raw_ings = raw.get("ingredients") or []
+    ingredients: list[MenuIngredient] = []
+    if isinstance(raw_ings, list):
+        for it in raw_ings:
+            ing = _normalize_ingredient(it)
+            if ing:
+                ingredients.append(ing)
+
+    def _macro(key: str, lim: int) -> int:
+        v = raw.get(key, 0)
+        try:
+            return max(0, min(lim, int(round(float(v)))))
+        except (TypeError, ValueError):
+            return 0
+
+    return MenuMeal(
+        name=name[:120],
+        ingredients=ingredients,
+        calories=_macro("calories", 5000),
+        protein=_macro("protein", 400),
+        fat=_macro("fat", 400),
+        carbs=_macro("carbs", 800),
+    )
+
+
+def _normalize_ingredient(raw: Any) -> MenuIngredient | None:
+    if not isinstance(raw, dict):
+        return None
+    name = str(raw.get("name") or "").strip()
+    if not name:
+        return None
+    amount = str(raw.get("amount") or "").strip()
+    return MenuIngredient(name=name[:80], amount=amount[:40])

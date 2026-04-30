@@ -28,6 +28,10 @@ from .llm import LlmClient, LlmConfigError, LlmUpstreamError
 from .schemas import (
     AxesRequest,
     AxesResponse,
+    MenuPlan,
+    MenuRecipeRequest,
+    MenuRecipeResponse,
+    MenuRequest,
     RoadmapRequest,
     RoadmapResponse,
 )
@@ -230,6 +234,89 @@ async def generate_axes(
         len(request.interests),
     )
     return AxesResponse(model=client.model, axes=axes)
+
+
+# ---------- /tools/menu (Ассистент → Меню недели) ----------
+
+
+@app.post("/tools/menu/generate", response_model=MenuPlan)
+async def tools_menu_generate(
+    request: MenuRequest,
+    user: CurrentUser,
+) -> MenuPlan:
+    """Stage-1 — return a 7-day menu structure (no recipe steps).
+
+    The client renders this into a preview table. Recipes are pulled
+    on-demand via `/tools/menu/recipe` only for meals the user opens.
+    """
+    try:
+        client = LlmClient()
+    except LlmConfigError as exc:
+        logger.error("LLM config error: %s", exc)
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    try:
+        plan = await client.generate_menu_plan(
+            goal=request.goal,
+            servings=request.servings,
+            restrictions=request.restrictions,
+            extra_notes=request.extra_notes,
+        )
+    except LlmUpstreamError as exc:
+        logger.warning("LLM menu upstream error: status=%s", exc.status)
+        raise HTTPException(
+            status_code=502, detail="LLM upstream error.",
+        ) from exc
+
+    if not plan.days:
+        raise HTTPException(
+            status_code=502, detail="LLM returned no days for the menu.",
+        )
+
+    logger.info(
+        "Generated menu: user=%s model=%s days=%d goal=%s servings=%d",
+        user["id"][:8],
+        plan.model,
+        len(plan.days),
+        request.goal,
+        request.servings,
+    )
+    return plan
+
+
+@app.post("/tools/menu/recipe", response_model=MenuRecipeResponse)
+async def tools_menu_recipe(
+    request: MenuRecipeRequest,
+    user: CurrentUser,
+) -> MenuRecipeResponse:
+    """Stage-2 — return a single full recipe rendered as markdown."""
+    try:
+        client = LlmClient()
+    except LlmConfigError as exc:
+        logger.error("LLM config error: %s", exc)
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    try:
+        markdown = await client.generate_meal_recipe(
+            meal_name=request.meal_name,
+            ingredients=[i.model_dump() for i in request.ingredients],
+            goal=request.goal,
+            servings=request.servings,
+        )
+    except LlmUpstreamError as exc:
+        logger.warning("LLM recipe upstream error: status=%s", exc.status)
+        raise HTTPException(
+            status_code=502, detail="LLM upstream error.",
+        ) from exc
+
+    logger.info(
+        "Generated recipe: user=%s model=%s meal=%r ings=%d",
+        user["id"][:8],
+        client.model,
+        request.meal_name[:40],
+        len(request.ingredients),
+    )
+    return MenuRecipeResponse(model=client.model, markdown=markdown)
 
 
 _ = Depends  # silence unused import warning when no other Depends is used here
