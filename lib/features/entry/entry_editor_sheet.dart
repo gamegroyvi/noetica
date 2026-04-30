@@ -353,21 +353,33 @@ class _EntryEditorFormState extends ConsumerState<_EntryEditorForm> {
   Widget _buildTitleField(BuildContext context, {bool large = false}) {
     final isTask = _kind == EntryKind.task;
     final theme = Theme.of(context);
+    final palette = context.palette;
     return TextField(
       controller: _title,
       autofocus: widget.existing == null && !widget.isFullScreen,
       style: large
-          ? theme.textTheme.headlineSmall
-              ?.copyWith(fontWeight: FontWeight.w600)
+          ? theme.textTheme.headlineMedium
+              ?.copyWith(fontWeight: FontWeight.w700, height: 1.15)
           : theme.textTheme.titleMedium,
+      cursorColor: palette.fg,
       decoration: InputDecoration(
         hintText: isTask ? 'Что нужно сделать?' : 'Заголовок',
+        // Document mode: borderless, no fill — the title reads like a
+        // headline at the top of a Word page, not like another input.
+        filled: large ? false : null,
+        fillColor: large ? Colors.transparent : null,
         border: large ? InputBorder.none : null,
         enabledBorder: large ? InputBorder.none : null,
         focusedBorder: large ? InputBorder.none : null,
-        contentPadding: large
-            ? const EdgeInsets.symmetric(vertical: 4)
+        hintStyle: large
+            ? theme.textTheme.headlineMedium?.copyWith(
+                color: palette.muted.withValues(alpha: 0.55),
+                fontWeight: FontWeight.w600,
+                height: 1.15,
+              )
             : null,
+        contentPadding:
+            large ? const EdgeInsets.symmetric(vertical: 4) : null,
       ),
     );
   }
