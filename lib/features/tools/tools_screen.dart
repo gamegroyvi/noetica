@@ -20,11 +20,12 @@ class ToolsScreen extends StatelessWidget {
     final palette = context.palette;
     final theme = Theme.of(context);
     final width = MediaQuery.of(context).size.width;
-    final isDesktop = width >= 900;
-    // On mobile the floating tabbar overlays the bottom of the screen,
-    // so we keep clear space underneath the last card. On desktop the
-    // sidebar replaces it and no extra reserve is needed.
-    final bottomReserve = isDesktop ? 32.0 : kFloatingTabBarReserve + 16;
+    // Match HomeShell's `_kRailMin` (720): at/above this the sidebar is
+    // visible and the floating tabbar is gone, so we don't need to
+    // reserve room for it. Below 720 the capsule overlays the bottom
+    // of the viewport and the last card would otherwise hide under it.
+    final hasSidebar = width >= 720;
+    final bottomReserve = hasSidebar ? 32.0 : kFloatingTabBarReserve + 16;
 
     return Scaffold(
       appBar: AppBar(
@@ -38,7 +39,7 @@ class ToolsScreen extends StatelessWidget {
             // viewport, on tablets/desktop we cap at 920px so cards
             // don't stretch into something unreadable.
             final maxColumn = constraints.maxWidth.clamp(0, 920).toDouble();
-            final horizontal = isDesktop ? 32.0 : 16.0;
+            final horizontal = hasSidebar ? 32.0 : 16.0;
             return ListView(
               padding: EdgeInsets.fromLTRB(
                 horizontal,
