@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -119,6 +120,16 @@ class AxesApi {
           message = decoded['detail'] as String;
         }
       } catch (_) {}
+      if (response.statusCode == 401) {
+        // Token is stale (backend rotated JWT_SECRET or we switched
+        // Fly apps). Clear it so AuthGate forces a re-login instead of
+        // letting the user stare at "Gemini doesn't work".
+        unawaited(_auth?.handleUnauthorized() ?? Future.value());
+        throw AxesApiException(
+          'Сессия истекла. Зайдите через Google ещё раз.',
+          status: 401,
+        );
+      }
       throw AxesApiException(message, status: response.statusCode);
     }
 

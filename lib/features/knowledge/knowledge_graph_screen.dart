@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -8,6 +9,7 @@ import '../../data/models.dart';
 import '../../data/personal_knowledge_service.dart';
 import '../../providers.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/body_utils.dart';
 import '../entry/entry_editor_sheet.dart';
 
 // ---------------------------------------------------------------------------
@@ -230,6 +232,7 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
   final _searchController = TextEditingController();
   bool _loading = true;
   String? _error;
+  StreamSubscription<PersonalKnowledge>? _changesSub;
 
   // Graph state.
   List<_GraphNode> _nodes = [];
@@ -252,11 +255,15 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
       duration: const Duration(seconds: 1),
     )..repeat();
     _ticker.addListener(_stepSimulation);
+    _changesSub = PersonalKnowledgeService.changes.listen((k) {
+      if (mounted) setState(() => _knowledge = k);
+    });
     _load();
   }
 
   @override
   void dispose() {
+    _changesSub?.cancel();
     _ticker.removeListener(_stepSimulation);
     _ticker.dispose();
     _zoom.dispose();
@@ -307,9 +314,18 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
   // ======================== graph construction ========================
 
   Future<void> _rebuildGraph() async {
-    final entries =
-        ref.read(entriesProvider).valueOrNull ?? const <Entry>[];
     final repo = await ref.read(repositoryProvider.future);
+
+    // Read entries directly from the repository instead of via
+    // `entriesProvider.valueOrNull`. The stream provider propagates
+    // through microtasks, so right after `showEntryEditor(...).then(...)`
+    // returns from a save the provider may still hold the pre-save
+    // snapshot — a freshly-created note would get its entry_links row
+    // via `syncBodyLinks` but the graph wouldn't see the note itself
+    // in `idToIndex`, silently dropping the edge. User-visible symptom:
+    // "I created a note and linked it to another, but it floats
+    // disconnected from the graph."
+    final entries = await repo.listEntries();
 
     // Get all links from DB.
     final links = await repo.allLinks();
@@ -405,10 +421,25 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
         }
       }
 
-      final branchCount = _Branch.values.length;
+      // Hide branches whose user-authored list is empty. Previously we
+      // drew all five branches (Цели/Ограничения/Достижения/Рефлексии/
+      // Предпочтения) unconditionally — which created a star of empty
+      // skeleton nodes for every new user and made the graph look
+      // cluttered and fake. In "knowledge"-only filter we still render
+      // ALL branches so the user can discover and fill them via taps
+      // (the empty-state CTA flow). Other modes ("all") show only the
+      // branches that actually have content.
+      final renderedBranches = _filter == _FilterMode.knowledge
+          ? _Branch.values
+          : _Branch.values
+              .where((b) => (branchItems[b] ?? const []).isNotEmpty)
+              .toList();
+      final branchCount = renderedBranches.length;
       for (var bi = 0; bi < branchCount; bi++) {
-        final b = _Branch.values[bi];
-        final angle = bi * 2 * math.pi / branchCount - math.pi / 2;
+        final b = renderedBranches[bi];
+        final angle = branchCount == 0
+            ? 0.0
+            : bi * 2 * math.pi / branchCount - math.pi / 2;
         final headerIdx = nodes.length;
         nodes.add(_GraphNode(
           id: '__branch_${b.name}__',
@@ -461,7 +492,12 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
       nodes.add(_GraphNode(
         id: e.id,
         label: e.title.isEmpty
-            ? (e.body.length > 30 ? '${e.body.substring(0, 30)}…' : e.body)
+            ? (() {
+                final plain = bodyToPlainText(e.body);
+                return plain.length > 30
+                    ? '${plain.substring(0, 30)}…'
+                    : plain;
+              })()
             : e.title,
         color: _entryColor(e),
         isCentre: false,
@@ -486,18 +522,24 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
       }
     }
 
-    // Connect orphan entry nodes to the centre.
-    final connectedNodeIndices = <int>{};
-    for (final e in graphEdges) {
-      connectedNodeIndices.add(e.from);
-      connectedNodeIndices.add(e.to);
-    }
-    for (final kv in idToIndex.entries) {
-      if (!connectedNodeIndices.contains(kv.value)) {
-        graphEdges.add(_GraphEdge(0, kv.value));
-      }
+    // Every entry is always anchored to the "я" centre — whether it's
+    // standalone or sits inside a wiki-linked cluster. The previous
+    // "orphan-only" rule produced the surprising effect that adding a
+    // single `[[wiki]]` ref between two notes caused both to detach
+    // from the centre (since they were no longer orphans). The user
+    // expected the opposite: linking two notes shouldn't break either
+    // note's connection to the core. Hub-and-spoke is fine — the force
+    // simulation still renders the wiki-link edges clearly on top.
+    for (final idx in idToIndex.values) {
+      graphEdges.add(_GraphEdge(0, idx));
     }
 
+    // `_rebuildGraph` is async and awaits repositoryProvider +
+    // repo.allLinks(); if the user leaves the screen mid-flight the
+    // callback would hit setState-after-dispose. Sibling `_performSearch`
+    // already follows this pattern (Devin Review
+    // BUG_pr-review-job-30b43c75…_0001).
+    if (!mounted) return;
     setState(() {
       _nodes = nodes;
       _edges = graphEdges;
@@ -693,13 +735,28 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
     required PersonalKnowledge Function(List<String> next) apply,
     int maxItems = 12,
   }) async {
-    final next = await Navigator.of(context).push<List<String>>(
-      MaterialPageRoute(
-        builder: (_) => _EditListScreen(
+    final palette = context.palette;
+    // Dismissable bottom sheet with a drag handle + resizable scroll
+    // area. This keeps the graph partially visible behind the sheet,
+    // which matches the mobile-native feel the user asked for.
+    final next = await showModalBottomSheet<List<String>>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: palette.bg,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.7,
+        minChildSize: 0.4,
+        maxChildSize: 0.92,
+        builder: (context, scroll) => _EditListSheet(
           title: title,
           hint: hint,
           initial: items,
           maxItems: maxItems,
+          scrollController: scroll,
         ),
       ),
     );
@@ -1523,23 +1580,25 @@ class _EditResult {
 // Simple list editor for PersonalKnowledge branch items.
 // ---------------------------------------------------------------------------
 
-class _EditListScreen extends StatefulWidget {
-  const _EditListScreen({
+class _EditListSheet extends StatefulWidget {
+  const _EditListSheet({
     required this.title,
     required this.hint,
     required this.initial,
+    required this.scrollController,
     this.maxItems = 12,
   });
   final String title;
   final String hint;
   final List<String> initial;
   final int maxItems;
+  final ScrollController scrollController;
 
   @override
-  State<_EditListScreen> createState() => _EditListScreenState();
+  State<_EditListSheet> createState() => _EditListSheetState();
 }
 
-class _EditListScreenState extends State<_EditListScreen> {
+class _EditListSheetState extends State<_EditListSheet> {
   late final List<TextEditingController> _controllers;
 
   @override
@@ -1581,66 +1640,133 @@ class _EditListScreenState extends State<_EditListScreen> {
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
-    return Scaffold(
-      backgroundColor: palette.bg,
-      appBar: AppBar(
-        backgroundColor: palette.surface,
-        foregroundColor: palette.fg,
-        title: Text(widget.title),
-        actions: [
-          IconButton(icon: const Icon(Icons.check), onPressed: _save),
-        ],
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
       ),
-      floatingActionButton: _controllers.length < widget.maxItems
-          ? FloatingActionButton.small(
-              onPressed: _add,
-              backgroundColor: palette.fg,
-              child: Icon(Icons.add, color: palette.bg),
-            )
-          : null,
-      body: ReorderableListView.builder(
-        padding: const EdgeInsets.all(12),
-        itemCount: _controllers.length,
-        onReorder: (old, nw) {
-          setState(() {
-            final c = _controllers.removeAt(old);
-            _controllers.insert(nw > old ? nw - 1 : nw, c);
-          });
-        },
-        itemBuilder: (_, i) {
-          return Padding(
-            key: ValueKey(i),
-            padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Drag handle
+          Container(
+            margin: const EdgeInsets.only(top: 8, bottom: 4),
+            height: 4,
+            width: 40,
+            decoration: BoxDecoration(
+              color: palette.line,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+          // Header row with title + save action
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
             child: Row(
               children: [
                 Expanded(
-                  child: TextField(
-                    controller: _controllers[i],
-                    style: TextStyle(color: palette.fg, fontSize: 14),
-                    decoration: InputDecoration(
-                      hintText: widget.hint,
-                      hintStyle: TextStyle(color: palette.muted),
-                      filled: true,
-                      fillColor: palette.surface,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
+                  child: Text(
+                    widget.title,
+                    style: TextStyle(
+                      color: palette.fg,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
-                IconButton(
-                  icon: Icon(Icons.close, color: palette.muted, size: 18),
-                  onPressed: () => _remove(i),
+                if (_controllers.length < widget.maxItems)
+                  IconButton(
+                    tooltip: 'Добавить',
+                    icon: Icon(Icons.add, color: palette.fg),
+                    onPressed: _add,
+                  ),
+                TextButton.icon(
+                  onPressed: _save,
+                  icon: Icon(Icons.check, color: palette.fg, size: 18),
+                  label: Text(
+                    'Готово',
+                    style: TextStyle(color: palette.fg),
+                  ),
                 ),
               ],
             ),
-          );
-        },
+          ),
+          Divider(height: 1, color: palette.line),
+          Expanded(
+            child: _controllers.isEmpty
+                ? _EmptyListCta(palette: palette, onAdd: _add)
+                : ReorderableListView.builder(
+                    scrollController: widget.scrollController,
+                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
+                    itemCount: _controllers.length,
+                    onReorder: (old, nw) {
+                      setState(() {
+                        final c = _controllers.removeAt(old);
+                        _controllers.insert(nw > old ? nw - 1 : nw, c);
+                      });
+                    },
+                    itemBuilder: (_, i) {
+                      return Padding(
+                        key: ValueKey(_controllers[i]),
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Row(
+                          children: [
+                            Icon(Icons.drag_indicator,
+                                color: palette.muted, size: 18),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: TextField(
+                                controller: _controllers[i],
+                                style: TextStyle(
+                                    color: palette.fg, fontSize: 14),
+                                decoration: InputDecoration(
+                                  hintText: widget.hint,
+                                  hintStyle:
+                                      TextStyle(color: palette.muted),
+                                  filled: true,
+                                  fillColor: palette.surface,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                  contentPadding:
+                                      const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 10,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              icon: Icon(Icons.close,
+                                  color: palette.muted, size: 18),
+                              onPressed: () => _remove(i),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyListCta extends StatelessWidget {
+  const _EmptyListCta({required this.palette, required this.onAdd});
+  final NoeticaPalette palette;
+  final VoidCallback onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: TextButton.icon(
+        onPressed: onAdd,
+        icon: Icon(Icons.add, color: palette.fg),
+        label: Text(
+          'Добавить первую запись',
+          style: TextStyle(color: palette.fg),
+        ),
       ),
     );
   }

@@ -64,7 +64,7 @@ class AppTheme {
           letterSpacing: 0.2,
         ),
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: surface,
         elevation: 0,
         margin: EdgeInsets.zero,
@@ -173,7 +173,7 @@ class AppTheme {
         tileColor: bg,
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
       ),
-      dialogTheme: DialogTheme(
+      dialogTheme: DialogThemeData(
         backgroundColor: surface,
         elevation: 0,
         shape: RoundedRectangleBorder(

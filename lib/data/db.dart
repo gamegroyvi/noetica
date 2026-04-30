@@ -98,7 +98,7 @@ class NoeticaDb {
 
   static Future<void> _createReflectionsTable(Database db) async {
     await db.execute('''
-      CREATE TABLE task_reflections (
+      CREATE TABLE IF NOT EXISTS task_reflections (
         id TEXT PRIMARY KEY,
         entry_id TEXT NOT NULL REFERENCES entries(id) ON DELETE CASCADE,
         status TEXT NOT NULL,
@@ -109,12 +109,12 @@ class NoeticaDb {
       )
     ''');
     await db.execute(
-        'CREATE INDEX idx_task_reflections_entry ON task_reflections(entry_id)');
+        'CREATE INDEX IF NOT EXISTS idx_task_reflections_entry ON task_reflections(entry_id)');
   }
 
   static Future<void> _createEntryLinksTable(Database db) async {
     await db.execute('''
-      CREATE TABLE entry_links (
+      CREATE TABLE IF NOT EXISTS entry_links (
         source_id TEXT NOT NULL REFERENCES entries(id) ON DELETE CASCADE,
         target_id TEXT NOT NULL REFERENCES entries(id) ON DELETE CASCADE,
         created_at INTEGER NOT NULL,
@@ -122,9 +122,9 @@ class NoeticaDb {
       )
     ''');
     await db.execute(
-        'CREATE INDEX idx_entry_links_source ON entry_links(source_id)');
+        'CREATE INDEX IF NOT EXISTS idx_entry_links_source ON entry_links(source_id)');
     await db.execute(
-        'CREATE INDEX idx_entry_links_target ON entry_links(target_id)');
+        'CREATE INDEX IF NOT EXISTS idx_entry_links_target ON entry_links(target_id)');
   }
 
   static Future<void> _onUpgrade(

@@ -1,6 +1,6 @@
 # Noetica · LLM persona golden tests
 
-Backend: `https://api.deepseek.com/v1` · Model: `deepseek-chat`
+Backend: `https://api.groq.com/openai/v1` · Model: `llama-3.3-70b-versatile`
 
 - [01_burned_out_student](01_burned_out_student.md) — △ Учёба, ☆ Сон, ◇ Экран, ● Спорт, ○ Тишина
 - [02_new_mom_returning](02_new_mom_returning.md) — ◆ Фронтенд, ● Восстановление, ▲ Питание, ■ Английский, ☆ Сон и отдых

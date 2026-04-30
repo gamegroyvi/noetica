@@ -194,6 +194,24 @@ class AuthService {
     }
   }
 
+  /// Called by API clients when the backend returns 401 on an
+  /// authenticated call. The cached JWT is almost certainly stale
+  /// (e.g. we switched backends or the server rotated JWT_SECRET), so
+  /// we drop it and let `AuthGate` kick the user back to the sign-in
+  /// screen. Keeping a stale token in storage means every LLM / sync
+  /// request silently fails forever — which looks exactly like "Gemini
+  /// doesn't work".
+  Future<void> handleUnauthorized() async {
+    if (_current == null) return;
+    // DEV-ONLY: when DEV_SKIP_AUTH=true the "session" is a synthetic
+    // local stub used to preview UI without a backend. Treating a 401
+    // from a real network call as a sign-out kicks the dev user back
+    // to the sign-in screen mid-onboarding, which makes it impossible
+    // to drive the app locally for visual QA. Keep the stub alive.
+    if (_skipAuth) return;
+    await signOut();
+  }
+
   Future<String> _obtainGoogleIdToken() async {
     if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
       return _googleSignInIdToken();

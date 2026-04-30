@@ -5,6 +5,7 @@ import '../../data/models.dart';
 import '../../data/profile.dart';
 import '../../providers.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/body_utils.dart';
 import '../../utils/time_utils.dart';
 import '../../widgets/brand_glyph.dart';
 import '../../services/weekly_reflection_service.dart';
@@ -811,7 +812,7 @@ class _CompactEntryRow extends ConsumerWidget {
                 children: [
                   Text(
                     entry.title.isEmpty
-                        ? (entry.body.isEmpty ? '—' : entry.body)
+                        ? (entry.body.isEmpty ? '—' : bodyToPlainText(entry.body))
                         : entry.title,
                     style: TextStyle(
                       color: palette.fg,

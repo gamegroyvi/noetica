@@ -93,12 +93,13 @@ async def healthz_llm() -> dict[str, object]:
         client = LlmClient()
     except LlmConfigError as exc:
         return {"ok": False, "error": str(exc)}
-    if "generativelanguage.googleapis.com" in (client.base_url or ""):
+    provider = "groq"
+    if "groq" in (client.base_url or ""):
+        provider = "groq"
+    elif "generativelanguage" in (client.base_url or ""):
         provider = "gemini"
-    elif "deepseek" in (client.base_url or ""):
-        provider = "deepseek"
-    else:
-        provider = "other"
+    elif "openai.com" in (client.base_url or ""):
+        provider = "openai"
     return {
         "ok": True,
         "provider": provider,
@@ -229,80 +230,6 @@ async def generate_axes(
         len(request.interests),
     )
     return AxesResponse(model=client.model, axes=axes)
-
-
-
-# ---------- /knowledge/suggest-links (LLM-assisted link suggestions) ----------
-
-
-class SuggestLinksRequest(BaseModel):
-    entry_title: str
-    entry_body: str = ""
-    all_titles: list[str] = []
-
-
-class SuggestLinksResponse(BaseModel):
-    suggested_titles: list[str]
-    model: str
-
-
-@app.post("/knowledge/suggest-links", response_model=SuggestLinksResponse)
-async def suggest_links(
-    request: SuggestLinksRequest,
-    user: CurrentUser,
-) -> SuggestLinksResponse:
-    """Use LLM to suggest which existing entries should be linked to the
-    given entry based on semantic relevance."""
-    if not request.all_titles:
-        return SuggestLinksResponse(suggested_titles=[], model="none")
-
-    try:
-        client = LlmClient()
-    except LlmConfigError as exc:
-        logger.error("LLM config error: %s", exc)
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-
-    titles_list = "\n".join(f"- {t}" for t in request.all_titles[:100])
-    prompt = (
-        f"Given this note:\n"
-        f"Title: {request.entry_title}\n"
-        f"Body: {request.entry_body[:500]}\n\n"
-        f"Which of these existing notes are semantically related?\n"
-        f"{titles_list}\n\n"
-        f"Return ONLY a JSON array of the related note titles (exact match). "
-        f"Return at most 5 suggestions. If none are related, return []."
-    )
-
-    import json as _json
-
-    try:
-        raw = await client.chat(
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.3,
-        )
-        # Try to parse JSON from response.
-        text = raw.strip()
-        if text.startswith("```"):
-            text = text.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
-        suggested = _json.loads(text)
-        if not isinstance(suggested, list):
-            suggested = []
-        suggested = [
-            t for t in suggested
-            if isinstance(t, str) and t in request.all_titles
-        ]
-    except Exception:
-        suggested = []
-
-    logger.info(
-        "suggest_links: user=%s suggestions=%d",
-        user["id"][:8],
-        len(suggested),
-    )
-    return SuggestLinksResponse(
-        suggested_titles=suggested,
-        model=client.model,
-    )
 
 
 _ = Depends  # silence unused import warning when no other Depends is used here

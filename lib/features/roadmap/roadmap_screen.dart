@@ -48,13 +48,15 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
           _prefilled = true;
           // Smart defaults: scale task count + horizon by weekly hours.
           // 0–5 ч/нед → 30 дней, 4 задачи; 6–14 → 30/6 (current default);
-          // 15+ → 60/10.
+          // 15+ → 90/10 (must match `_SegmentedRow` options 7/30/90
+          // so the selected chip is visually highlighted — using 60
+          // here left no button selected).
           final hours = profile?.weeklyHours ?? 0;
           if (hours <= 5) {
             _horizonDays = 30;
             _taskCount = 4;
           } else if (hours >= 15) {
-            _horizonDays = 60;
+            _horizonDays = 90;
             _taskCount = 10;
           }
         });
