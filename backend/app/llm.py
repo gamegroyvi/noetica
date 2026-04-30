@@ -448,8 +448,14 @@ class LlmClient:
         markdown = str(content).strip()
         # Strip accidental code-fence wrappers — Groq sometimes wraps
         # markdown content in triple backticks despite instruction.
+        # Mirrors the prefix-trimming logic in `_parse_json` so we don't
+        # accidentally eat real recipe characters (e.g. a meal that
+        # starts with "marinated…").
         if markdown.startswith("```"):
-            markdown = markdown.strip("`").lstrip("markdown\n").strip()
+            markdown = markdown.strip("`")
+            if markdown.lower().startswith("markdown"):
+                markdown = markdown[len("markdown"):]
+            markdown = markdown.strip()
         if not markdown:
             raise LlmUpstreamError(502, "Empty recipe content from LLM.")
         return markdown

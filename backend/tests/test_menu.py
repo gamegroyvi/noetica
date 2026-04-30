@@ -174,6 +174,67 @@ def test_menu_recipe_returns_markdown(
     assert body["model"]
 
 
+@pytest.mark.asyncio
+async def test_recipe_strips_code_fence_without_corrupting_content(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Regression: code-fence stripper must not chew up real letters.
+
+    Earlier draft used `lstrip("markdown\\n")`, which treats the argument
+    as a character set, so a recipe that legitimately starts with
+    "marinated" would have been silently mangled into "inated". We must
+    strip the literal prefix instead.
+    """
+    monkeypatch.setenv("GROQ_API_KEY", "gsk_fake")
+
+    fence_wrapped = (
+        "```markdown\n"
+        "## Маринованная курица\n\n"
+        "marinated chicken with herbs"
+        "\n```"
+    )
+
+    class _FakeResponse:
+        status_code = 200
+        text = ""
+
+        def json(self) -> dict[str, Any]:
+            return {
+                "choices": [
+                    {"message": {"content": fence_wrapped}, "finish_reason": "stop"}
+                ]
+            }
+
+    class _FakeAsyncClient:
+        def __init__(self, *_args: Any, **_kwargs: Any) -> None:
+            pass
+
+        async def __aenter__(self) -> "_FakeAsyncClient":
+            return self
+
+        async def __aexit__(self, *exc_info: Any) -> None:
+            return None
+
+        async def post(self, *_args: Any, **_kwargs: Any) -> _FakeResponse:
+            return _FakeResponse()
+
+    monkeypatch.setattr(llm.httpx, "AsyncClient", _FakeAsyncClient)
+
+    client = LlmClient()
+    md = await client.generate_meal_recipe(
+        meal_name="Маринованная курица",
+        ingredients=[{"name": "Курица", "amount": "500 г"}],
+        goal="muscle",
+        servings=2,
+    )
+
+    # Fence and language tag stripped, but every legitimate character
+    # preserved — no lstrip-as-character-set damage.
+    assert not md.startswith("```")
+    assert "marinated chicken with herbs" in md
+    assert md.startswith("## Маринованная курица")
+
+
 def test_normalize_menu_plan_handles_dirty_input() -> None:
     """Bot-side hardening: stringy macros, null meals, missing fields."""
     raw = {
