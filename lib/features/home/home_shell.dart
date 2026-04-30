@@ -16,6 +16,7 @@ import '../pomodoro/pomodoro_sheet.dart';
 import '../self/self_screen.dart';
 import '../settings/settings_screen.dart';
 import '../tasks/tasks_screen.dart';
+import '../tools/tools_screen.dart';
 
 /// Layout breakpoints. Below `_kRailMin`: bottom navigation bar. Between
 /// `_kRailMin` and `_kRailExtended`: compact NavigationRail (icons only).
@@ -131,7 +132,8 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   static const _journalIndex = 3;
   static const _knowledgeIndex = 4;
   static const _calendarIndex = 5;
-  static const _settingsIndex = 6;
+  static const _toolsIndex = 6;
+  static const _settingsIndex = 7;
 
   // Pages must be built lazily so the dashboard can receive callbacks
   // bound to *this* state instance (`setState`).
@@ -155,6 +157,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     const NotesScreen(),
     const KnowledgeGraphScreen(),
     const CalendarScreen(),
+    const ToolsScreen(),
     const SettingsScreen(),
   ];
 
@@ -287,6 +290,8 @@ class _HomeShellState extends ConsumerState<HomeShell> {
             knowledgeSelected: _index == _knowledgeIndex,
             calendarSelected: _index == _calendarIndex,
             onCalendar: () => setState(() => _index = _calendarIndex),
+            toolsSelected: _index == _toolsIndex,
+            onTools: () => setState(() => _index = _toolsIndex),
             // Knowledge graph used to push a new route, which hid the
             // sidebar and trapped the user (no back button on the
             // graph screen). It's now a proper sidebar tab — selects
@@ -331,6 +336,8 @@ class _DesktopSidebar extends StatelessWidget {
     required this.onKnowledge,
     required this.calendarSelected,
     required this.onCalendar,
+    required this.toolsSelected,
+    required this.onTools,
     required this.settingsSelected,
     required this.onSettings,
     required this.onPomodoro,
@@ -348,6 +355,8 @@ class _DesktopSidebar extends StatelessWidget {
   final VoidCallback onKnowledge;
   final bool calendarSelected;
   final VoidCallback onCalendar;
+  final bool toolsSelected;
+  final VoidCallback onTools;
   final bool settingsSelected;
   final VoidCallback onSettings;
   final VoidCallback onPomodoro;
@@ -400,6 +409,7 @@ class _DesktopSidebar extends StatelessWidget {
                       !journalSelected &&
                       !knowledgeSelected &&
                       !calendarSelected &&
+                      !toolsSelected &&
                       !settingsSelected,
                   extended: extended,
                   palette: palette,
@@ -439,6 +449,15 @@ class _DesktopSidebar extends StatelessWidget {
                 extended: extended,
                 palette: palette,
                 onTap: onKnowledge,
+              ),
+              _SidebarTile(
+                icon: Icons.auto_awesome_outlined,
+                selectedIcon: Icons.auto_awesome,
+                label: 'Ассистент',
+                selected: toolsSelected,
+                extended: extended,
+                palette: palette,
+                onTap: onTools,
               ),
               _SidebarTile(
                 icon: Icons.timer_outlined,

@@ -23,6 +23,7 @@ import '../self/pentagon_painter.dart';
 import '../self/self_screen.dart';
 import '../settings/settings_screen.dart';
 import '../tasks/tasks_screen.dart';
+import '../tools/tools_screen.dart';
 
 /// "Сейчас" tab — focused dashboard.
 ///
@@ -165,6 +166,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
                   builder: (_) => const KnowledgeGraphScreen(),
+                ),
+              ),
+            ),
+          if (!isDesktop)
+            IconButton(
+              tooltip: 'Ассистент',
+              icon: const Icon(Icons.auto_awesome_outlined),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const ToolsScreen(),
                 ),
               ),
             ),
