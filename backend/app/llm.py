@@ -716,7 +716,9 @@ def _normalize_menu_plan(parsed: dict[str, Any], *, model: str) -> MenuPlan:
 
     avg = parsed.get("daily_avg_calories", 0)
     try:
-        avg_int = max(0, min(5000, int(avg)))
+        # Match `_macro`: tolerate stringy floats like "1500.5" since the
+        # model occasionally returns macros as strings.
+        avg_int = max(0, min(5000, int(round(float(avg)))))
     except (TypeError, ValueError):
         avg_int = 0
 

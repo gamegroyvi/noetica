@@ -264,3 +264,15 @@ def test_normalize_menu_plan_handles_dirty_input() -> None:
     assert day.lunch is None  # empty dict drops
     assert day.dinner is None
     assert plan.daily_avg_calories == 0  # invalid → 0
+
+
+def test_normalize_menu_plan_handles_stringy_avg_calories() -> None:
+    """LLM may return `"1500.5"` as a string; we coerce via float→int."""
+    raw = {
+        "days": [
+            {"day_name": "Среда", "breakfast": {"name": "Йогурт"}},
+        ],
+        "daily_avg_calories": "1500.5",
+    }
+    plan = llm._normalize_menu_plan(raw, model="m")
+    assert plan.daily_avg_calories == 1500
