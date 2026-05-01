@@ -4,10 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models.dart';
 import '../../providers.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/body_utils.dart';
 import '../../utils/subtask_utils.dart';
 import '../../utils/time_utils.dart';
 import '../../widgets/brand_glyph.dart';
 import '../entry/entry_editor_sheet.dart';
+import '../entry/markdown_body_editor.dart';
 import '../home/home_shell.dart';
 import '../reflection/reflection_sheet.dart';
 import '../settings/settings_screen.dart';
@@ -326,9 +328,12 @@ class _TaskTile extends ConsumerWidget {
     final overdue = !task.isCompleted &&
         task.dueAt != null &&
         task.dueAt!.isBefore(DateTime.now());
-    final subtasks = parseSubtasks(task.body);
-    final prose = stripSubtasks(task.body);
-    final prog = subtaskProgress(task.body);
+    // Bodies may be legacy Quill JSON; normalise to markdown so
+    // subtask parsing and the rendered prose preview both work.
+    final markdownBody = bodyToMarkdown(task.body);
+    final subtasks = parseSubtasks(markdownBody);
+    final prose = stripSubtasks(markdownBody).trim();
+    final prog = subtaskProgress(markdownBody);
     return InkWell(
       onTap: () => showEntryEditor(context, ref, existing: task),
       borderRadius: BorderRadius.circular(8),
@@ -365,10 +370,12 @@ class _TaskTile extends ConsumerWidget {
                   ),
                   if (prose.isNotEmpty) ...[
                     const SizedBox(height: 4),
-                    Text(
-                      prose,
+                    MarkdownPreview(
+                      // Render markdown so the user sees real bold /
+                      // italic / wiki links / tags instead of raw
+                      // markers like `**bold**` polluting the card.
+                      body: prose,
                       maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                       style: Theme.of(context)
                           .textTheme
                           .bodyMedium
@@ -462,16 +469,24 @@ class _SubtaskRow extends StatelessWidget {
                   : null,
             ),
             Expanded(
-              child: Text(
-                subtask.text.isEmpty ? '—' : subtask.text,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: subtask.checked ? palette.muted : palette.fg,
-                  decoration: subtask.checked
-                      ? TextDecoration.lineThrough
-                      : null,
-                ),
-              ),
+              child: subtask.text.isEmpty
+                  ? Text(
+                      '—',
+                      style: TextStyle(fontSize: 13, color: palette.muted),
+                    )
+                  : MarkdownPreview(
+                      // Subtask text often contains **bold**, [[wiki]],
+                      // tags etc. Render them so the row reads cleanly
+                      // instead of leaking raw markdown markers.
+                      body: subtask.text,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: subtask.checked ? palette.muted : palette.fg,
+                        decoration: subtask.checked
+                            ? TextDecoration.lineThrough
+                            : null,
+                      ),
+                    ),
             ),
           ],
         ),

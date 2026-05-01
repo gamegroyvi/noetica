@@ -14,12 +14,296 @@ import '../../data/models.dart';
 import '../../providers.dart';
 import '../../theme/app_theme.dart';
 
+/// Inline syntax matched by [_buildMarkdownLineSpans].
+final RegExp _inlineMarkdownRegex = RegExp(
+  r'(\*\*(?:[^*\n]|\*(?!\*))+\*\*)' // 1: **bold**
+  r'|(\*(?:[^*\n])+\*)' // 2: *italic*
+  r'|(~~(?:[^~\n])+~~)' // 3: ~~strike~~
+  r'|(`[^`\n]+`)' // 4: `code`
+  r'|(\[\[[^\[\]\n]+\]\])' // 5: [[wiki]]
+  r'|(\[[^\[\]\n]+\]\([^\s)]+\))' // 6: [text](url)
+  r'|(?<=^|[\s(])(#[\p{L}\d_-]+)', // 7: #tag
+  unicode: true,
+);
+
+/// Render markdown source [text] as a single TextSpan tree.
+///
+/// Markdown markers are rendered as zero-width transparent spans so the
+/// underlying string is preserved character-for-character — this lets
+/// the same builder feed both an editable [TextField] (where caret /
+/// selection require span text to match `controller.text`) and a
+/// read-only `Text.rich` preview in cards / lists.
+///
+/// The output therefore never adds or removes characters; we only
+/// re-style ranges of the input.
+TextSpan buildMarkdownTextSpan({
+  required String text,
+  required TextStyle base,
+  required NoeticaPalette palette,
+}) {
+  final dim = base.copyWith(
+    color: palette.muted,
+    fontWeight: FontWeight.w400,
+  );
+  // Markdown marker style: near-zero font size + transparent color.
+  // Characters survive in the text for parsing but take no visual
+  // space, hiding `**`, `# `, `> `, `- [ ] `, etc. from the user.
+  final marker = base.copyWith(
+    fontSize: 0.01,
+    color: Colors.transparent,
+  );
+  final spans = <InlineSpan>[];
+  final lines = text.split('\n');
+  for (var i = 0; i < lines.length; i++) {
+    _buildMarkdownLineSpans(
+      line: lines[i],
+      base: base,
+      dim: dim,
+      marker: marker,
+      palette: palette,
+      out: spans,
+    );
+    if (i < lines.length - 1) {
+      spans.add(TextSpan(text: '\n', style: base));
+    }
+  }
+  return TextSpan(style: base, children: spans);
+}
+
+void _buildMarkdownLineSpans({
+  required String line,
+  required TextStyle base,
+  required TextStyle dim,
+  required TextStyle marker,
+  required NoeticaPalette palette,
+  required List<InlineSpan> out,
+}) {
+  if (line.isEmpty) return;
+
+  // Heading: `#`, `##`, `###` + space
+  final heading = RegExp(r'^(#{1,3}) ').firstMatch(line);
+  if (heading != null) {
+    final level = heading.group(1)!.length;
+    final headingStyle = base.copyWith(
+      fontSize: switch (level) { 1 => 22.0, 2 => 19.0, _ => 16.0 },
+      fontWeight: FontWeight.w700,
+      height: 1.3,
+    );
+    out.add(TextSpan(text: heading.group(0), style: marker));
+    _applyInlineMarkdown(
+      text: line.substring(heading.end),
+      base: headingStyle,
+      dim: dim,
+      marker: marker,
+      palette: palette,
+      out: out,
+    );
+    return;
+  }
+
+  // Blockquote: `> ` — marker hidden, body italic + muted.
+  if (line.startsWith('> ')) {
+    final quoteStyle = base.copyWith(
+      fontStyle: FontStyle.italic,
+      color: palette.muted,
+    );
+    out.add(TextSpan(text: '> ', style: marker));
+    _applyInlineMarkdown(
+      text: line.substring(2),
+      base: quoteStyle,
+      dim: dim,
+      marker: marker,
+      palette: palette,
+      out: out,
+    );
+    return;
+  }
+
+  // Task item: `- [ ] ` / `- [x] ` — markers hidden so the user reads
+  // only the task text. Strike-through is the visual cue for completed
+  // tasks. Real interactive checkboxes live in the task list / card.
+  final task = RegExp(r'^(\s*)- \[( |x|X)\] ').firstMatch(line);
+  if (task != null) {
+    final indent = task.group(1) ?? '';
+    final done = task.group(2)!.toLowerCase() == 'x';
+    out.add(TextSpan(text: indent, style: base));
+    out.add(TextSpan(text: '- [${done ? 'x' : ' '}] ', style: marker));
+    final content = line.substring(task.end);
+    final contentStyle = done
+        ? base.copyWith(
+            decoration: TextDecoration.lineThrough,
+            color: palette.muted,
+          )
+        : base;
+    _applyInlineMarkdown(
+      text: content,
+      base: contentStyle,
+      dim: dim,
+      marker: marker,
+      palette: palette,
+      out: out,
+    );
+    return;
+  }
+
+  // Unordered list item: `- ` / `* ` / `+ ` — marker hidden.
+  final bullet = RegExp(r'^(\s*)([-*+]) ').firstMatch(line);
+  if (bullet != null) {
+    out.add(TextSpan(text: bullet.group(1), style: base));
+    out.add(TextSpan(text: '${bullet.group(2)} ', style: marker));
+    _applyInlineMarkdown(
+      text: line.substring(bullet.end),
+      base: base,
+      dim: dim,
+      marker: marker,
+      palette: palette,
+      out: out,
+    );
+    return;
+  }
+
+  // Ordered list item: `1. ` — digit kept (it's the index), dot+space
+  // hidden.
+  final ordered = RegExp(r'^(\s*)(\d+)\. ').firstMatch(line);
+  if (ordered != null) {
+    out.add(TextSpan(text: ordered.group(1), style: base));
+    out.add(TextSpan(
+      text: ordered.group(2)!,
+      style: base.copyWith(
+        color: palette.muted,
+        fontWeight: FontWeight.w600,
+      ),
+    ));
+    out.add(TextSpan(text: '. ', style: marker));
+    _applyInlineMarkdown(
+      text: line.substring(ordered.end),
+      base: base,
+      dim: dim,
+      marker: marker,
+      palette: palette,
+      out: out,
+    );
+    return;
+  }
+
+  _applyInlineMarkdown(
+    text: line,
+    base: base,
+    dim: dim,
+    marker: marker,
+    palette: palette,
+    out: out,
+  );
+}
+
+void _applyInlineMarkdown({
+  required String text,
+  required TextStyle base,
+  required TextStyle dim,
+  required TextStyle marker,
+  required NoeticaPalette palette,
+  required List<InlineSpan> out,
+}) {
+  var cursor = 0;
+  for (final m in _inlineMarkdownRegex.allMatches(text)) {
+    if (m.start > cursor) {
+      out.add(TextSpan(text: text.substring(cursor, m.start), style: base));
+    }
+    final match = m.group(0)!;
+    if (m.group(1) != null) {
+      // **bold** — hide markers
+      final inner = match.substring(2, match.length - 2);
+      out.add(TextSpan(text: '**', style: marker));
+      out.add(TextSpan(
+        text: inner,
+        style: base.copyWith(fontWeight: FontWeight.w700),
+      ));
+      out.add(TextSpan(text: '**', style: marker));
+    } else if (m.group(2) != null) {
+      // *italic* — hide markers
+      final inner = match.substring(1, match.length - 1);
+      out.add(TextSpan(text: '*', style: marker));
+      out.add(TextSpan(
+        text: inner,
+        style: base.copyWith(fontStyle: FontStyle.italic),
+      ));
+      out.add(TextSpan(text: '*', style: marker));
+    } else if (m.group(3) != null) {
+      // ~~strike~~ — hide markers
+      final inner = match.substring(2, match.length - 2);
+      out.add(TextSpan(text: '~~', style: marker));
+      out.add(TextSpan(
+        text: inner,
+        style: base.copyWith(decoration: TextDecoration.lineThrough),
+      ));
+      out.add(TextSpan(text: '~~', style: marker));
+    } else if (m.group(4) != null) {
+      // `code` — hide markers
+      final inner = match.substring(1, match.length - 1);
+      out.add(TextSpan(text: '`', style: marker));
+      out.add(TextSpan(
+        text: inner,
+        style: base.copyWith(
+          fontFamily: 'monospace',
+          backgroundColor: palette.surface,
+        ),
+      ));
+      out.add(TextSpan(text: '`', style: marker));
+    } else if (m.group(5) != null) {
+      // [[wiki]] — hide brackets, underline content
+      final inner = match.substring(2, match.length - 2);
+      out.add(TextSpan(text: '[[', style: marker));
+      out.add(TextSpan(
+        text: inner,
+        style: base.copyWith(
+          color: palette.fg,
+          decoration: TextDecoration.underline,
+          decorationColor: palette.muted,
+        ),
+      ));
+      out.add(TextSpan(text: ']]', style: marker));
+    } else if (m.group(6) != null) {
+      // [text](url) — hide brackets and url, underline text
+      final closeBracket = match.indexOf(']');
+      final linkText = match.substring(1, closeBracket);
+      out.add(TextSpan(text: '[', style: marker));
+      out.add(TextSpan(
+        text: linkText,
+        style: base.copyWith(
+          color: palette.fg,
+          decoration: TextDecoration.underline,
+          decorationColor: palette.muted,
+        ),
+      ));
+      // The URL portion `](https://…)` is hidden so the user sees
+      // just the link text. We start at `closeBracket` (inclusive)
+      // so the closing `]` is also hidden — otherwise the rendered
+      // text would skip a character vs `controller.text`.
+      out.add(TextSpan(text: match.substring(closeBracket), style: marker));
+    } else if (m.group(7) != null) {
+      // #tag
+      out.add(TextSpan(
+        text: match,
+        style: base.copyWith(
+          color: palette.fg,
+          fontWeight: FontWeight.w600,
+          backgroundColor: palette.surface,
+        ),
+      ));
+    }
+    cursor = m.end;
+  }
+  if (cursor < text.length) {
+    out.add(TextSpan(text: text.substring(cursor), style: base));
+  }
+}
+
 /// TextEditingController that renders markdown as WYSIWYG.
 ///
-/// Markers (`**`, `*`, `~~`, `` ` ``, `[[`, `]]`, `#`-heading prefixes)
-/// are rendered with near-zero font size and transparent color so the
-/// user sees only the formatted content. The underlying text stays
-/// plain markdown.
+/// Markers (`**`, `*`, `~~`, `` ` ``, `[[`, `]]`, `#`-heading prefixes,
+/// `- [ ]` task markers, `- ` bullets, `> ` blockquotes) are rendered
+/// as zero-size transparent spans so the user sees only the formatted
+/// content. The underlying text stays plain markdown.
 class LiveMarkdownController extends TextEditingController {
   LiveMarkdownController({super.text, required this.palette});
 
@@ -31,226 +315,53 @@ class LiveMarkdownController extends TextEditingController {
     notifyListeners();
   }
 
-  static final _inlineRegex = RegExp(
-    r'(\*\*(?:[^*\n]|\*(?!\*))+\*\*)'    // 1: **bold**
-    r'|(\*(?:[^*\n])+\*)'                 // 2: *italic*
-    r'|(~~(?:[^~\n])+~~)'                 // 3: ~~strike~~
-    r'|(`[^`\n]+`)'                       // 4: `code`
-    r'|(\[\[[^\[\]\n]+\]\])'              // 5: [[wiki]]
-    r'|(\[[^\[\]\n]+\]\([^\s)]+\))'       // 6: [text](url)
-    r'|(?<=^|[\s(])(#[\p{L}\d_-]+)',       // 7: #tag
-    unicode: true,
-  );
-
   @override
   TextSpan buildTextSpan({
     required BuildContext context,
     TextStyle? style,
     required bool withComposing,
   }) {
-    final base = style ?? const TextStyle();
-    final dim = base.copyWith(
-      color: palette.muted,
-      fontWeight: FontWeight.w400,
+    return buildMarkdownTextSpan(
+      text: text,
+      base: style ?? const TextStyle(),
+      palette: palette,
     );
-    // Invisible style for markdown markers — near-zero size,
-    // transparent color. Characters stay in the text for parsing
-    // but take no visual space.
-    final marker = base.copyWith(
-      fontSize: 0.01,
-      color: Colors.transparent,
+  }
+}
+
+/// Read-only widget that renders entry-body markdown using the same
+/// span builder as the editor. Use this in cards / lists so the user
+/// sees `**bold**` actually rendered bold (no special characters
+/// leaking through), and inline `[[wiki]]` / tags / strike-through all
+/// keep their formatting in the preview.
+class MarkdownPreview extends StatelessWidget {
+  const MarkdownPreview({
+    super.key,
+    required this.body,
+    this.style,
+    this.maxLines,
+    this.color,
+  });
+
+  final String body;
+  final TextStyle? style;
+  final int? maxLines;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    var base = style ??
+        Theme.of(context).textTheme.bodyMedium ??
+        const TextStyle();
+    if (color != null) {
+      base = base.copyWith(color: color);
+    }
+    return Text.rich(
+      buildMarkdownTextSpan(text: body, base: base, palette: palette),
+      maxLines: maxLines,
+      overflow: maxLines == null ? null : TextOverflow.ellipsis,
     );
-    final spans = <InlineSpan>[];
-    final lines = text.split('\n');
-    for (var i = 0; i < lines.length; i++) {
-      _appendLineSpans(lines[i], base, dim, marker, spans);
-      if (i < lines.length - 1) {
-        spans.add(TextSpan(text: '\n', style: base));
-      }
-    }
-    return TextSpan(style: base, children: spans);
-  }
-
-  void _appendLineSpans(
-    String line,
-    TextStyle base,
-    TextStyle dim,
-    TextStyle marker,
-    List<InlineSpan> out,
-  ) {
-    if (line.isEmpty) return;
-
-    // Heading: `#`, `##`, `###` + space
-    final heading = RegExp(r'^(#{1,3}) ').firstMatch(line);
-    if (heading != null) {
-      final level = heading.group(1)!.length;
-      final headingStyle = base.copyWith(
-        fontSize: switch (level) { 1 => 22.0, 2 => 19.0, _ => 16.0 },
-        fontWeight: FontWeight.w700,
-        height: 1.3,
-      );
-      out.add(TextSpan(text: heading.group(0), style: marker));
-      _applyInline(line.substring(heading.end), headingStyle, dim, marker, out);
-      return;
-    }
-
-    // Blockquote: `> `
-    if (line.startsWith('> ')) {
-      final quoteStyle = base.copyWith(
-        fontStyle: FontStyle.italic,
-        color: palette.muted,
-      );
-      out.add(TextSpan(text: '> ', style: dim));
-      _applyInline(line.substring(2), quoteStyle, dim, marker, out);
-      return;
-    }
-
-    // Task item: `- [ ] ` / `- [x] `
-    final task = RegExp(r'^(\s*)- \[( |x|X)\] ').firstMatch(line);
-    if (task != null) {
-      final indent = task.group(1) ?? '';
-      final done = task.group(2)!.toLowerCase() == 'x';
-      out.add(TextSpan(text: indent, style: base));
-      out.add(TextSpan(text: '- [', style: dim));
-      out.add(TextSpan(
-        text: done ? 'x' : ' ',
-        style: dim.copyWith(fontWeight: FontWeight.w700),
-      ));
-      out.add(TextSpan(text: '] ', style: dim));
-      final content = line.substring(task.end);
-      final contentStyle = done
-          ? base.copyWith(
-              decoration: TextDecoration.lineThrough,
-              color: palette.muted,
-            )
-          : base;
-      _applyInline(content, contentStyle, dim, marker, out);
-      return;
-    }
-
-    // Unordered list item: `- ` / `* ` / `+ `
-    final bullet = RegExp(r'^(\s*)([-*+]) ').firstMatch(line);
-    if (bullet != null) {
-      out.add(TextSpan(text: bullet.group(1), style: base));
-      out.add(TextSpan(
-        text: '${bullet.group(2)} ',
-        style: dim.copyWith(fontWeight: FontWeight.w700),
-      ));
-      _applyInline(line.substring(bullet.end), base, dim, marker, out);
-      return;
-    }
-
-    // Ordered list item: `1. `
-    final ordered = RegExp(r'^(\s*)(\d+\.) ').firstMatch(line);
-    if (ordered != null) {
-      out.add(TextSpan(text: ordered.group(1), style: base));
-      out.add(TextSpan(text: '${ordered.group(2)} ', style: dim));
-      _applyInline(line.substring(ordered.end), base, dim, marker, out);
-      return;
-    }
-
-    _applyInline(line, base, dim, marker, out);
-  }
-
-  void _applyInline(
-    String text,
-    TextStyle base,
-    TextStyle dim,
-    TextStyle marker,
-    List<InlineSpan> out,
-  ) {
-    var cursor = 0;
-    for (final m in _inlineRegex.allMatches(text)) {
-      if (m.start > cursor) {
-        out.add(TextSpan(text: text.substring(cursor, m.start), style: base));
-      }
-      final match = m.group(0)!;
-      if (m.group(1) != null) {
-        // **bold** — hide markers
-        final inner = match.substring(2, match.length - 2);
-        out.add(TextSpan(text: '**', style: marker));
-        out.add(TextSpan(
-          text: inner,
-          style: base.copyWith(fontWeight: FontWeight.w700),
-        ));
-        out.add(TextSpan(text: '**', style: marker));
-      } else if (m.group(2) != null) {
-        // *italic* — hide markers
-        final inner = match.substring(1, match.length - 1);
-        out.add(TextSpan(text: '*', style: marker));
-        out.add(TextSpan(
-          text: inner,
-          style: base.copyWith(fontStyle: FontStyle.italic),
-        ));
-        out.add(TextSpan(text: '*', style: marker));
-      } else if (m.group(3) != null) {
-        // ~~strike~~ — hide markers
-        final inner = match.substring(2, match.length - 2);
-        out.add(TextSpan(text: '~~', style: marker));
-        out.add(TextSpan(
-          text: inner,
-          style: base.copyWith(decoration: TextDecoration.lineThrough),
-        ));
-        out.add(TextSpan(text: '~~', style: marker));
-      } else if (m.group(4) != null) {
-        // `code` — hide markers
-        final inner = match.substring(1, match.length - 1);
-        out.add(TextSpan(text: '`', style: marker));
-        out.add(TextSpan(
-          text: inner,
-          style: base.copyWith(
-            fontFamily: 'monospace',
-            backgroundColor: palette.surface,
-          ),
-        ));
-        out.add(TextSpan(text: '`', style: marker));
-      } else if (m.group(5) != null) {
-        // [[wiki]] — hide brackets, underline content
-        final inner = match.substring(2, match.length - 2);
-        out.add(TextSpan(text: '[[', style: marker));
-        out.add(TextSpan(
-          text: inner,
-          style: base.copyWith(
-            color: palette.fg,
-            decoration: TextDecoration.underline,
-            decorationColor: palette.muted,
-          ),
-        ));
-        out.add(TextSpan(text: ']]', style: marker));
-      } else if (m.group(6) != null) {
-        // [text](url) — hide brackets, underline text, dim url
-        final closeBracket = match.indexOf(']');
-        final linkText = match.substring(1, closeBracket);
-        out.add(TextSpan(text: '[', style: marker));
-        out.add(TextSpan(
-          text: linkText,
-          style: base.copyWith(
-            color: palette.fg,
-            decoration: TextDecoration.underline,
-            decorationColor: palette.muted,
-          ),
-        ));
-        out.add(TextSpan(text: ']', style: marker));
-        out.add(TextSpan(
-          text: match.substring(closeBracket + 1),
-          style: dim.copyWith(fontSize: 9),
-        ));
-      } else if (m.group(7) != null) {
-        // #tag
-        out.add(TextSpan(
-          text: match,
-          style: base.copyWith(
-            color: palette.fg,
-            fontWeight: FontWeight.w600,
-            backgroundColor: palette.surface,
-          ),
-        ));
-      }
-      cursor = m.end;
-    }
-    if (cursor < text.length) {
-      out.add(TextSpan(text: text.substring(cursor), style: base));
-    }
   }
 }
 
@@ -263,6 +374,8 @@ class MarkdownBodyEditor extends ConsumerStatefulWidget {
     this.hintText,
     this.minLines = 6,
     this.maxLines = 14,
+    this.expand = false,
+    this.fontSize = 14,
   });
 
   final TextEditingController controller;
@@ -270,6 +383,17 @@ class MarkdownBodyEditor extends ConsumerStatefulWidget {
   final String? hintText;
   final int minLines;
   final int maxLines;
+
+  /// When true the inner [TextField] uses `expands: true` and the
+  /// editor fills all the vertical space its parent gives it — used by
+  /// the full-screen "document mode" so the body looks like a Word
+  /// page, not a 14-line text box. Caller must wrap this widget in a
+  /// box with bounded height (e.g. [Expanded] inside a [Column]).
+  final bool expand;
+
+  /// Base font size for the body. The full-screen view uses a slightly
+  /// larger size so longer prose reads more like a document.
+  final double fontSize;
 
   @override
   ConsumerState<MarkdownBodyEditor> createState() =>
@@ -408,6 +532,44 @@ class _MarkdownBodyEditorState extends ConsumerState<MarkdownBodyEditor> {
     _focusNode.requestFocus();
   }
 
+  void _toggleCheckboxOnCurrentLine() {
+    final ctrl = widget.controller;
+    final sel = ctrl.selection;
+    final text = ctrl.text;
+    if (!sel.isValid) return;
+    final lineStart =
+        sel.start == 0 ? 0 : text.lastIndexOf('\n', sel.start - 1) + 1;
+    final lineEnd = () {
+      final idx = text.indexOf('\n', sel.start);
+      return idx == -1 ? text.length : idx;
+    }();
+    final line = text.substring(lineStart, lineEnd);
+    final taskMatch = RegExp(r'^(\s*)- \[( |x|X)\] ').firstMatch(line);
+    String newLine;
+    int caretShift;
+    if (taskMatch != null) {
+      // Already a task — flip checked state.
+      final indent = taskMatch.group(1) ?? '';
+      final wasDone = taskMatch.group(2)!.toLowerCase() == 'x';
+      newLine =
+          '$indent- [${wasDone ? ' ' : 'x'}] ${line.substring(taskMatch.end)}';
+      caretShift = 0;
+    } else {
+      // Plain line — promote to task.
+      newLine = '- [ ] $line';
+      caretShift = 6;
+    }
+    final next = text.replaceRange(lineStart, lineEnd, newLine);
+    ctrl.value = TextEditingValue(
+      text: next,
+      selection: TextSelection.collapsed(
+        offset: (sel.start + caretShift)
+            .clamp(lineStart, lineStart + newLine.length),
+      ),
+    );
+    _focusNode.requestFocus();
+  }
+
   void _insertAtCaret(String snippet, {int? selectInside}) {
     final ctrl = widget.controller;
     final sel = ctrl.selection;
@@ -426,10 +588,6 @@ class _MarkdownBodyEditorState extends ConsumerState<MarkdownBodyEditor> {
 
   void _insertWikiTrigger() {
     _insertAtCaret('[[]]', selectInside: 2);
-  }
-
-  void _insertCheckbox() {
-    _prefixCurrentLine('- [ ] ', toggle: false);
   }
 
   void _insertHeading(int level) {
@@ -455,11 +613,58 @@ class _MarkdownBodyEditorState extends ConsumerState<MarkdownBodyEditor> {
       onH3: () => _insertHeading(3),
       onBullet: () => _prefixCurrentLine('- '),
       onNumber: () => _prefixCurrentLine('1. '),
-      onCheckbox: _insertCheckbox,
+      onCheckbox: _toggleCheckboxOnCurrentLine,
       onLink: () => _insertAtCaret('[]()', selectInside: 1),
       onWikiLink: _insertWikiTrigger,
       onTag: () => _insertAtCaret('#'),
       onQuote: () => _prefixCurrentLine('> '),
+    );
+
+    final field = TextField(
+      controller: widget.controller,
+      focusNode: _focusNode,
+      // `expands: true` requires both line counts to be null. Switching
+      // between bounded ("sheet") and document ("full-screen") modes is
+      // the whole reason this flag exists — see [MarkdownBodyEditor.expand].
+      minLines: widget.expand ? null : widget.minLines,
+      maxLines: widget.expand ? null : widget.maxLines,
+      expands: widget.expand,
+      textAlignVertical: TextAlignVertical.top,
+      textInputAction: TextInputAction.newline,
+      keyboardType: TextInputType.multiline,
+      style: TextStyle(height: 1.5, fontSize: widget.fontSize),
+      decoration: InputDecoration(
+        hintText: widget.hintText ??
+            'Что у тебя на уме?\n'
+                'Форматирование: жирный, курсив, заголовки, '
+                'чек-листы, [[ссылки на заметки]].',
+        alignLabelWithHint: true,
+        // In full-screen "document mode" the field has to paint its
+        // border around the entire scrolling area, otherwise the
+        // border collapses to a thin strip at the top.
+        border: widget.expand
+            ? OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: palette.line),
+              )
+            : null,
+        enabledBorder: widget.expand
+            ? OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: palette.line),
+              )
+            : null,
+        focusedBorder: widget.expand
+            ? OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: palette.fg, width: 1.4),
+              )
+            : null,
+        contentPadding: widget.expand
+            ? const EdgeInsets.fromLTRB(20, 18, 20, 18)
+            : null,
+      ),
+      onChanged: (_) => setState(() {}),
     );
 
     return Column(
@@ -467,23 +672,7 @@ class _MarkdownBodyEditorState extends ConsumerState<MarkdownBodyEditor> {
       children: [
         toolbar,
         const SizedBox(height: 8),
-        TextField(
-          controller: widget.controller,
-          focusNode: _focusNode,
-          minLines: widget.minLines,
-          maxLines: widget.maxLines,
-          textInputAction: TextInputAction.newline,
-          keyboardType: TextInputType.multiline,
-          style: const TextStyle(height: 1.45, fontSize: 14),
-          decoration: InputDecoration(
-            hintText: widget.hintText ??
-                'Что у тебя на уме?\n'
-                    'Форматирование: жирный, курсив, заголовки, '
-                    'чек-листы, [[ссылки на заметки]].',
-            alignLabelWithHint: true,
-          ),
-          onChanged: (_) => setState(() {}),
-        ),
+        if (widget.expand) Expanded(child: field) else field,
         if (_showingSuggestions)
           _WikiLinkSuggestions(
             query: _wikiQuery,

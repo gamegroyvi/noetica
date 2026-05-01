@@ -203,6 +203,12 @@ class AuthService {
   /// doesn't work".
   Future<void> handleUnauthorized() async {
     if (_current == null) return;
+    // DEV-ONLY: when DEV_SKIP_AUTH=true the "session" is a synthetic
+    // local stub used to preview UI without a backend. Treating a 401
+    // from a real network call as a sign-out kicks the dev user back
+    // to the sign-in screen mid-onboarding, which makes it impossible
+    // to drive the app locally for visual QA. Keep the stub alive.
+    if (_skipAuth) return;
     await signOut();
   }
 

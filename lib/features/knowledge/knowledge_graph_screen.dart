@@ -522,16 +522,16 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
       }
     }
 
-    // Connect orphan entry nodes to the centre.
-    final connectedNodeIndices = <int>{};
-    for (final e in graphEdges) {
-      connectedNodeIndices.add(e.from);
-      connectedNodeIndices.add(e.to);
-    }
-    for (final kv in idToIndex.entries) {
-      if (!connectedNodeIndices.contains(kv.value)) {
-        graphEdges.add(_GraphEdge(0, kv.value));
-      }
+    // Every entry is always anchored to the "я" centre — whether it's
+    // standalone or sits inside a wiki-linked cluster. The previous
+    // "orphan-only" rule produced the surprising effect that adding a
+    // single `[[wiki]]` ref between two notes caused both to detach
+    // from the centre (since they were no longer orphans). The user
+    // expected the opposite: linking two notes shouldn't break either
+    // note's connection to the core. Hub-and-spoke is fine — the force
+    // simulation still renders the wiki-link edges clearly on top.
+    for (final idx in idToIndex.values) {
+      graphEdges.add(_GraphEdge(0, idx));
     }
 
     // `_rebuildGraph` is async and awaits repositoryProvider +
