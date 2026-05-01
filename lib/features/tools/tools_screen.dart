@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../theme/app_theme.dart';
 import '../home/home_shell.dart' show kFloatingTabBarReserve;
+import 'menu/menu_generator_screen.dart';
 
 /// "Ассистент" — каталог AI-инструментов, которые умеют генерировать
 /// готовые планы (меню, тренировки, учебные курсы, привычки) и
@@ -57,13 +58,26 @@ class ToolsScreen extends StatelessWidget {
                         _Header(palette: palette, theme: theme),
                         const SizedBox(height: 24),
                         _SectionLabel(
+                          'Доступно',
+                          theme: theme,
+                          palette: palette,
+                        ),
+                        const SizedBox(height: 12),
+                        _ToolGrid(
+                          tools: _tools.where((t) => t.status != _ToolStatus.soon).toList(),
+                          isWide: width >= 720,
+                          palette: palette,
+                          theme: theme,
+                        ),
+                        const SizedBox(height: 24),
+                        _SectionLabel(
                           'Скоро',
                           theme: theme,
                           palette: palette,
                         ),
                         const SizedBox(height: 12),
                         _ToolGrid(
-                          tools: _tools,
+                          tools: _tools.where((t) => t.status == _ToolStatus.soon).toList(),
                           isWide: width >= 720,
                           palette: palette,
                           theme: theme,
@@ -314,6 +328,12 @@ class _ToolCard extends StatelessWidget {
   }
 
   void _onTap(BuildContext context, bool available) {
+    if (available && tool.builder != null) {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: tool.builder!),
+      );
+      return;
+    }
     final messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(
@@ -384,6 +404,7 @@ class _ToolDescriptor {
     required this.description,
     required this.status,
     this.bullets = const [],
+    this.builder,
   });
 
   final IconData icon;
@@ -391,22 +412,30 @@ class _ToolDescriptor {
   final String description;
   final _ToolStatus status;
   final List<String> bullets;
+
+  /// When [status] is [_ToolStatus.available], this is the builder
+  /// pushed onto the navigator on tap. `null` for tools that are
+  /// available but routed elsewhere; `null` for `soon` cards.
+  final WidgetBuilder? builder;
 }
 
-const List<_ToolDescriptor> _tools = [
-  _ToolDescriptor(
+Widget _menuBuilder(BuildContext _) => const MenuGeneratorScreen();
+
+final List<_ToolDescriptor> _tools = [
+  const _ToolDescriptor(
     icon: Icons.restaurant_menu_outlined,
     title: 'Меню недели',
     description:
         '7 дней × завтрак / обед / ужин с КБЖУ под твою цель питания.',
-    status: _ToolStatus.soon,
+    status: _ToolStatus.available,
     bullets: [
       '21 задача на оси «Тело» с дедлайнами',
       'Список покупок отдельной заметкой-чеклистом',
       'Полные рецепты подгружаются по тапу',
     ],
+    builder: _menuBuilder,
   ),
-  _ToolDescriptor(
+  const _ToolDescriptor(
     icon: Icons.fitness_center_outlined,
     title: 'План тренировок',
     description:
@@ -417,7 +446,7 @@ const List<_ToolDescriptor> _tools = [
       'Каждое занятие — задача с подходами в подзадачах',
     ],
   ),
-  _ToolDescriptor(
+  const _ToolDescriptor(
     icon: Icons.menu_book_outlined,
     title: 'Учебный план',
     description:
@@ -428,7 +457,7 @@ const List<_ToolDescriptor> _tools = [
       'Конспекты — заметки, связанные [[wiki-ссылками]]',
     ],
   ),
-  _ToolDescriptor(
+  const _ToolDescriptor(
     icon: Icons.eco_outlined,
     title: 'Микро-привычки',
     description:

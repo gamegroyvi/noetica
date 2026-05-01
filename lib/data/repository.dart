@@ -261,6 +261,38 @@ class NoeticaRepository {
 
   // ---------- entries ----------
 
+  /// Look up a single entry by id. Returns `null` if the row is missing
+  /// or soft-deleted. The menu generator screen uses this to navigate
+  /// from a freshly-imported task back into the editor sheet without
+  /// having to walk the full [listEntries] result.
+  Future<m.Entry?> findEntryById(String id) async {
+    final rows = await _db.raw.query(
+      'entries',
+      where: 'id = ? AND deleted_at IS NULL',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    final links = await _db.raw.query(
+      'entry_axes',
+      where: 'entry_id = ?',
+      whereArgs: [id],
+    );
+    final axisIds = <String>[];
+    final axisWeights = <String, double>{};
+    for (final l in links) {
+      final aid = l['axis_id']! as String;
+      axisIds.add(aid);
+      final w = l['weight'];
+      if (w is num && w != 1.0) axisWeights[aid] = w.toDouble();
+    }
+    return m.Entry.fromMap(
+      rows.first,
+      axisIds: axisIds,
+      axisWeights: axisWeights,
+    );
+  }
+
   Future<List<m.Entry>> listEntries({
     m.EntryKind? kind,
     bool? completed,
