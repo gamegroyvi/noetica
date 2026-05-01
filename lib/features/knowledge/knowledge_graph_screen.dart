@@ -245,6 +245,12 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
   String? _activeTag;
   String? _localGraphCentreId;
   bool _searchVisible = false;
+
+  /// When true, entries tagged with `recipe` (i.e. menu-import recipe
+  /// stubs) are hidden from the graph. Defaults to true so importing a
+  /// 7-day menu doesn't dump 21 ancillary nodes into the user's view.
+  /// Toggleable from the AppBar.
+  bool _hideRecipes = true;
   List<Entry> _searchResults = [];
 
   @override
@@ -357,6 +363,14 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
     if (_activeTag != null) {
       filtered =
           filtered.where((e) => e.tags.contains(_activeTag)).toList();
+    }
+
+    // Hide recipe stubs (created by the menu generator) by default —
+    // they're auxiliary notes the user navigates to via wiki-links from
+    // meal tasks, so dumping 21 of them into the global graph just
+    // creates noise. Toggleable via the AppBar.
+    if (_hideRecipes && _activeTag != 'recipe') {
+      filtered = filtered.where((e) => !e.tags.contains('recipe')).toList();
     }
 
     // Local graph: only show nodes within 2 hops of selected node.
@@ -965,6 +979,20 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
             tooltip: 'Дневник',
             icon: const Icon(Icons.today),
             onPressed: _openDailyNote,
+          ),
+          IconButton(
+            tooltip: _hideRecipes
+                ? 'Показывать рецепты'
+                : 'Скрывать рецепты',
+            icon: Icon(
+              _hideRecipes
+                  ? Icons.restaurant_menu_outlined
+                  : Icons.restaurant_menu,
+            ),
+            onPressed: () {
+              setState(() => _hideRecipes = !_hideRecipes);
+              _rebuildGraph();
+            },
           ),
           if (_localGraphCentreId != null)
             IconButton(
