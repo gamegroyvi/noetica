@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../features/tools/habits/habits_generator_screen.dart';
 import '../features/tools/menu/menu_generator_screen.dart';
 import 'generator_input.dart';
 import 'generator_manifest.dart';
@@ -66,6 +67,51 @@ List<GeneratorInputField> menuWeekInputs() => const [
       ),
     ];
 
+/// Form schema for the «Микро-привычки» generator. Same authoring
+/// surface as `menuWeekInputs()` — pure declaration of fields, no
+/// behaviour. The screen wires defaults and reads values by id.
+List<GeneratorInputField> habitsInputs() => const [
+      GeneratorInputText(
+        id: 'intent',
+        label: 'Какую привычку хочешь освоить?',
+        required: true,
+        placeholder:
+            'хочу засыпать раньше · перестать залипать в телефон утром · '
+            'пить больше воды',
+        multiline: true,
+        minLines: 2,
+        maxLines: 4,
+      ),
+      GeneratorInputInt(
+        id: 'duration_days',
+        label: 'Сколько дней',
+        required: true,
+        // Min matches `HabitsRequest.duration_days` ge=3 on the
+        // backend; max matches le=30.
+        min: 3,
+        max: 21,
+        initial: 7,
+        presentation: IntInputPresentation.chips,
+      ),
+      GeneratorInputAxisRef(
+        id: 'axis_id',
+        label: 'Ось роста',
+        help:
+            'Все мини-задачи получат XP от выполнения и будут расти '
+            'вместе с этой осью.',
+      ),
+      GeneratorInputText(
+        id: 'notes',
+        label: 'Доп. пожелания (опционально)',
+        placeholder:
+            'буду делать утром · уже пробовал, не получалось · '
+            'хочу без приложений',
+        multiline: true,
+        minLines: 1,
+        maxLines: 3,
+      ),
+    ];
+
 /// All hand-coded generators known to this build. Edit this list when
 /// adding a new builtin tool — the catalog screen, deep-links, and
 /// (eventually) analytics all read from here.
@@ -116,17 +162,20 @@ List<GeneratorManifest> defaultBuiltinManifests() => [
           'Конспекты — заметки, связанные [[wiki-ссылками]]',
         ],
       ),
-      const GeneratorManifest(
+      GeneratorManifest(
         id: 'micro-habits',
         title: 'Микро-привычки',
         description: '7-дневный челлендж из коротких ежедневных задач.',
         icon: Icons.eco_outlined,
-        status: GeneratorStatus.soon,
+        status: GeneratorStatus.available,
         category: 'discipline',
-        bullets: [
-          'Подбираем под выбранную ось',
-          'Серии и стрик-счётчик из коробки',
+        bullets: const [
+          'Каждое действие ≤ 2 минут — реально доходишь',
+          'Подбираем под выбранную ось, идут по нарастающей',
+          'Появятся в Задачах с дедлайнами по дням',
         ],
+        inputs: habitsInputs(),
+        builder: (_) => const HabitsGeneratorScreen(),
       ),
     ];
 
