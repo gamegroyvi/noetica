@@ -1,9 +1,38 @@
 import 'package:flutter/material.dart';
 
-import '../features/tools/habits/habits_generator_screen.dart';
 import '../features/tools/menu/menu_generator_screen.dart';
 import 'generator_input.dart';
 import 'generator_manifest.dart';
+import 'generator_run_spec.dart';
+
+/// System prompt for the «Микро-привычки» builtin. Carries the
+/// hard-won «≤ 2 minutes» rule the bespoke `prompts_habits.py`
+/// enforced. Uses `{duration_days}` and `{axis_id_name}` placeholders
+/// the universal runtime resolves before the LLM call.
+const String _habitsSystemPromptText = 'Ты — Noetica-коуч по микро-'
+    'привычкам. Преврати желание пользователя в план из '
+    'ровно {duration_days} крошечных ежедневных действий.\n\n'
+    'ПРАВИЛА:\n'
+    '1. Каждое действие — НЕ БОЛЬШЕ 2 минут реального усилия. '
+    '«Завести таймер на 60 секунд», «положить телефон в другую '
+    'комнату», «выпить стакан воды». НЕ «помедитировать 20 минут», '
+    'НЕ «сходить в зал». Если по другому никак — раздели на два дня.\n'
+    '2. Дни идут по нарастающей: первый элемент — самое лёгкое '
+    '(тренируем появление), последний — закрепляющий ритуал.\n'
+    '3. Не повторяй формулировки. Каждый элемент — новое микро-'
+    'действие или эволюция вчерашнего (2–3 шт. подряд можно как '
+    '«связка»).\n'
+    '4. `title` — императивный, на «ты», ≤ 80 символов.\n'
+    '5. `body` — ОДНО предложение, до 200 символов. Зачем '
+    'именно это действие, без воды, без «это поможет тебе…».\n'
+    '6. Отвечай на ТОМ ЖЕ языке, на котором написан intent.\n'
+    '7. Сфера (если указана): {axis_id_name}. Не уходи в смежные темы.';
+
+const String _habitsUserPromptText = 'Цель пользователя:\n{intent}\n\n'
+    'Длительность: ровно {duration_days} дней.\n\n'
+    'Дополнительно: {notes}\n\n'
+    'Сгенерируй ровно {duration_days} элементов в массиве `items` — '
+    'по одному на каждый день, в порядке от лёгкого к закрепляющему.';
 
 /// Form schema for the «Меню недели» generator. Kept as a top-level
 /// constant so tests can verify the shape and the future authoring
@@ -175,7 +204,23 @@ List<GeneratorManifest> defaultBuiltinManifests() => [
           'Появятся в Задачах с дедлайнами по дням',
         ],
         inputs: habitsInputs(),
-        builder: (_) => const HabitsGeneratorScreen(),
+        // Universal runtime — no bespoke `builder`. /tools/run renders
+        // these templates server-side and returns generic items.
+        promptSystem: _habitsSystemPromptText,
+        promptUser: _habitsUserPromptText,
+        // Worst-case cap; the prompt asks for exactly N items via
+        // the `{duration_days}` placeholder, so the runtime trims if
+        // the LLM returns more.
+        maxItems: 21,
+        temperature: 0.6,
+        importSpec: const GeneratorImportSpec(
+          importAs: GeneratorImportTarget.task,
+          dueStrategy: GeneratorDueStrategy.ladder,
+          dueHourLocal: 9,
+          axisIdInputId: 'axis_id',
+          tagPrefix: 'challenge',
+          xpPerItem: 5,
+        ),
       ),
     ];
 

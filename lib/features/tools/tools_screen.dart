@@ -5,6 +5,7 @@ import '../../providers.dart';
 import '../../services/generator_manifest.dart';
 import '../../theme/app_theme.dart';
 import '../home/home_shell.dart' show kFloatingTabBarReserve;
+import 'runtime/generator_run_screen.dart';
 
 /// "Ассистент" — каталог AI-инструментов, которые умеют генерировать
 /// готовые планы (меню, тренировки, учебные курсы, привычки) и
@@ -372,6 +373,14 @@ class _ToolCard extends StatelessWidget {
     if (interactable && tool.builder != null) {
       Navigator.of(context).push(
         MaterialPageRoute<void>(builder: tool.builder!),
+      );
+      return;
+    }
+    if (interactable && tool.hasUniversalRuntime) {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => GeneratorRunScreen(manifest: tool),
+        ),
       );
       return;
     }
