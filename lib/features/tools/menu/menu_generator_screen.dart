@@ -57,10 +57,206 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
   final Map<int, _RecipeState> _recipes = {};
 
   @override
+  void initState() {
+    super.initState();
+    // Best-effort: if the user has already imported a menu in a past
+    // session, drop them back into the imported view so they can keep
+    // generating recipes for individual dishes. Without this, exiting
+    // the screen between recipe generations was a one-way trip — there
+    // was no way to come back to the meal list except by importing a
+    // brand-new menu.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _resumeLastMenu());
+  }
+
+  @override
   void dispose() {
     _restrictionsCtrl.dispose();
     _notesCtrl.dispose();
     super.dispose();
+  }
+
+  // --------------------------------------------------------------- resume
+
+  Future<void> _resumeLastMenu() async {
+    if (_stage != _Stage.form) return;
+    try {
+      final repo = await ref.read(repositoryProvider.future);
+      final entries = await repo.listEntries();
+      // Group meal tasks by their menu/<id> tag.
+      final byMenu = <String, List<Entry>>{};
+      for (final e in entries) {
+        if (e.kind != EntryKind.task || e.isDeleted) continue;
+        if (!e.tags.contains('meal')) continue;
+        final menuTag = e.tags.firstWhere(
+          (t) => t.startsWith('menu/'),
+          orElse: () => '',
+        );
+        if (menuTag.isEmpty) continue;
+        byMenu.putIfAbsent(menuTag.substring(5), () => []).add(e);
+      }
+      if (byMenu.isEmpty) return;
+
+      // Pick the latest menu by max createdAt across its tasks.
+      String? latestId;
+      DateTime? latestTime;
+      byMenu.forEach((id, tasks) {
+        final t = tasks
+            .map((e) => e.createdAt)
+            .reduce((a, b) => a.isAfter(b) ? a : b);
+        if (latestTime == null || t.isAfter(latestTime!)) {
+          latestTime = t;
+          latestId = id;
+        }
+      });
+      final menuId = latestId!;
+      final tasks = byMenu[menuId]!;
+
+      // Recipe stubs share the menu/<id> tag plus 'recipe'.
+      final stubs = entries
+          .where((e) =>
+              e.kind == EntryKind.note &&
+              !e.isDeleted &&
+              e.tags.contains('recipe') &&
+              e.tags.contains('menu/$menuId'))
+          .toList();
+      final stubByTitle = {for (final s in stubs) s.title: s};
+
+      // Sort meal tasks by dueAt for a stable order.
+      tasks.sort((a, b) {
+        final ad = a.dueAt;
+        final bd = b.dueAt;
+        if (ad == null && bd == null) return 0;
+        if (ad == null) return 1;
+        if (bd == null) return -1;
+        return ad.compareTo(bd);
+      });
+
+      final imported = <_ImportedMeal>[];
+      final recipeStates = <int, _RecipeState>{};
+      MenuGoal? resolvedGoal;
+      int? resolvedServings;
+      for (final task in tasks) {
+        final meta = _parseMealMeta(task.body);
+        if (meta == null) continue;
+        final ingredients = _parseIngredients(task.body);
+        final stubKey = 'Рецепт: ${meta.mealName}';
+        final stub = stubByTitle[stubKey];
+        if (stub == null) continue;
+        final idx = imported.length;
+        imported.add(_ImportedMeal(
+          taskId: task.id,
+          recipeId: stub.id,
+          meal: MenuMeal(
+            name: meta.mealName,
+            ingredients: ingredients,
+          ),
+          dayName: '',
+          slotLabel: meta.slot,
+        ));
+        if (!stub.body.contains('Рецепт ещё не сгенерирован')) {
+          recipeStates[idx] = _RecipeState.loaded(stub.body);
+        }
+        resolvedGoal ??= MenuGoal.fromWire(meta.goal);
+        resolvedServings ??= meta.servings;
+      }
+
+      if (!mounted || imported.isEmpty) return;
+      setState(() {
+        _menuId = menuId;
+        _imported
+          ..clear()
+          ..addAll(imported);
+        _recipes
+          ..clear()
+          ..addAll(recipeStates);
+        if (resolvedGoal != null) _goal = resolvedGoal;
+        if (resolvedServings != null) _servings = resolvedServings;
+        _stage = _Stage.imported;
+      });
+    } catch (_) {
+      // Resume is opportunistic — if anything goes wrong we silently
+      // fall back to the form state, which is still fully functional.
+    }
+  }
+
+  /// Parse the `<!-- noetica:meal {...} -->` marker our generator wrote
+  /// into every meal task body. Returns null if the marker is missing
+  /// or malformed (e.g. user manually edited the body).
+  ({String mealName, String goal, int servings, String slot})? _parseMealMeta(
+      String body) {
+    final m = RegExp(r'<!-- noetica:meal (\{[\s\S]*?\}) -->').firstMatch(body);
+    if (m == null) return null;
+    try {
+      final json = jsonDecode(m.group(1)!) as Map<String, Object?>;
+      return (
+        mealName: (json['meal_name'] as String?) ?? '',
+        goal: (json['goal'] as String?) ?? 'classic',
+        servings: (json['servings'] as num?)?.toInt() ?? 1,
+        slot: (json['slot'] as String?) ?? '',
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Pull the ingredients list out of a meal-task body that follows the
+  /// generator's template (`## Ингредиенты\n- name — amount\n`). Best
+  /// effort — we'll send what we find to the recipe endpoint.
+  List<MenuIngredient> _parseIngredients(String body) {
+    final lines = body.split('\n');
+    final out = <MenuIngredient>[];
+    var inSection = false;
+    for (final line in lines) {
+      if (line.trim() == '## Ингредиенты') {
+        inSection = true;
+        continue;
+      }
+      if (!inSection) continue;
+      if (line.startsWith('## ') || line.startsWith('**КБЖУ')) break;
+      final m = RegExp(r'^\s*-\s*(.+?)(?:\s+—\s+(.+?))?\s*$').firstMatch(line);
+      if (m == null) continue;
+      out.add(MenuIngredient(
+        name: m.group(1)!.trim(),
+        amount: (m.group(2) ?? '').trim(),
+      ));
+    }
+    return out;
+  }
+
+  void _startNewMenu() {
+    setState(() {
+      _imported.clear();
+      _recipes.clear();
+      _menuId = null;
+      _plan = null;
+      _error = null;
+      _stage = _Stage.form;
+    });
+  }
+
+  Future<void> _confirmStartNewMenu() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Создать новое меню?'),
+        content: const Text(
+          'Текущие задачи и рецепты останутся в базе знаний — их можно '
+          'найти по тегу menu/… или открыть по ссылке.\n\n'
+          'Форма генерации откроется заново.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Создать'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) _startNewMenu();
   }
 
   // --------------------------------------------------------------- generate
@@ -579,6 +775,11 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
+              ),
+              TextButton.icon(
+                onPressed: _confirmStartNewMenu,
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Новое меню'),
               ),
             ],
           ),

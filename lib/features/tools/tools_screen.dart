@@ -187,6 +187,8 @@ class _ToolGrid extends StatelessWidget {
     required this.theme,
   });
 
+  static const double _gap = 12;
+
   final List<_ToolDescriptor> tools;
   final bool isWide;
   final NoeticaPalette palette;
@@ -194,37 +196,63 @@ class _ToolGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!isWide) {
-      // Phone: single column, cards stack vertically.
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (final t in tools) ...[
-            _ToolCard(tool: t, palette: palette, theme: theme),
-            const SizedBox(height: 12),
+    if (tools.isEmpty) return const SizedBox.shrink();
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Decide column count from available width. We don't use the
+        // outer screen width because the parent already centers + caps
+        // the column at 920px, so the constraint is the truth.
+        final columns = _columnsFor(constraints.maxWidth);
+        // Group tools into rows of [columns] entries each. The last row
+        // gets padded with empty placeholders so card widths stay equal
+        // (otherwise a lone card on a half-row would stretch to 100%).
+        final rows = <List<_ToolDescriptor?>>[];
+        for (var i = 0; i < tools.length; i += columns) {
+          final row = <_ToolDescriptor?>[];
+          for (var j = 0; j < columns; j++) {
+            row.add(i + j < tools.length ? tools[i + j] : null);
+          }
+          rows.add(row);
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var rowIdx = 0; rowIdx < rows.length; rowIdx++) ...[
+              if (rowIdx > 0) const SizedBox(height: _gap),
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (var colIdx = 0; colIdx < columns; colIdx++) ...[
+                      if (colIdx > 0) const SizedBox(width: _gap),
+                      Expanded(
+                        child: rows[rowIdx][colIdx] == null
+                            ? const SizedBox.shrink()
+                            : _ToolCard(
+                                tool: rows[rowIdx][colIdx]!,
+                                palette: palette,
+                                theme: theme,
+                              ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
           ],
-        ],
-      );
-    }
-    // Tablet/desktop: 2 columns. We wrap so cards reflow at narrow
-    // widths (e.g. 720–800px) and grow to fill 50% otherwise.
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
-      children: [
-        for (final t in tools)
-          ConstrainedBox(
-            constraints: const BoxConstraints(
-              minWidth: 280,
-              maxWidth: 440,
-            ),
-            child: SizedBox(
-              width: 440,
-              child: _ToolCard(tool: t, palette: palette, theme: theme),
-            ),
-          ),
-      ],
+        );
+      },
     );
+  }
+
+  int _columnsFor(double width) {
+    // Phones (no sidebar visible) — always single column even if width
+    // happens to exceed the breakpoint (e.g. landscape phone).
+    if (!isWide) return 1;
+    // Tablet/desktop. We could go to 3 columns at very wide layouts but
+    // 920px max-column from the parent caps useful width, so 2 is the
+    // ceiling here.
+    return width >= 560 ? 2 : 1;
   }
 }
 
