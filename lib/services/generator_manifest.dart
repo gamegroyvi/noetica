@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'generator_input.dart';
+
 /// Lifecycle of a generator from the user's point of view.
 ///
 /// `available` cards are tappable; `beta` are tappable but show a hint
@@ -33,6 +35,7 @@ class GeneratorManifest {
     this.bullets = const [],
     this.source = GeneratorSource.builtin,
     this.author = '',
+    this.inputs = const [],
     this.builder,
   });
 
@@ -48,6 +51,12 @@ class GeneratorManifest {
   final List<String> bullets;
   final GeneratorSource source;
   final String author;
+
+  /// Declarative form schema. Empty for tools that still have a
+  /// hand-coded screen (`builder` non-null). Once a generator's
+  /// inputs are described here, the universal `GeneratorFormView`
+  /// can render the form without per-tool code.
+  final List<GeneratorInputField> inputs;
 
   /// Optional bespoke screen builder. Used while we migrate hand-coded
   /// generators to the manifest runtime — not part of the long-term
