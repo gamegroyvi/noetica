@@ -13,6 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models.dart';
 import '../../providers.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/body_utils.dart';
 
 /// Inline syntax matched by [_buildMarkdownLineSpans].
 final RegExp _inlineMarkdownRegex = RegExp(
@@ -357,8 +358,12 @@ class MarkdownPreview extends StatelessWidget {
     if (color != null) {
       base = base.copyWith(color: color);
     }
+    // Strip metadata HTML comments (e.g. `<!-- noetica:meal {...} -->`)
+    // before rendering: they're useful as machine-readable markers in
+    // storage but pollute the visual preview as raw text.
+    final cleaned = stripDisplayMetadata(body);
     return Text.rich(
-      buildMarkdownTextSpan(text: body, base: base, palette: palette),
+      buildMarkdownTextSpan(text: cleaned, base: base, palette: palette),
       maxLines: maxLines,
       overflow: maxLines == null ? null : TextOverflow.ellipsis,
     );

@@ -1,26 +1,35 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../providers.dart';
+import '../../services/generator_manifest.dart';
 import '../../theme/app_theme.dart';
 import '../home/home_shell.dart' show kFloatingTabBarReserve;
-import 'menu/menu_generator_screen.dart';
 
 /// "Ассистент" — каталог AI-инструментов, которые умеют генерировать
 /// готовые планы (меню, тренировки, учебные курсы, привычки) и
 /// импортировать их в обычные Entry-и пользователя.
 ///
-/// PR-1 кладёт сюда только UI-каркас: каждая карточка — `_ToolDescriptor`
-/// со статусом «В разработке». Когда соответствующий бэкенд-эндпоинт
-/// готов, статус карточки меняется на `available` и тап открывает
-/// генератор. Это даёт юзеру видимый "магазин" будущих фич без
-/// преждевременного кода для самих генераций.
-class ToolsScreen extends StatelessWidget {
+/// Каталог рендерится из `generatorRegistryProvider`: today builtins
+/// only, future phases will compose user / marketplace sources without
+/// touching this widget.
+class ToolsScreen extends ConsumerWidget {
   const ToolsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final palette = context.palette;
     final theme = Theme.of(context);
     final width = MediaQuery.of(context).size.width;
+    final registry = ref.watch(generatorRegistryProvider);
+    final available = registry
+        .list()
+        .where((m) => m.status != GeneratorStatus.soon)
+        .toList(growable: false);
+    final soon = registry
+        .list()
+        .where((m) => m.status == GeneratorStatus.soon)
+        .toList(growable: false);
     // Match HomeShell's `_kRailMin` (720): at/above this the sidebar is
     // visible and the floating tabbar is gone, so we don't need to
     // reserve room for it. Below 720 the capsule overlays the bottom
@@ -56,32 +65,36 @@ class ToolsScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         _Header(palette: palette, theme: theme),
-                        const SizedBox(height: 24),
-                        _SectionLabel(
-                          'Доступно',
-                          theme: theme,
-                          palette: palette,
-                        ),
-                        const SizedBox(height: 12),
-                        _ToolGrid(
-                          tools: _tools.where((t) => t.status != _ToolStatus.soon).toList(),
-                          isWide: width >= 720,
-                          palette: palette,
-                          theme: theme,
-                        ),
-                        const SizedBox(height: 24),
-                        _SectionLabel(
-                          'Скоро',
-                          theme: theme,
-                          palette: palette,
-                        ),
-                        const SizedBox(height: 12),
-                        _ToolGrid(
-                          tools: _tools.where((t) => t.status == _ToolStatus.soon).toList(),
-                          isWide: width >= 720,
-                          palette: palette,
-                          theme: theme,
-                        ),
+                        if (available.isNotEmpty) ...[
+                          const SizedBox(height: 24),
+                          _SectionLabel(
+                            'Доступно',
+                            theme: theme,
+                            palette: palette,
+                          ),
+                          const SizedBox(height: 12),
+                          _ToolGrid(
+                            tools: available,
+                            isWide: width >= 720,
+                            palette: palette,
+                            theme: theme,
+                          ),
+                        ],
+                        if (soon.isNotEmpty) ...[
+                          const SizedBox(height: 24),
+                          _SectionLabel(
+                            'Скоро',
+                            theme: theme,
+                            palette: palette,
+                          ),
+                          const SizedBox(height: 12),
+                          _ToolGrid(
+                            tools: soon,
+                            isWide: width >= 720,
+                            palette: palette,
+                            theme: theme,
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -187,44 +200,72 @@ class _ToolGrid extends StatelessWidget {
     required this.theme,
   });
 
-  final List<_ToolDescriptor> tools;
+  static const double _gap = 12;
+
+  final List<GeneratorManifest> tools;
   final bool isWide;
   final NoeticaPalette palette;
   final ThemeData theme;
 
   @override
   Widget build(BuildContext context) {
-    if (!isWide) {
-      // Phone: single column, cards stack vertically.
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (final t in tools) ...[
-            _ToolCard(tool: t, palette: palette, theme: theme),
-            const SizedBox(height: 12),
+    if (tools.isEmpty) return const SizedBox.shrink();
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Decide column count from available width. We don't use the
+        // outer screen width because the parent already centers + caps
+        // the column at 920px, so the constraint is the truth.
+        final columns = _columnsFor(constraints.maxWidth);
+        // Group tools into rows of [columns] entries each. The last row
+        // gets padded with empty placeholders so card widths stay equal
+        // (otherwise a lone card on a half-row would stretch to 100%).
+        final rows = <List<GeneratorManifest?>>[];
+        for (var i = 0; i < tools.length; i += columns) {
+          final row = <GeneratorManifest?>[];
+          for (var j = 0; j < columns; j++) {
+            row.add(i + j < tools.length ? tools[i + j] : null);
+          }
+          rows.add(row);
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var rowIdx = 0; rowIdx < rows.length; rowIdx++) ...[
+              if (rowIdx > 0) const SizedBox(height: _gap),
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (var colIdx = 0; colIdx < columns; colIdx++) ...[
+                      if (colIdx > 0) const SizedBox(width: _gap),
+                      Expanded(
+                        child: rows[rowIdx][colIdx] == null
+                            ? const SizedBox.shrink()
+                            : _ToolCard(
+                                tool: rows[rowIdx][colIdx]!,
+                                palette: palette,
+                                theme: theme,
+                              ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
           ],
-        ],
-      );
-    }
-    // Tablet/desktop: 2 columns. We wrap so cards reflow at narrow
-    // widths (e.g. 720–800px) and grow to fill 50% otherwise.
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
-      children: [
-        for (final t in tools)
-          ConstrainedBox(
-            constraints: const BoxConstraints(
-              minWidth: 280,
-              maxWidth: 440,
-            ),
-            child: SizedBox(
-              width: 440,
-              child: _ToolCard(tool: t, palette: palette, theme: theme),
-            ),
-          ),
-      ],
+        );
+      },
     );
+  }
+
+  int _columnsFor(double width) {
+    // Phones (no sidebar visible) — always single column even if width
+    // happens to exceed the breakpoint (e.g. landscape phone).
+    if (!isWide) return 1;
+    // Tablet/desktop. We could go to 3 columns at very wide layouts but
+    // 920px max-column from the parent caps useful width, so 2 is the
+    // ceiling here.
+    return width >= 560 ? 2 : 1;
   }
 }
 
@@ -235,13 +276,13 @@ class _ToolCard extends StatelessWidget {
     required this.theme,
   });
 
-  final _ToolDescriptor tool;
+  final GeneratorManifest tool;
   final NoeticaPalette palette;
   final ThemeData theme;
 
   @override
   Widget build(BuildContext context) {
-    final available = tool.status == _ToolStatus.available;
+    final interactable = tool.isInteractable;
     return Material(
       color: palette.surface,
       shape: RoundedRectangleBorder(
@@ -249,7 +290,7 @@ class _ToolCard extends StatelessWidget {
         side: BorderSide(color: palette.line),
       ),
       child: InkWell(
-        onTap: () => _onTap(context, available),
+        onTap: () => _onTap(context, interactable),
         borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
@@ -327,8 +368,8 @@ class _ToolCard extends StatelessWidget {
     );
   }
 
-  void _onTap(BuildContext context, bool available) {
-    if (available && tool.builder != null) {
+  void _onTap(BuildContext context, bool interactable) {
+    if (interactable && tool.builder != null) {
       Navigator.of(context).push(
         MaterialPageRoute<void>(builder: tool.builder!),
       );
@@ -341,7 +382,7 @@ class _ToolCard extends StatelessWidget {
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 2),
         content: Text(
-          available
+          interactable
               ? 'Открываю «${tool.title}»…'
               : 'Скоро: «${tool.title}»',
         ),
@@ -353,23 +394,23 @@ class _ToolCard extends StatelessWidget {
 class _StatusPill extends StatelessWidget {
   const _StatusPill({required this.status, required this.palette});
 
-  final _ToolStatus status;
+  final GeneratorStatus status;
   final NoeticaPalette palette;
 
   @override
   Widget build(BuildContext context) {
     final (label, fg, bg) = switch (status) {
-      _ToolStatus.available => (
+      GeneratorStatus.available => (
         'Доступно',
         palette.bg,
         palette.fg,
       ),
-      _ToolStatus.beta => (
+      GeneratorStatus.beta => (
         'Beta',
         palette.fg,
         palette.surface,
       ),
-      _ToolStatus.soon => (
+      GeneratorStatus.soon => (
         'Скоро',
         palette.muted,
         palette.bg,
@@ -395,77 +436,4 @@ class _StatusPill extends StatelessWidget {
   }
 }
 
-enum _ToolStatus { available, beta, soon }
 
-class _ToolDescriptor {
-  const _ToolDescriptor({
-    required this.icon,
-    required this.title,
-    required this.description,
-    required this.status,
-    this.bullets = const [],
-    this.builder,
-  });
-
-  final IconData icon;
-  final String title;
-  final String description;
-  final _ToolStatus status;
-  final List<String> bullets;
-
-  /// When [status] is [_ToolStatus.available], this is the builder
-  /// pushed onto the navigator on tap. `null` for tools that are
-  /// available but routed elsewhere; `null` for `soon` cards.
-  final WidgetBuilder? builder;
-}
-
-Widget _menuBuilder(BuildContext _) => const MenuGeneratorScreen();
-
-final List<_ToolDescriptor> _tools = [
-  const _ToolDescriptor(
-    icon: Icons.restaurant_menu_outlined,
-    title: 'Меню недели',
-    description:
-        '7 дней × завтрак / обед / ужин с КБЖУ под твою цель питания.',
-    status: _ToolStatus.available,
-    bullets: [
-      '21 задача на оси «Тело» с дедлайнами',
-      'Список покупок отдельной заметкой-чеклистом',
-      'Полные рецепты подгружаются по тапу',
-    ],
-    builder: _menuBuilder,
-  ),
-  const _ToolDescriptor(
-    icon: Icons.fitness_center_outlined,
-    title: 'План тренировок',
-    description:
-        'Программа на 4 недели под цель: сила, выносливость, рекомпозиция.',
-    status: _ToolStatus.soon,
-    bullets: [
-      'Учитывает доступное оборудование',
-      'Каждое занятие — задача с подходами в подзадачах',
-    ],
-  ),
-  const _ToolDescriptor(
-    icon: Icons.menu_book_outlined,
-    title: 'Учебный план',
-    description:
-        'Декомпозиция «выучить X» на занятия с заметками-конспектами.',
-    status: _ToolStatus.soon,
-    bullets: [
-      'Уроки = задачи на оси «Разум»',
-      'Конспекты — заметки, связанные [[wiki-ссылками]]',
-    ],
-  ),
-  const _ToolDescriptor(
-    icon: Icons.eco_outlined,
-    title: 'Микро-привычки',
-    description:
-        '7-дневный челлендж из коротких ежедневных задач.',
-    status: _ToolStatus.soon,
-    bullets: [
-      'Подбираем под выбранную ось',
-      'Серии и стрик-счётчик из коробки',
-    ],
-  ),
-];
