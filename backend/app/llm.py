@@ -17,6 +17,9 @@ import httpx
 from .schemas import (
     AxisDraft,
     AxisInput,
+    GeneratorItem,
+    GeneratorRunRequest,
+    GeneratorRunResponse,
     HabitDay,
     HabitsPlan,
     KnowledgeInput,
@@ -31,6 +34,7 @@ from .prompts_habits import (
     habits_system_prompt,
     habits_user_prompt,
 )
+from .prompts_runtime import render_template, schema_addendum
 from .prompts_menu import (
     menu_system_prompt,
     menu_user_prompt,
@@ -538,6 +542,139 @@ class LlmClient:
             intent=intent,
             duration_days=duration_days,
         )
+
+    async def run_generator(
+        self,
+        request: GeneratorRunRequest,
+    ) -> GeneratorRunResponse:
+        """Universal manifest runtime.
+
+        Renders the author's prompts against the form values, calls
+        the LLM with strict JSON mode, validates against the fixed
+        item schema, trims overshoot. Author-controlled prompts +
+        server-controlled output contract = the same client can
+        consume any tool's results.
+
+        We choose `max_tokens` proportionally to `max_items` — each
+        item is roughly 100 tokens (title + body + offset + JSON
+        overhead) so 50 items × ~100 = 5 k tokens with headroom.
+        """
+        try:
+            user_prompt = render_template(
+                request.prompt_user, dict(request.inputs),
+            )
+            system_prompt = render_template(
+                request.prompt_system, dict(request.inputs),
+            ) + schema_addendum(request.max_items)
+        except KeyError as exc:
+            # 422-shaped error — the route catches and rewraps.
+            raise ValueError(
+                f"prompt template references unknown input: {exc.args[0]!r}",
+            ) from exc
+
+        max_tokens = min(8000, 600 + request.max_items * 110)
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        payload: dict[str, Any] = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            "response_format": {"type": "json_object"},
+            "temperature": float(request.temperature),
+            "max_tokens": max_tokens,
+        }
+        url = f"{self.base_url}/chat/completions"
+        async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+            response = await client.post(url, json=payload, headers=headers)
+        if response.status_code >= 400:
+            raise LlmUpstreamError(
+                response.status_code,
+                f"LLM upstream error ({response.status_code}): "
+                f"{response.text[:500]}",
+            )
+        data = response.json()
+        try:
+            content = data["choices"][0]["message"]["content"]
+            finish = data["choices"][0].get("finish_reason")
+        except (KeyError, IndexError, TypeError) as exc:
+            raise LlmUpstreamError(
+                502, f"Malformed LLM response: {exc}: {data!r}",
+            ) from exc
+        if finish == "length":
+            raise LlmUpstreamError(
+                502,
+                "LLM run was truncated (finish_reason=length). "
+                "Reduce max_items or simplify the prompt.",
+            )
+        parsed = _parse_json(content)
+        return _normalize_run_response(
+            parsed,
+            model=self.model,
+            max_items=request.max_items,
+        )
+
+
+def _normalize_run_response(
+    parsed: dict[str, Any],
+    *,
+    model: str,
+    max_items: int,
+) -> GeneratorRunResponse:
+    """Coerce a possibly-fuzzy LLM JSON into a clean response.
+
+    Rules:
+    - Drop items missing a non-empty title.
+    - Truncate `body` and `title` if they exceed schema limits (the
+      LLM occasionally overshoots even with explicit caps).
+    - Coerce `due_offset_days` to int when string-typed; drop if
+      out-of-range or unparseable rather than 502'ing the whole run.
+    - Trim to `max_items`. The LLM occasionally returns one extra.
+    """
+    items_raw = parsed.get("items") if isinstance(parsed, dict) else None
+    if not isinstance(items_raw, list):
+        raise LlmUpstreamError(
+            502, "LLM response missing `items` array.",
+        )
+
+    cleaned: list[GeneratorItem] = []
+    for raw in items_raw:
+        if not isinstance(raw, dict):
+            continue
+        title = str(raw.get("title", "")).strip()
+        if not title:
+            continue
+        if len(title) > 120:
+            title = title[:117] + "\u2026"
+        body = str(raw.get("body", "") or "").strip()
+        if len(body) > 2000:
+            body = body[:1997] + "\u2026"
+
+        due: int | None = None
+        due_raw = raw.get("due_offset_days")
+        if due_raw is not None:
+            try:
+                due_int = int(due_raw)
+                if 0 <= due_int <= 365:
+                    due = due_int
+            except (TypeError, ValueError):
+                pass
+
+        cleaned.append(
+            GeneratorItem(title=title, body=body, due_offset_days=due),
+        )
+
+    cleaned = cleaned[:max_items]
+    summary = str(parsed.get("summary", "") or "").strip()
+    if len(summary) > 500:
+        summary = summary[:497] + "\u2026"
+    return GeneratorRunResponse(
+        model=model, summary=summary, items=cleaned,
+    )
 
 
 def _axes_system_prompt(count: int) -> str:

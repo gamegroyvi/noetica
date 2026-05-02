@@ -28,6 +28,8 @@ from .llm import LlmClient, LlmConfigError, LlmUpstreamError
 from .schemas import (
     AxesRequest,
     AxesResponse,
+    GeneratorRunRequest,
+    GeneratorRunResponse,
     HabitsPlan,
     HabitsRequest,
     MenuPlan,
@@ -366,6 +368,53 @@ async def tools_habits_generate(
         len(plan.days),
     )
     return plan
+
+
+@app.post("/tools/run", response_model=GeneratorRunResponse)
+async def tools_run(
+    request: GeneratorRunRequest,
+    user: CurrentUser,
+) -> GeneratorRunResponse:
+    """Universal manifest runtime.
+
+    Accepts a manifest's prompt template + form values, returns a
+    generic `{summary, items[]}` shape that the client knows how to
+    import. This is the endpoint user-authored tools (PR #33+) talk
+    to — builtins gradually migrate to it as well so we don't have
+    to maintain N specialised endpoints.
+
+    We log only the manifest_id and shape stats — NEVER prompts,
+    inputs or outputs (they are user content).
+    """
+    try:
+        client = LlmClient()
+    except LlmConfigError as exc:
+        logger.error("LLM config error: %s", exc)
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    try:
+        result = await client.run_generator(request)
+    except ValueError as exc:
+        # render_template raised on an unknown placeholder — surface
+        # to the author as 422 with a precise message.
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except LlmUpstreamError as exc:
+        logger.warning(
+            "LLM run upstream error: manifest=%s status=%s",
+            request.manifest_id, exc.status,
+        )
+        raise HTTPException(
+            status_code=502, detail="LLM upstream error.",
+        ) from exc
+
+    logger.info(
+        "Generated run: user=%s manifest=%s model=%s items=%d",
+        user["id"][:8],
+        request.manifest_id,
+        result.model,
+        len(result.items),
+    )
+    return result
 
 
 _ = Depends  # silence unused import warning when no other Depends is used here
