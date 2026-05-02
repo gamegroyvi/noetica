@@ -7,9 +7,11 @@ import 'package:uuid/uuid.dart';
 
 import '../../../data/models.dart';
 import '../../../providers.dart';
+import '../../../services/builtin_generators.dart';
 import '../../../services/tools_api.dart';
 import '../../../theme/app_theme.dart';
 import '../../entry/entry_editor_sheet.dart';
+import '../manifest/generator_form_view.dart';
 
 /// Stages the screen walks the user through. State machine instead of
 /// child routes so the user can jump back without losing the generated
@@ -39,13 +41,11 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
   _Stage _stage = _Stage.form;
   String? _error;
 
-  // Form state.
-  MenuGoal _goal = MenuGoal.classic;
-  int _servings = 2;
-  DateTime _startDate = DateTime.now().add(const Duration(days: 1));
-  final _restrictionsCtrl = TextEditingController();
-  final _notesCtrl = TextEditingController();
-  String? _selectedAxisId; // user-chosen target axis
+  /// Form state, keyed by `GeneratorInputField.id` from the manifest.
+  /// All form mutations go through `setState(() => _values[id] = …)`
+  /// so the universal `GeneratorFormView` can render the same data
+  /// without bespoke widgets for chips / pickers / textareas.
+  final GeneratorFormValues _values = {};
 
   // Generated plan + import bookkeeping.
   MenuPlan? _plan;
@@ -56,9 +56,38 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
   // Recipe loading state by meal index.
   final Map<int, _RecipeState> _recipes = {};
 
+  // Convenience accessors — keep the rest of the screen oblivious to
+  // the manifest plumbing. Defaults match the previous hard-coded
+  // initial state for the form.
+  MenuGoal get _goal =>
+      MenuGoal.fromWire(_values['goal'] as String? ?? 'classic');
+  int get _servings => _values['servings'] as int? ?? 2;
+  DateTime get _startDate =>
+      _values['start_date'] as DateTime? ??
+      DateTime.now().add(const Duration(days: 1));
+  String? get _selectedAxisId => _values['axis_id'] as String?;
+  String get _restrictions =>
+      ((_values['restrictions'] as String?) ?? '').trim();
+  String get _extraNotes => ((_values['notes'] as String?) ?? '').trim();
+
+  void _seedValuesFromManifest() {
+    _values.clear();
+    for (final f in menuWeekInputs()) {
+      _values[f.id] = f.defaultValue;
+    }
+    // Date default isn't covered by manifest defaults (intentionally
+    // null so user-authored manifests don't pin a particular day);
+    // the menu UX wants tomorrow as starting point.
+    _values['start_date'] = DateTime.now().add(const Duration(days: 1));
+    // Servings default to 2 (was the hard-coded initial); manifest
+    // says 1 to keep the schema sensible for single-person plans.
+    _values['servings'] = 2;
+  }
+
   @override
   void initState() {
     super.initState();
+    _seedValuesFromManifest();
     // Best-effort: if the user has already imported a menu in a past
     // session, drop them back into the imported view so they can keep
     // generating recipes for individual dishes. Without this, exiting
@@ -66,13 +95,6 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
     // was no way to come back to the meal list except by importing a
     // brand-new menu.
     WidgetsBinding.instance.addPostFrameCallback((_) => _resumeLastMenu());
-  }
-
-  @override
-  void dispose() {
-    _restrictionsCtrl.dispose();
-    _notesCtrl.dispose();
-    super.dispose();
   }
 
   // --------------------------------------------------------------- resume
@@ -169,8 +191,8 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
         _recipes
           ..clear()
           ..addAll(recipeStates);
-        if (resolvedGoal != null) _goal = resolvedGoal;
-        if (resolvedServings != null) _servings = resolvedServings;
+        if (resolvedGoal != null) _values['goal'] = resolvedGoal.wire;
+        if (resolvedServings != null) _values['servings'] = resolvedServings;
         _stage = _Stage.imported;
       });
     } catch (_) {
@@ -230,6 +252,7 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
       _menuId = null;
       _plan = null;
       _error = null;
+      _seedValuesFromManifest();
       _stage = _Stage.form;
     });
   }
@@ -271,8 +294,8 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
       final plan = await api.generateMenu(
         goal: _goal,
         servings: _servings,
-        restrictions: _restrictionsCtrl.text.trim(),
-        extraNotes: _notesCtrl.text.trim(),
+        restrictions: _restrictions,
+        extraNotes: _extraNotes,
       );
       if (!mounted) return;
       setState(() {
@@ -502,12 +525,14 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
     if (axes.isNotEmpty && _selectedAxisId == null) {
       // Pre-select the most natural axis for nutrition. Falls back to
       // the first axis if no obvious match is found so we never push
-      // the user back to "no axis" by default.
+      // the user back to "no axis" by default. Kept as a bespoke
+      // helper because the manifest's single-substring `preferAxisHint`
+      // can't express the full "тел/здоров/body/health/фитн" set.
       final body = axes.firstWhere(
         (a) => _looksLikeBodyAxis(a),
         orElse: () => axes.first,
       );
-      _selectedAxisId = body.id;
+      _values['axis_id'] = body.id;
     }
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
@@ -523,91 +548,22 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
             ),
             child: Text(_error!, style: TextStyle(color: palette.fg)),
           ),
-        Text('Цель питания',
-            style: theme.textTheme.labelLarge?.copyWith(color: palette.muted)),
+        GeneratorFormView(
+          fields: menuWeekInputs(),
+          values: _values,
+          axes: axes,
+          onChanged: (id, v) => setState(() => _values[id] = v),
+        ),
         const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final g in MenuGoal.values)
-              ChoiceChip(
-                label: Text(g.label),
-                selected: _goal == g,
-                onSelected: (_) => setState(() => _goal = g),
-              ),
-          ],
-        ),
-        const SizedBox(height: 24),
-        Text('Порций',
-            style: theme.textTheme.labelLarge?.copyWith(color: palette.muted)),
-        const SizedBox(height: 4),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            for (var s = 1; s <= 6; s++)
-              ChoiceChip(
-                label: Text(s.toString()),
-                selected: _servings == s,
-                onSelected: (_) => setState(() => _servings = s),
-              ),
-          ],
-        ),
-        const SizedBox(height: 24),
-        Text('Старт меню',
-            style: theme.textTheme.labelLarge?.copyWith(color: palette.muted)),
-        const SizedBox(height: 8),
-        OutlinedButton.icon(
-          icon: const Icon(Icons.calendar_today, size: 16),
-          label: Text('${_d(_startDate)} · ${_humanRange()}'),
-          onPressed: _pickStartDate,
-        ),
-        const SizedBox(height: 24),
-        if (axes.isNotEmpty) ...[
-          Text('Ось роста',
-              style:
-                  theme.textTheme.labelLarge?.copyWith(color: palette.muted)),
-          const SizedBox(height: 4),
-          Text(
-            '21 задача добавится к выбранной оси и будет давать XP при '
-            'отметке «выполнено».',
+        // Range hint sits below the date so the form stays a clean
+        // top-down list — the form view itself doesn't know about
+        // "7-day window", that's still domain-specific to menu.
+        Padding(
+          padding: const EdgeInsets.only(left: 4),
+          child: Text(
+            '7 дней с ${_d(_startDate)} по ${_d(_startDate.add(const Duration(days: 6)))}',
             style: theme.textTheme.bodySmall?.copyWith(color: palette.muted),
           ),
-          const SizedBox(height: 8),
-          DropdownButtonFormField<String>(
-            value: _selectedAxisId,
-            isExpanded: true,
-            items: [
-              for (final a in axes)
-                DropdownMenuItem(
-                  value: a.id,
-                  child: Text('${a.symbol} ${a.name}'),
-                ),
-            ],
-            onChanged: (v) => setState(() => _selectedAxisId = v),
-          ),
-          const SizedBox(height: 24),
-        ],
-        TextField(
-          controller: _restrictionsCtrl,
-          decoration: const InputDecoration(
-            labelText: 'Ограничения (опционально)',
-            hintText: 'без глютена; без свинины; вегетарианец',
-            border: OutlineInputBorder(),
-          ),
-          minLines: 1,
-          maxLines: 3,
-        ),
-        const SizedBox(height: 16),
-        TextField(
-          controller: _notesCtrl,
-          decoration: const InputDecoration(
-            labelText: 'Доп. пожелания (опционально)',
-            hintText: 'минимум готовки в будни; больше рыбы; быстрые завтраки',
-            border: OutlineInputBorder(),
-          ),
-          minLines: 2,
-          maxLines: 4,
         ),
         const SizedBox(height: 24),
         Container(
@@ -640,18 +596,6 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
         ),
       ],
     );
-  }
-
-  Future<void> _pickStartDate() async {
-    final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _startDate,
-      firstDate: now.subtract(const Duration(days: 7)),
-      lastDate: now.add(const Duration(days: 60)),
-    );
-    if (picked == null) return;
-    setState(() => _startDate = picked);
   }
 
   Widget _bullet(NoeticaPalette palette, String text) => Padding(
