@@ -242,3 +242,80 @@ class HabitsPlan(BaseModel):
     intent: str = Field(default="", max_length=300)
     summary: str = Field(default="", max_length=400)
     days: list[HabitDay]
+
+
+# ---------- /tools/run (universal generator runtime) ----------
+
+
+# Bounded JSON-serialisable scalar value. `bool` is intentionally
+# allowed — manifest authors may want toggle inputs (e.g. "include
+# weekends?") and they should round-trip cleanly through the prompt.
+GeneratorInputValue = str | int | float | bool
+
+
+class GeneratorRunRequest(BaseModel):
+    """A single run of a user- or builtin-authored manifest.
+
+    The client owns the manifest. Server doesn't persist anything; it
+    just renders the prompt template, gates the LLM call (auth + rate
+    limit + size caps), validates the JSON response, and returns it.
+
+    `prompt_system` and `prompt_user` may contain `{input_id}` markers
+    that the server resolves against `inputs`. We DO NOT support
+    arbitrary Python format spec — only `{name}`-style placeholders —
+    so authors can't leak format tricks into the prompt.
+    """
+
+    # Free-form id so we can log per-manifest stats once user manifests
+    # exist. Not enforced as unique — author A's "morning-ritual" and
+    # author B's "morning-ritual" both log the same key, which is fine
+    # for now.
+    manifest_id: str = Field(min_length=1, max_length=80)
+    prompt_system: str = Field(min_length=1, max_length=4000)
+    prompt_user: str = Field(min_length=1, max_length=4000)
+    inputs: dict[str, GeneratorInputValue] = Field(default_factory=dict)
+    # Soft cap on item count. The model is asked to produce
+    # ≤ `max_items`; we trim post-hoc and warn if the model overshoot.
+    max_items: int = Field(default=15, ge=1, le=50)
+    # Temperature is exposed because some authors want
+    # determinism (e.g. recipe-style tools) while others want variety
+    # (e.g. ideation tools). Clamped to a sane window.
+    temperature: float = Field(default=0.6, ge=0.0, le=1.5)
+
+    @field_validator("inputs")
+    @classmethod
+    def _bound_inputs(
+        cls, v: dict[str, GeneratorInputValue],
+    ) -> dict[str, GeneratorInputValue]:
+        if len(v) > 30:
+            raise ValueError("too many inputs (max 30)")
+        for k, val in v.items():
+            if not k or len(k) > 40:
+                raise ValueError(f"invalid input key: {k!r}")
+            if isinstance(val, str) and len(val) > 1000:
+                raise ValueError(
+                    f"input {k!r} exceeds 1000 chars",
+                )
+        return v
+
+
+class GeneratorItem(BaseModel):
+    """One output row from a universal tool run.
+
+    Deliberately minimal: `title` is the only required field.
+    Optional `body` carries longer prose, `due_offset_days` lets the
+    LLM signal scheduling (day 1 = today, day 2 = tomorrow, …) without
+    the manifest having to encode it via post-processing.
+    """
+
+    title: str = Field(min_length=1, max_length=120)
+    body: str = Field(default="", max_length=2000)
+    due_offset_days: int | None = Field(default=None, ge=0, le=365)
+
+
+class GeneratorRunResponse(BaseModel):
+    """Universal tool-run output. The client decides how to import."""
+
+    model: str
+    summary: str = Field(default="", max_length=500)
+    items: list[GeneratorItem]
