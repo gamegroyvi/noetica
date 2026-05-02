@@ -17,6 +17,8 @@ import httpx
 from .schemas import (
     AxisDraft,
     AxisInput,
+    HabitDay,
+    HabitsPlan,
     KnowledgeInput,
     MenuDay,
     MenuIngredient,
@@ -24,6 +26,10 @@ from .schemas import (
     MenuPlan,
     ProfileInput,
     RoadmapTask,
+)
+from .prompts_habits import (
+    habits_system_prompt,
+    habits_user_prompt,
 )
 from .prompts_menu import (
     menu_system_prompt,
@@ -467,6 +473,72 @@ class LlmClient:
             raise LlmUpstreamError(502, "Empty recipe content from LLM.")
         return markdown
 
+    async def generate_habits_plan(
+        self,
+        intent: str,
+        duration_days: int,
+        axis_hint: str,
+        notes: str,
+    ) -> HabitsPlan:
+        """Single-stage habit plan — `duration_days` micro-actions.
+
+        We ask for strict JSON shaped like `HabitsPlan`. The route
+        validates the day count post-hoc; the normaliser drops
+        malformed entries silently and lets the route decide whether
+        the remaining list is acceptable.
+        """
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        payload: dict[str, Any] = {
+            "model": self.model,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": habits_system_prompt(duration_days, axis_hint),
+                },
+                {
+                    "role": "user",
+                    "content": habits_user_prompt(intent, duration_days, notes),
+                },
+            ],
+            "response_format": {"type": "json_object"},
+            "temperature": 0.6,
+            # 30 days × ~80 tokens per micro-action + summary fits under
+            # 3 k tokens with comfort. Bump if we ever extend the cap.
+            "max_tokens": 3000,
+        }
+        url = f"{self.base_url}/chat/completions"
+        async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+            response = await client.post(url, json=payload, headers=headers)
+        if response.status_code >= 400:
+            raise LlmUpstreamError(
+                response.status_code,
+                f"LLM upstream error ({response.status_code}): {response.text[:500]}",
+            )
+        data = response.json()
+        try:
+            content = data["choices"][0]["message"]["content"]
+            finish = data["choices"][0].get("finish_reason")
+        except (KeyError, IndexError, TypeError) as exc:
+            raise LlmUpstreamError(
+                502, f"Malformed LLM response: {exc}: {data!r}"
+            ) from exc
+        if finish == "length":
+            raise LlmUpstreamError(
+                502,
+                "LLM habits response was truncated (finish_reason=length). "
+                "Reduce duration_days or simplify the intent.",
+            )
+        parsed = _parse_json(content)
+        return _normalize_habits_plan(
+            parsed,
+            model=self.model,
+            intent=intent,
+            duration_days=duration_days,
+        )
+
 
 def _axes_system_prompt(count: int) -> str:
     return (
@@ -793,3 +865,54 @@ def _normalize_ingredient(raw: Any) -> MenuIngredient | None:
         return None
     amount = str(raw.get("amount") or "").strip()
     return MenuIngredient(name=name[:80], amount=amount[:40])
+
+
+def _normalize_habits_plan(
+    parsed: dict[str, Any],
+    *,
+    model: str,
+    intent: str,
+    duration_days: int,
+) -> HabitsPlan:
+    """Coerce the LLM's JSON into our `HabitsPlan` schema.
+
+    Drops malformed entries (missing title, non-int day_index, etc.).
+    Re-numbers `day_index` linearly (1..N) so the client doesn't have
+    to handle gaps when the model occasionally skips a day.
+    """
+    raw_days = parsed.get("days") or []
+    days: list[HabitDay] = []
+    if isinstance(raw_days, list):
+        for d in raw_days:
+            if not isinstance(d, dict):
+                continue
+            title = str(d.get("title") or "").strip()
+            if not title:
+                continue
+            why = str(d.get("why") or "").strip()
+            days.append(
+                HabitDay(
+                    # Re-numbered below; pass a placeholder that
+                    # satisfies pydantic's ge=1 constraint.
+                    day_index=1,
+                    title=title[:80],
+                    why=why[:240],
+                )
+            )
+
+    # Trim to `duration_days` so prompts that overshoot don't blow the
+    # cap, and re-number linearly. We never undershoot — the route
+    # raises 502 on `len(days) < requested`.
+    days = days[:duration_days]
+    days = [
+        HabitDay(day_index=i + 1, title=d.title, why=d.why)
+        for i, d in enumerate(days)
+    ]
+
+    summary = str(parsed.get("summary") or "").strip()[:400]
+    return HabitsPlan(
+        model=model,
+        intent=intent.strip()[:300],
+        summary=summary,
+        days=days,
+    )
