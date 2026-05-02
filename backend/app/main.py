@@ -28,6 +28,8 @@ from .llm import LlmClient, LlmConfigError, LlmUpstreamError
 from .schemas import (
     AxesRequest,
     AxesResponse,
+    HabitsPlan,
+    HabitsRequest,
     MenuPlan,
     MenuRecipeRequest,
     MenuRecipeResponse,
@@ -317,6 +319,53 @@ async def tools_menu_recipe(
         len(request.ingredients),
     )
     return MenuRecipeResponse(model=client.model, markdown=markdown)
+
+
+@app.post("/tools/habits/generate", response_model=HabitsPlan)
+async def tools_habits_generate(
+    request: HabitsRequest,
+    user: CurrentUser,
+) -> HabitsPlan:
+    """Generate an N-day micro-habit plan from a free-form intent.
+
+    Returns one tiny daily action per requested day. The client
+    imports them as N due-dated tasks tagged with `challenge/<id>`.
+    """
+    try:
+        client = LlmClient()
+    except LlmConfigError as exc:
+        logger.error("LLM config error: %s", exc)
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    try:
+        plan = await client.generate_habits_plan(
+            intent=request.intent,
+            duration_days=request.duration_days,
+            axis_hint=request.axis_hint,
+            notes=request.notes,
+        )
+    except LlmUpstreamError as exc:
+        logger.warning("LLM habits upstream error: status=%s", exc.status)
+        raise HTTPException(
+            status_code=502, detail="LLM upstream error.",
+        ) from exc
+
+    if len(plan.days) < request.duration_days:
+        raise HTTPException(
+            status_code=502,
+            detail=(
+                f"LLM returned {len(plan.days)} days but {request.duration_days} "
+                "were requested."
+            ),
+        )
+
+    logger.info(
+        "Generated habits: user=%s model=%s days=%d",
+        user["id"][:8],
+        plan.model,
+        len(plan.days),
+    )
+    return plan
 
 
 _ = Depends  # silence unused import warning when no other Depends is used here

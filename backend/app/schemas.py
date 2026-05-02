@@ -202,3 +202,43 @@ class MenuRecipeResponse(BaseModel):
 
     model: str
     markdown: str
+
+
+# ---------- /tools/habits ----------
+
+
+class HabitsRequest(BaseModel):
+    """User-facing form for the «Микро-привычки» 7-day micro-action plan.
+
+    `intent` is the free-form goal ("заснуть раньше", "перестать
+    залипать в телефон утром"). The LLM expands it into a sequence of
+    tiny daily actions; the client imports them as N due-dated tasks.
+    """
+
+    intent: str = Field(min_length=3, max_length=300)
+    duration_days: int = Field(default=7, ge=3, le=30)
+    axis_hint: str = Field(default="", max_length=40)
+    notes: str = Field(default="", max_length=400)
+
+
+class HabitDay(BaseModel):
+    """A single day's micro-action."""
+
+    day_index: int = Field(ge=1, le=30)
+    title: str = Field(min_length=1, max_length=80)
+    why: str = Field(default="", max_length=240)
+
+
+class HabitsPlan(BaseModel):
+    """Structured result for the habits generator.
+
+    `intent` echoes the user's goal so the client can render it as the
+    plan's header without re-storing it. `summary` is a one-line
+    framing the LLM uses to explain how the days build on each other —
+    optional but useful for the preview screen.
+    """
+
+    model: str
+    intent: str = Field(default="", max_length=300)
+    summary: str = Field(default="", max_length=400)
+    days: list[HabitDay]
