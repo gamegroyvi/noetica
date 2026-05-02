@@ -70,5 +70,36 @@ void main() {
     test('returns empty string for empty body', () {
       expect(bodyToPlainText(''), '');
     });
+
+    test('strips noetica metadata HTML comments', () {
+      // The menu generator embeds `<!-- noetica:meal {...} -->` markers
+      // at the bottom of meal task bodies. They must not leak into the
+      // task card preview.
+      const body =
+          '## Ингредиенты\n- Тилапия\n\n<!-- noetica:meal {"meal_name":"foo"} -->';
+      expect(bodyToPlainText(body), 'Ингредиенты\nТилапия');
+    });
+  });
+
+  group('stripDisplayMetadata', () {
+    test('removes a single-line metadata comment plus its newline', () {
+      const src = 'hello\n<!-- noetica:meal {"x":1} -->\nworld';
+      expect(stripDisplayMetadata(src), 'hello\nworld');
+    });
+
+    test('removes a trailing-only metadata comment', () {
+      const src = 'hello\n<!-- noetica:meal {"x":1} -->';
+      // The leading newline is kept (it's `hello`'s line terminator).
+      expect(stripDisplayMetadata(src), 'hello\n');
+    });
+
+    test('keeps inline comments untouched (rare, would break wording)', () {
+      const src = 'hello <!-- inline --> world';
+      expect(stripDisplayMetadata(src), src);
+    });
+
+    test('returns empty for empty input', () {
+      expect(stripDisplayMetadata(''), '');
+    });
   });
 }
