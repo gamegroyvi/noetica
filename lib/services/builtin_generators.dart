@@ -1,7 +1,69 @@
 import 'package:flutter/material.dart';
 
 import '../features/tools/menu/menu_generator_screen.dart';
+import 'generator_input.dart';
 import 'generator_manifest.dart';
+
+/// Form schema for the «Меню недели» generator. Kept as a top-level
+/// constant so tests can verify the shape and the future authoring
+/// UI can use it as the canonical example of a builtin manifest.
+List<GeneratorInputField> menuWeekInputs() => const [
+      GeneratorInputEnum(
+        id: 'goal',
+        label: 'Цель питания',
+        required: true,
+        options: [
+          GeneratorEnumOption(value: 'classic', label: 'Сбалансированно'),
+          GeneratorEnumOption(value: 'muscle', label: 'Набор массы'),
+          GeneratorEnumOption(value: 'cut', label: 'Снижение веса'),
+          GeneratorEnumOption(value: 'mediterranean', label: 'Средиземн.'),
+          GeneratorEnumOption(value: 'plant', label: 'Растительное'),
+          GeneratorEnumOption(value: 'low_carb', label: 'Low-carb'),
+        ],
+        initial: 'classic',
+      ),
+      GeneratorInputInt(
+        id: 'servings',
+        label: 'Порций',
+        required: true,
+        min: 1,
+        max: 6,
+        initial: 1,
+        presentation: IntInputPresentation.chips,
+      ),
+      GeneratorInputDate(
+        id: 'start_date',
+        label: 'Старт меню',
+        required: true,
+        daysBefore: 7,
+        daysAfter: 60,
+      ),
+      GeneratorInputAxisRef(
+        id: 'axis_id',
+        label: 'Ось роста',
+        help:
+            '21 задача добавится к выбранной оси и будет давать XP при '
+            'отметке «выполнено».',
+        preferAxisHint: 'тело',
+      ),
+      GeneratorInputText(
+        id: 'restrictions',
+        label: 'Ограничения (опционально)',
+        placeholder: 'без глютена; без свинины; вегетарианец',
+        multiline: true,
+        minLines: 1,
+        maxLines: 3,
+      ),
+      GeneratorInputText(
+        id: 'notes',
+        label: 'Доп. пожелания (опционально)',
+        placeholder:
+            'минимум готовки в будни; больше рыбы; быстрые завтраки',
+        multiline: true,
+        minLines: 2,
+        maxLines: 4,
+      ),
+    ];
 
 /// All hand-coded generators known to this build. Edit this list when
 /// adding a new builtin tool — the catalog screen, deep-links, and
@@ -24,6 +86,7 @@ List<GeneratorManifest> defaultBuiltinManifests() => [
           'Список покупок отдельной заметкой-чеклистом',
           'Полные рецепты подгружаются по тапу',
         ],
+        inputs: menuWeekInputs(),
         builder: (_) => const MenuGeneratorScreen(),
       ),
       const GeneratorManifest(
