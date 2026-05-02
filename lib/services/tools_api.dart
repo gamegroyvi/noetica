@@ -150,6 +150,54 @@ enum MenuGoal {
   }
 }
 
+/// One day's micro-action returned by `/tools/habits/generate`.
+@immutable
+class HabitDay {
+  const HabitDay({
+    required this.dayIndex,
+    required this.title,
+    this.why = '',
+  });
+
+  final int dayIndex;
+  final String title;
+  final String why;
+
+  factory HabitDay.fromJson(Map<String, Object?> json) => HabitDay(
+        dayIndex: _asInt(json['day_index']),
+        title: (json['title'] as String?) ?? '',
+        why: (json['why'] as String?) ?? '',
+      );
+}
+
+/// Full N-day micro-habit plan. `intent` echoes the user's free-form
+/// goal so the import view can render it as the plan's title without
+/// re-storing it.
+@immutable
+class HabitsPlan {
+  const HabitsPlan({
+    required this.model,
+    required this.intent,
+    required this.days,
+    this.summary = '',
+  });
+
+  final String model;
+  final String intent;
+  final String summary;
+  final List<HabitDay> days;
+
+  factory HabitsPlan.fromJson(Map<String, Object?> json) => HabitsPlan(
+        model: (json['model'] as String?) ?? '',
+        intent: (json['intent'] as String?) ?? '',
+        summary: (json['summary'] as String?) ?? '',
+        days: ((json['days'] as List?) ?? const [])
+            .whereType<Map<String, Object?>>()
+            .map(HabitDay.fromJson)
+            .toList(),
+      );
+}
+
 class ToolsApiException implements Exception {
   ToolsApiException(this.message, {this.status});
   final String message;
@@ -202,6 +250,23 @@ class ToolsApi {
     };
     final json = await _post(uri, payload, _generateTimeout);
     return MenuPlan.fromJson(json);
+  }
+
+  Future<HabitsPlan> generateHabits({
+    required String intent,
+    required int durationDays,
+    String axisHint = '',
+    String notes = '',
+  }) async {
+    final uri = Uri.parse('$_baseUrl/tools/habits/generate');
+    final payload = <String, Object?>{
+      'intent': intent,
+      'duration_days': durationDays,
+      'axis_hint': axisHint,
+      'notes': notes,
+    };
+    final json = await _post(uri, payload, _generateTimeout);
+    return HabitsPlan.fromJson(json);
   }
 
   Future<String> generateRecipe({
