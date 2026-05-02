@@ -7,10 +7,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/models.dart';
 import '../../providers.dart';
+import '../../services/backend_urls_service.dart';
 import '../../services/notifications.dart';
 import '../../theme/app_theme.dart';
 import '../onboarding/onboarding_screen.dart';
 import '../onboarding/onboarding_chat_screen.dart';
+import 'backends_screen.dart';
 
 /// Single-screen settings: profile, notifications, axes, data, about.
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -412,6 +414,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ],
           const Divider(height: 1),
+          const _SectionHeader(title: 'Бэкенд'),
+          _BackendActiveTile(),
+          const Divider(height: 1),
           const _SectionHeader(title: 'Данные'),
           ListTile(
             leading: const Icon(Icons.copy_outlined),
@@ -458,6 +463,52 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ],
       ),
     );
+  }
+}
+
+/// Compact summary tile showing the currently active backend. Tapping
+/// opens [BackendsScreen] where the user can add/remove/switch URLs.
+class _BackendActiveTile extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final palette = context.palette;
+    final stateAsync = ref.watch(backendUrlsStateProvider);
+    final state = stateAsync.valueOrNull;
+    final active = state?.endpoints.firstWhere(
+      (e) => e.id == state.activeId,
+      orElse: () => state.endpoints.isEmpty
+          ? const BackendEndpoint(id: '', name: '—', url: '—')
+          : state.endpoints.first,
+    );
+    final count = state?.endpoints.length ?? 0;
+    return ListTile(
+      leading: const Icon(Icons.cloud_outlined),
+      title: Text(active?.name ?? 'Загрузка…'),
+      subtitle: Text(
+        active == null
+            ? 'Подгружаем список бэкендов…'
+            : '${active.url}\n$count бэкенд${_ru(count)} сохранено',
+        style: TextStyle(color: palette.muted),
+      ),
+      isThreeLine: active != null,
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const BackendsScreen()),
+        );
+      },
+    );
+  }
+
+  // 1 бэкенд, 2 бэкенда, 5 бэкендов — quick pluralisation matching
+  // the rest of the app's microcopy. We don't pull in `intl` for this
+  // because the project already uses ad-hoc Russian strings.
+  String _ru(int n) {
+    final mod10 = n % 10;
+    final mod100 = n % 100;
+    if (mod10 == 1 && mod100 != 11) return '';
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'а';
+    return 'ов';
   }
 }
 
