@@ -7,9 +7,11 @@ import 'data/profile.dart';
 import 'data/repository.dart';
 import 'services/auth_service.dart';
 import 'services/axes_api.dart';
+import 'services/backend_urls_service.dart';
 import 'services/levels.dart';
 import 'services/roadmap_api.dart';
 import 'services/sync_service.dart';
+import 'services/tools_api.dart';
 
 const _kOnboardedKey = 'noetica.onboarded.v1';
 
@@ -80,12 +82,20 @@ final profileProvider = StreamProvider<UserProfile?>((ref) async* {
 
 final roadmapApiProvider = Provider<RoadmapApi>((ref) {
   final auth = ref.watch(authServiceProvider);
-  return RoadmapApi(authService: auth);
+  final url = ref.watch(activeBackendUrlProvider);
+  return RoadmapApi(authService: auth, baseUrl: url);
 });
 
 final axesApiProvider = Provider<AxesApi>((ref) {
   final auth = ref.watch(authServiceProvider);
-  return AxesApi(authService: auth);
+  final url = ref.watch(activeBackendUrlProvider);
+  return AxesApi(authService: auth, baseUrl: url);
+});
+
+final toolsApiProvider = Provider<ToolsApi>((ref) {
+  final auth = ref.watch(authServiceProvider);
+  final url = ref.watch(activeBackendUrlProvider);
+  return ToolsApi(authService: auth, baseUrl: url);
 });
 
 final lifetimeXpProvider = FutureProvider<int>((ref) async {
@@ -125,8 +135,35 @@ final streakProvider = FutureProvider<int>((ref) async {
   return repo.streakDays();
 });
 
+/// Holds the user-managed list of backend deployments. The service
+/// itself is a singleton; consumers that just need the active URL
+/// should watch [activeBackendUrlProvider] instead, which rebuilds
+/// dependent providers whenever the user switches backends.
+final backendUrlsServiceProvider = Provider<BackendUrlsService>((ref) {
+  final service = BackendUrlsService();
+  ref.onDispose(service.dispose);
+  return service;
+});
+
+/// Stream of the current backend list + active selection. Loaded once
+/// from SharedPreferences on first observation, then re-emitted every
+/// time the user adds, edits, removes or switches backends.
+final backendUrlsStateProvider = StreamProvider<BackendUrlsState>((ref) async* {
+  final svc = ref.watch(backendUrlsServiceProvider);
+  yield* svc.changes;
+});
+
+/// The URL every API client should hit. Falls back to the compile-time
+/// default while the SharedPreferences load is in flight (so the very
+/// first cold-start frame still has *something* to talk to).
+final activeBackendUrlProvider = Provider<String>((ref) {
+  final state = ref.watch(backendUrlsStateProvider).valueOrNull;
+  return state?.activeUrl ?? ref.watch(backendUrlsServiceProvider).activeUrlOrDefault;
+});
+
 final authServiceProvider = Provider<AuthService>((ref) {
-  final service = AuthService();
+  final url = ref.watch(activeBackendUrlProvider);
+  final service = AuthService(backendBaseUrl: url);
   ref.onDispose(service.dispose);
   return service;
 });
@@ -142,10 +179,12 @@ final syncServiceProvider = FutureProvider<SyncService>((ref) async {
   final repo = await ref.watch(repositoryProvider.future);
   final auth = ref.watch(authServiceProvider);
   final profile = ref.watch(profileServiceProvider);
+  final url = ref.watch(activeBackendUrlProvider);
   final service = SyncService(
     repository: repo,
     auth: auth,
     profileService: profile,
+    backendBaseUrl: url,
   );
   service.start();
   ref.onDispose(service.dispose);
