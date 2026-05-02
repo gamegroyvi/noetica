@@ -12,13 +12,14 @@ List<GeneratorInputField> menuWeekInputs() => const [
         id: 'goal',
         label: 'Цель питания',
         required: true,
+        // Wire values match the backend's `MenuGoal` literal — keep in
+        // sync with `lib/services/tools_api.dart#MenuGoal`.
         options: [
           GeneratorEnumOption(value: 'classic', label: 'Сбалансированно'),
-          GeneratorEnumOption(value: 'muscle', label: 'Набор массы'),
-          GeneratorEnumOption(value: 'cut', label: 'Снижение веса'),
-          GeneratorEnumOption(value: 'mediterranean', label: 'Средиземн.'),
-          GeneratorEnumOption(value: 'plant', label: 'Растительное'),
-          GeneratorEnumOption(value: 'low_carb', label: 'Low-carb'),
+          GeneratorEnumOption(value: 'lose_weight', label: 'Похудение'),
+          GeneratorEnumOption(value: 'health', label: 'Здоровье'),
+          GeneratorEnumOption(value: 'muscle', label: 'Набор мышц'),
+          GeneratorEnumOption(value: 'energy', label: 'Энергия / спорт'),
         ],
         initial: 'classic',
       ),
