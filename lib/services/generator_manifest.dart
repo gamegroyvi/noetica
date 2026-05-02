@@ -123,10 +123,9 @@ abstract class GeneratorRegistry {
   }
 }
 
-/// In-process registry holding only the compiled-in builtins. Future
-/// phases will compose a `CompositeRegistry` that reads from this
-/// builtin registry plus a `UserGeneratorRegistry` (SharedPreferences
-/// backed) plus a `MarketplaceRegistry` (network backed).
+/// In-process registry holding only the compiled-in builtins. The
+/// `CompositeGeneratorRegistry` below combines this with the user's
+/// authored manifests; future phases add a `MarketplaceRegistry`.
 class BuiltinGeneratorRegistry extends GeneratorRegistry {
   BuiltinGeneratorRegistry(this._items);
 
@@ -134,4 +133,26 @@ class BuiltinGeneratorRegistry extends GeneratorRegistry {
 
   @override
   List<GeneratorManifest> list() => List.unmodifiable(_items);
+}
+
+/// Registry composed of multiple sources. Order matters: builtins
+/// first (their ids are guaranteed unique), user manifests after
+/// (so a custom tool with the same display name as a builtin still
+/// shows up — its id is `user/<uuid>`, never collides).
+class CompositeGeneratorRegistry extends GeneratorRegistry {
+  CompositeGeneratorRegistry(this._sources);
+
+  final List<GeneratorRegistry> _sources;
+
+  @override
+  List<GeneratorManifest> list() {
+    final out = <GeneratorManifest>[];
+    final seen = <String>{};
+    for (final src in _sources) {
+      for (final m in src.list()) {
+        if (seen.add(m.id)) out.add(m);
+      }
+    }
+    return List.unmodifiable(out);
+  }
 }
