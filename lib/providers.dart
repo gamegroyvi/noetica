@@ -14,6 +14,7 @@ import 'services/levels.dart';
 import 'services/roadmap_api.dart';
 import 'services/sync_service.dart';
 import 'services/tools_api.dart';
+import 'services/user_manifest.dart';
 
 const _kOnboardedKey = 'noetica.onboarded.v1';
 
@@ -100,11 +101,32 @@ final toolsApiProvider = Provider<ToolsApi>((ref) {
   return ToolsApi(authService: auth, baseUrl: url);
 });
 
-/// Catalog of generators surfaced on the «Ассистент» screen and
-/// elsewhere. Currently a builtin-only registry; the composite (with
-/// user / marketplace sources) lands in a follow-up phase.
+/// Singleton store for user-authored manifests. Lives for the
+/// lifetime of the app — the underlying SharedPreferences instance is
+/// loaded lazily on first access.
+final userManifestStoreProvider = Provider<UserManifestStore>((ref) {
+  final store = UserManifestStore();
+  ref.onDispose(store.dispose);
+  return store;
+});
+
+/// Stream of `UserManifest` snapshots. Re-emits whenever an entry is
+/// added / updated / deleted.
+final userManifestsProvider = StreamProvider<List<UserManifest>>((ref) {
+  final store = ref.watch(userManifestStoreProvider);
+  return store.changes;
+});
+
+/// Catalog of generators surfaced on the «Ассистент» screen. Composite
+/// of builtins + user-authored manifests; rebuilds whenever
+/// `userManifestsProvider` emits a new snapshot.
 final generatorRegistryProvider = Provider<GeneratorRegistry>((ref) {
-  return buildBuiltinGeneratorRegistry();
+  final builtins = buildBuiltinGeneratorRegistry();
+  final users = ref.watch(userManifestsProvider).valueOrNull ?? const [];
+  final userRegistry = UserGeneratorRegistry(
+    users.map((m) => m.toGenerator()).toList(growable: false),
+  );
+  return CompositeGeneratorRegistry([builtins, userRegistry]);
 });
 
 final lifetimeXpProvider = FutureProvider<int>((ref) async {

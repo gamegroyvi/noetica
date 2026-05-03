@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../providers.dart';
 import '../../services/generator_manifest.dart';
+import '../../services/user_manifest.dart';
 import '../../theme/app_theme.dart';
 import '../home/home_shell.dart' show kFloatingTabBarReserve;
+import 'authoring/manifest_editor_screen.dart';
 import 'runtime/generator_run_screen.dart';
 
 /// "Ассистент" — каталог AI-инструментов, которые умеют генерировать
@@ -17,19 +19,56 @@ import 'runtime/generator_run_screen.dart';
 class ToolsScreen extends ConsumerWidget {
   const ToolsScreen({super.key});
 
+  Future<void> _openEditor(BuildContext context, UserManifest? existing) {
+    return Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ManifestEditorScreen(existing: existing),
+      ),
+    );
+  }
+
+  /// Long-press on a user-authored card → open editor. We resolve the
+  /// `GeneratorManifest` (id like `user/<uuid>`) back to its source
+  /// `UserManifest` via the store snapshot so we can pre-populate the
+  /// editor's fields.
+  Future<void> _openEditorById(
+    BuildContext context,
+    WidgetRef ref,
+    GeneratorManifest manifest,
+  ) async {
+    final id = manifest.id.replaceFirst('user/', '');
+    final users =
+        ref.read(userManifestsProvider).valueOrNull ?? const <UserManifest>[];
+    UserManifest? existing;
+    for (final u in users) {
+      if (u.id == id) {
+        existing = u;
+        break;
+      }
+    }
+    if (existing == null || !context.mounted) return;
+    await _openEditor(context, existing);
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final palette = context.palette;
     final theme = Theme.of(context);
     final width = MediaQuery.of(context).size.width;
     final registry = ref.watch(generatorRegistryProvider);
-    final available = registry
-        .list()
-        .where((m) => m.status != GeneratorStatus.soon)
+    final all = registry.list();
+    final builtinAvailable = all
+        .where((m) =>
+            m.source == GeneratorSource.builtin &&
+            m.status != GeneratorStatus.soon)
         .toList(growable: false);
-    final soon = registry
-        .list()
-        .where((m) => m.status == GeneratorStatus.soon)
+    final userTools = all
+        .where((m) => m.source == GeneratorSource.user)
+        .toList(growable: false);
+    final soon = all
+        .where((m) =>
+            m.source == GeneratorSource.builtin &&
+            m.status == GeneratorStatus.soon)
         .toList(growable: false);
     // Match HomeShell's `_kRailMin` (720): at/above this the sidebar is
     // visible and the floating tabbar is gone, so we don't need to
@@ -66,7 +105,7 @@ class ToolsScreen extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         _Header(palette: palette, theme: theme),
-                        if (available.isNotEmpty) ...[
+                        if (builtinAvailable.isNotEmpty) ...[
                           const SizedBox(height: 24),
                           _SectionLabel(
                             'Доступно',
@@ -75,12 +114,38 @@ class ToolsScreen extends ConsumerWidget {
                           ),
                           const SizedBox(height: 12),
                           _ToolGrid(
-                            tools: available,
+                            tools: builtinAvailable,
                             isWide: width >= 720,
                             palette: palette,
                             theme: theme,
                           ),
                         ],
+                        const SizedBox(height: 24),
+                        _SectionLabel(
+                          'Мои инструменты',
+                          theme: theme,
+                          palette: palette,
+                          trailing: TextButton.icon(
+                            onPressed: () => _openEditor(context, null),
+                            icon: const Icon(Icons.add, size: 18),
+                            label: const Text('Создать'),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        if (userTools.isEmpty)
+                          _UserToolsEmpty(
+                            palette: palette,
+                            theme: theme,
+                            onCreate: () => _openEditor(context, null),
+                          )
+                        else
+                          _ToolGrid(
+                            tools: userTools,
+                            isWide: width >= 720,
+                            palette: palette,
+                            theme: theme,
+                            onLongPress: (m) => _openEditorById(context, ref, m),
+                          ),
                         if (soon.isNotEmpty) ...[
                           const SizedBox(height: 24),
                           _SectionLabel(
@@ -171,23 +236,42 @@ class _Header extends StatelessWidget {
 }
 
 class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.text, {required this.theme, required this.palette});
+  const _SectionLabel(
+    this.text, {
+    required this.theme,
+    required this.palette,
+    this.trailing,
+  });
 
   final String text;
   final ThemeData theme;
   final NoeticaPalette palette;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
+    final label = Text(
+      text.toUpperCase(),
+      style: theme.textTheme.labelSmall?.copyWith(
+        color: palette.muted,
+        letterSpacing: 1.6,
+        fontWeight: FontWeight.w700,
+      ),
+    );
+    if (trailing == null) {
+      return Padding(
+        padding: const EdgeInsets.only(left: 4),
+        child: label,
+      );
+    }
     return Padding(
       padding: const EdgeInsets.only(left: 4),
-      child: Text(
-        text.toUpperCase(),
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: palette.muted,
-          letterSpacing: 1.6,
-          fontWeight: FontWeight.w700,
-        ),
+      child: Row(
+        children: [
+          label,
+          const Spacer(),
+          trailing!,
+        ],
       ),
     );
   }
@@ -199,6 +283,7 @@ class _ToolGrid extends StatelessWidget {
     required this.isWide,
     required this.palette,
     required this.theme,
+    this.onLongPress,
   });
 
   static const double _gap = 12;
@@ -207,6 +292,7 @@ class _ToolGrid extends StatelessWidget {
   final bool isWide;
   final NoeticaPalette palette;
   final ThemeData theme;
+  final void Function(GeneratorManifest)? onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -246,6 +332,11 @@ class _ToolGrid extends StatelessWidget {
                                 tool: rows[rowIdx][colIdx]!,
                                 palette: palette,
                                 theme: theme,
+                                onLongPress: onLongPress == null
+                                    ? null
+                                    : () => onLongPress!(
+                                          rows[rowIdx][colIdx]!,
+                                        ),
                               ),
                       ),
                     ],
@@ -275,11 +366,13 @@ class _ToolCard extends StatelessWidget {
     required this.tool,
     required this.palette,
     required this.theme,
+    this.onLongPress,
   });
 
   final GeneratorManifest tool;
   final NoeticaPalette palette;
   final ThemeData theme;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -292,6 +385,7 @@ class _ToolCard extends StatelessWidget {
       ),
       child: InkWell(
         onTap: () => _onTap(context, interactable),
+        onLongPress: onLongPress,
         borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
@@ -395,6 +489,73 @@ class _ToolCard extends StatelessWidget {
               ? 'Открываю «${tool.title}»…'
               : 'Скоро: «${tool.title}»',
         ),
+      ),
+    );
+  }
+}
+
+class _UserToolsEmpty extends StatelessWidget {
+  const _UserToolsEmpty({
+    required this.palette,
+    required this.theme,
+    required this.onCreate,
+  });
+
+  final NoeticaPalette palette;
+  final ThemeData theme;
+  final VoidCallback onCreate;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 22, 20, 22),
+      decoration: BoxDecoration(
+        color: palette.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: palette.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: palette.bg,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.add, color: palette.fg),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Свой AI-инструмент',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Опиши, что должен делать AI, и какой вопрос задавать тебе. '
+            'Готовый инструмент окажется в каталоге и будет генерировать '
+            'задачи на сегодня — как любой встроенный.',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: palette.muted,
+              height: 1.45,
+            ),
+          ),
+          const SizedBox(height: 14),
+          FilledButton.tonalIcon(
+            onPressed: onCreate,
+            icon: const Icon(Icons.add),
+            label: const Text('Создать инструмент'),
+          ),
+        ],
       ),
     );
   }
