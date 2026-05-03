@@ -158,6 +158,9 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
           }
 
           final filtered = entries.where((e) => e.isTask).where((e) {
+            // Hide menu-generated meals — they live in the dedicated
+            // «Меню недели» screen accessible from the sidebar.
+            if (e.tags.any((t) => t.startsWith('menu/'))) return false;
             if (!_status.matches(e)) return false;
             if (_noAxisOnly && e.axisIds.isNotEmpty) return false;
             if (_axisFilterId != null && !e.axisIds.contains(_axisFilterId)) {
