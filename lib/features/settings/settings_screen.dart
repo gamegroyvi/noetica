@@ -224,7 +224,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Future<void> _syncNow() async {
     final messenger = ScaffoldMessenger.of(context);
     messenger.showSnackBar(
-      const SnackBar(content: Text('Синхронизация…')),
+      const SnackBar(content: Text('Синхронизация: pull → push…')),
     );
     try {
       final sync = await ref.read(syncServiceProvider.future);
@@ -232,8 +232,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       await sync.pushPending();
       if (!mounted) return;
       messenger.hideCurrentSnackBar();
+      final current = sync.currentStatus;
+      if (current.phase == SyncPhase.error) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              'Синхронизация не завершилась: ${current.lastError ?? 'ошибка'}',
+            ),
+          ),
+        );
+        return;
+      }
       messenger.showSnackBar(
-        const SnackBar(content: Text('Готово. Данные подтянуты с облака.')),
+        const SnackBar(content: Text('Готово. Локальные и облачные данные сверены.')),
       );
     } catch (e) {
       if (!mounted) return;
@@ -460,8 +471,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const Divider(height: 1),
           const _SectionHeader(title: 'Бэкенд'),
           _BackendActiveTile(),
+          _SyncStatusTile(),
           const Divider(height: 1),
           const _SectionHeader(title: 'Данные'),
+          _TrustDataTile(palette: palette),
           ListTile(
             leading: const Icon(Icons.copy_outlined),
             title: const Text('Экспорт в JSON'),
@@ -553,6 +566,145 @@ class _BackendActiveTile extends ConsumerWidget {
     if (mod10 == 1 && mod100 != 11) return '';
     if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'а';
     return 'ов';
+  }
+}
+
+class _SyncStatusTile extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final palette = context.palette;
+    final status = ref.watch(syncStatusProvider).valueOrNull;
+    final phase = status?.phase ?? SyncPhase.idle;
+    final busy = status?.isBusy ?? false;
+    final isError = phase == SyncPhase.error;
+    final subtitle = isError
+        ? 'Ошибка: ${status?.lastError ?? 'не удалось синхронизировать'}'
+        : status?.lastSuccessAt == null
+            ? 'Синхронизация запустится после входа в Google'
+            : 'Последний успех: ${_formatTime(context, status!.lastSuccessAt!)}';
+    return ListTile(
+      leading: Icon(
+        isError ? Icons.cloud_off_outlined : Icons.cloud_done_outlined,
+      ),
+      title: Text(_phaseLabel(phase)),
+      subtitle: Text(subtitle, style: TextStyle(color: palette.muted)),
+      trailing: busy
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : null,
+    );
+  }
+
+  String _phaseLabel(SyncPhase phase) {
+    switch (phase) {
+      case SyncPhase.pulling:
+        return 'Синхронизация: получаем облако';
+      case SyncPhase.pushing:
+        return 'Синхронизация: отправляем изменения';
+      case SyncPhase.done:
+        return 'Синхронизация в порядке';
+      case SyncPhase.error:
+        return 'Синхронизация требует внимания';
+      case SyncPhase.idle:
+        return 'Синхронизация готова';
+    }
+  }
+
+  String _formatTime(BuildContext context, DateTime value) {
+    final t = TimeOfDay.fromDateTime(value);
+    return '${value.day.toString().padLeft(2, '0')}.'
+        '${value.month.toString().padLeft(2, '0')} '
+        '${t.format(context)}';
+  }
+}
+
+class _TrustDataTile extends StatelessWidget {
+  const _TrustDataTile({required this.palette});
+
+  final NoeticaPalette palette;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: const Icon(Icons.verified_user_outlined),
+      title: const Text('Приватность и хранение'),
+      subtitle: Text(
+        'Данные сначала хранятся локально. После входа в Google включается '
+        'облачная синхронизация; AI получает только контекст запроса.',
+        style: TextStyle(color: palette.muted),
+      ),
+      onTap: () => showModalBottomSheet<void>(
+        context: context,
+        showDragHandle: true,
+        builder: (ctx) => Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Как Noetica работает с данными',
+                style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
+              const SizedBox(height: 12),
+              _TrustBullet(
+                icon: Icons.storage_outlined,
+                text: 'Профиль, оси, задачи и заметки живут на устройстве.',
+              ),
+              _TrustBullet(
+                icon: Icons.cloud_sync_outlined,
+                text: 'Cloud sync включается после входа и синхронизирует '
+                    'изменения между устройствами.',
+              ),
+              _TrustBullet(
+                icon: Icons.auto_awesome_outlined,
+                text: 'AI-запросы отправляют только нужный для генерации '
+                    'контекст: цель, оси, задачи и выбранные заметки.',
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Полный экспорт доступен ниже: можно забрать JSON-дамп и '
+                'стереть локальные данные в любой момент.',
+                style: TextStyle(color: context.palette.muted, height: 1.4),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TrustBullet extends StatelessWidget {
+  const _TrustBullet({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 20, color: palette.fg),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(color: palette.muted, height: 1.4),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

@@ -13,7 +13,6 @@ import '../../services/weekly_reflection_service.dart';
 import '../calendar/calendar_screen.dart';
 import '../calendar/day_detail_sheet.dart';
 import '../entry/entry_editor_sheet.dart';
-import '../home/home_shell.dart';
 import '../knowledge/knowledge_graph_screen.dart';
 import '../notes/notes_screen.dart';
 import '../pomodoro/pomodoro_sheet.dart';
@@ -249,6 +248,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 subtitle: _todaySubtitle(stats, overdue.length, dueToday.length),
                 palette: palette,
               ),
+              const SizedBox(height: 12),
+              _ProductLoopStrip(
+                palette: palette,
+                onOpenRoadmap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const RoadmapScreen(),
+                  ),
+                ),
+                onOpenTasks: _openTasks,
+                onCreateReflection: () => ReflectionSheet.show(context, ref),
+                onOpenSelf: _openSelf,
+              ),
               const SizedBox(height: 18),
               _SectionHeader(label: 'СЕЙЧАС', palette: palette),
               const SizedBox(height: 8),
@@ -413,6 +424,104 @@ class _Greeting extends StatelessWidget {
           style: TextStyle(color: palette.muted, fontSize: 13),
         ),
       ],
+    );
+  }
+}
+
+class _ProductLoopStrip extends StatelessWidget {
+  const _ProductLoopStrip({
+    required this.palette,
+    required this.onOpenRoadmap,
+    required this.onOpenTasks,
+    required this.onCreateReflection,
+    required this.onOpenSelf,
+  });
+
+  final NoeticaPalette palette;
+  final VoidCallback onOpenRoadmap;
+  final VoidCallback onOpenTasks;
+  final VoidCallback onCreateReflection;
+  final VoidCallback onOpenSelf;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: palette.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: palette.line),
+      ),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Петля роста',
+            style: TextStyle(
+              color: palette.fg,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'План → действие → рефлексия → сильнее следующий план',
+            style: TextStyle(color: palette.muted, fontSize: 12),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _LoopChip(
+                icon: Icons.route_outlined,
+                label: 'План',
+                onTap: onOpenRoadmap,
+              ),
+              _LoopChip(
+                icon: Icons.check_circle_outline,
+                label: 'Задача',
+                onTap: onOpenTasks,
+              ),
+              _LoopChip(
+                icon: Icons.psychology_alt_outlined,
+                label: 'Рефлексия',
+                onTap: onCreateReflection,
+              ),
+              _LoopChip(
+                icon: Icons.radar_outlined,
+                label: 'Пентаграмма',
+                onTap: onOpenSelf,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LoopChip extends StatelessWidget {
+  const _LoopChip({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    return ActionChip(
+      avatar: Icon(icon, size: 16),
+      label: Text(label),
+      onPressed: onTap,
+      side: BorderSide(color: palette.line),
+      backgroundColor: palette.bg,
+      labelStyle: TextStyle(color: palette.fg, fontWeight: FontWeight.w700),
     );
   }
 }
@@ -971,8 +1080,8 @@ class _OnboardingHints extends StatelessWidget {
           accent: const Color(0xFFA78BFA),
           title: 'Сгенерируй план задач',
           subtitle: aspiration.isEmpty
-              ? 'AI разложит твою цель на 4–10 конкретных задач, привязанных к осям пентаграммы.'
-              : 'AI разложит «$aspiration» на 4–10 задач. Поле уже заполнено — можно редактировать.',
+              ? 'AI разложит цель на конкретные задачи, ты выполнишь одну и вечером добавишь рефлексию.'
+              : 'AI разложит «$aspiration» на задачи. После выполнения Noetica учтёт рефлексию в следующем плане.',
           ctaLabel: 'Сгенерировать',
           onPressed: onOpenRoadmap,
         ),

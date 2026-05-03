@@ -13,6 +13,23 @@ import 'api_config.dart';
 import 'auth_service.dart';
 import 'notifications.dart';
 
+enum SyncPhase { idle, pulling, pushing, done, error }
+
+@immutable
+class SyncStatus {
+  const SyncStatus({
+    required this.phase,
+    this.lastSuccessAt,
+    this.lastError,
+  });
+
+  final SyncPhase phase;
+  final DateTime? lastSuccessAt;
+  final String? lastError;
+
+  bool get isBusy => phase == SyncPhase.pulling || phase == SyncPhase.pushing;
+}
+
 /// Two-way sync between local SQLite + SharedPreferences profile and the
 /// Noetica backend. Last-Writer-Wins by `updated_at`.
 ///
@@ -57,6 +74,8 @@ class SyncService {
   final http.Client _http;
   final Duration _pushDebounce;
   final Duration _httpTimeout;
+  final _status = StreamController<SyncStatus>.broadcast();
+  SyncStatus _lastStatus = const SyncStatus(phase: SyncPhase.idle);
 
   StreamSubscription<AuthSession?>? _authSub;
   StreamSubscription<void>? _dirtySub;
@@ -65,6 +84,20 @@ class SyncService {
   Timer? _pushTimer;
   bool _busy = false;
   String? _boundUserId;
+
+  Stream<SyncStatus> get status async* {
+    yield _lastStatus;
+    yield* _status.stream;
+  }
+
+  SyncStatus get currentStatus => _lastStatus;
+
+  void _emitStatus(SyncStatus next) {
+    _lastStatus = next;
+    if (!_status.isClosed) {
+      _status.add(next);
+    }
+  }
 
   /// Subscribes to auth changes; on sign-in, kicks off bootstrap; on
   /// sign-out, stops listening.
@@ -159,6 +192,14 @@ class SyncService {
     if (session == null) return;
     if (_busy) return;
     _busy = true;
+    _emitStatus(SyncStatus(
+      phase: SyncPhase.pushing,
+      lastSuccessAt: _lastStatus.lastSuccessAt,
+    ));
+    _emitStatus(SyncStatus(
+      phase: SyncPhase.pulling,
+      lastSuccessAt: _lastStatus.lastSuccessAt,
+    ));
     try {
       final prefs = await SharedPreferences.getInstance();
       final since = prefs.getInt(_kLastPullKey) ?? 0;
@@ -172,6 +213,11 @@ class SyncService {
       if (response.statusCode != 200) {
         debugPrint('SyncService.pull: HTTP ${response.statusCode} '
             '${response.body}');
+        _emitStatus(SyncStatus(
+          phase: SyncPhase.error,
+          lastSuccessAt: _lastStatus.lastSuccessAt,
+          lastError: 'pull HTTP ${response.statusCode}',
+        ));
         return;
       }
       final body = jsonDecode(response.body) as Map<String, dynamic>;
@@ -211,8 +257,17 @@ class SyncService {
       if (profileAccepted) {
         // ProfileService already fired its own notifier; nothing to do.
       }
+      _emitStatus(SyncStatus(
+        phase: SyncPhase.done,
+        lastSuccessAt: DateTime.now(),
+      ));
     } catch (e, stack) {
       debugPrint('SyncService.pull failed: $e\n$stack');
+      _emitStatus(SyncStatus(
+        phase: SyncPhase.error,
+        lastSuccessAt: _lastStatus.lastSuccessAt,
+        lastError: e.toString(),
+      ));
     } finally {
       _busy = false;
     }
@@ -289,6 +344,10 @@ class SyncService {
           entriesDirty.isEmpty &&
           !profileDirty &&
           !knowledgeDirty) {
+        _emitStatus(SyncStatus(
+          phase: SyncPhase.done,
+          lastSuccessAt: DateTime.now(),
+        ));
         return;
       }
 
@@ -319,13 +378,27 @@ class SyncService {
       if (response.statusCode != 200) {
         debugPrint('SyncService.pushPending: HTTP ${response.statusCode} '
             '${response.body}');
+        _emitStatus(SyncStatus(
+          phase: SyncPhase.error,
+          lastSuccessAt: _lastStatus.lastSuccessAt,
+          lastError: 'push HTTP ${response.statusCode}',
+        ));
         return;
       }
       final result = jsonDecode(response.body) as Map<String, dynamic>;
       final serverNow = result['server_time_ms'] as int;
       await prefs.setInt(_kLastPushKey, serverNow);
+      _emitStatus(SyncStatus(
+        phase: SyncPhase.done,
+        lastSuccessAt: DateTime.now(),
+      ));
     } catch (e, stack) {
       debugPrint('SyncService.pushPending failed: $e\n$stack');
+      _emitStatus(SyncStatus(
+        phase: SyncPhase.error,
+        lastSuccessAt: _lastStatus.lastSuccessAt,
+        lastError: e.toString(),
+      ));
     } finally {
       _busy = false;
     }
@@ -416,6 +489,7 @@ class SyncService {
     _knowledgeSub?.cancel();
     _pushTimer?.cancel();
     _http.close();
+    unawaited(_status.close());
   }
 
   /// Currently bound user id, or null if not signed in. Useful for tests.

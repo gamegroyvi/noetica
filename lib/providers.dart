@@ -238,3 +238,8 @@ final syncServiceProvider = FutureProvider<SyncService>((ref) async {
   ref.onDispose(service.dispose);
   return service;
 });
+
+final syncStatusProvider = StreamProvider<SyncStatus>((ref) async* {
+  final sync = await ref.watch(syncServiceProvider.future);
+  yield* sync.status;
+});
