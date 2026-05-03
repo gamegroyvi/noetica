@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../data/models.dart';
 import '../../data/personal_knowledge_service.dart';
+import '../../services/analytics_service.dart';
 import '../../services/weekly_reflection_service.dart';
 import '../../theme/app_theme.dart';
 
@@ -101,6 +102,11 @@ class _WeeklyReflectionSheetState extends State<WeeklyReflectionSheet> {
         difficulties: '',
       );
       await WeeklyReflectionService.instance.markShownNow();
+      AnalyticsService.instance.track(AnalyticsEvents.weeklyReflectionSubmitted, {
+        'mood': _mood,
+        'wins': wins.length,
+        'losses': losses.length,
+      });
       if (!mounted) return;
       Navigator.of(context).pop();
     } catch (e) {

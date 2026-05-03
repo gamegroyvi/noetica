@@ -1,9 +1,9 @@
-import 'dart:io' show Platform;
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
+
+import '../platform/desktop_check.dart';
 
 /// Wires up Windows/Linux/macOS system tray:
 ///   * tray icon shows up next to the clock
@@ -18,14 +18,7 @@ class TrayService with TrayListener, WindowListener {
 
   bool _ready = false;
 
-  bool get isDesktop {
-    if (kIsWeb) return false;
-    try {
-      return Platform.isWindows || Platform.isLinux || Platform.isMacOS;
-    } catch (_) {
-      return false;
-    }
-  }
+  bool get isDesktop => isDesktopPlatform();
 
   Future<void> init() async {
     if (_ready) return;
@@ -61,7 +54,7 @@ class TrayService with TrayListener, WindowListener {
     // bundle (data/flutter_assets/<path> on Windows). On Windows the
     // shell wants an .ico (multi-resolution; PNGs render blank at 16×16
     // tray size); on Linux/macOS a PNG works fine.
-    if (Platform.isWindows) return 'assets/branding/tray_icon.ico';
+    if (defaultTargetPlatform == TargetPlatform.windows) return 'assets/branding/tray_icon.ico';
     return 'assets/branding/tray_icon.png';
   }
 

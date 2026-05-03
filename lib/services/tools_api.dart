@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 
 import 'api_config.dart';
 import 'auth_service.dart';
+import 'generator_run_spec.dart';
 
 /// One ingredient line item — name + free-form amount string. The
 /// backend produces these for each meal and for the consolidated weekly
@@ -150,6 +151,54 @@ enum MenuGoal {
   }
 }
 
+/// One day's micro-action returned by `/tools/habits/generate`.
+@immutable
+class HabitDay {
+  const HabitDay({
+    required this.dayIndex,
+    required this.title,
+    this.why = '',
+  });
+
+  final int dayIndex;
+  final String title;
+  final String why;
+
+  factory HabitDay.fromJson(Map<String, Object?> json) => HabitDay(
+        dayIndex: _asInt(json['day_index']),
+        title: (json['title'] as String?) ?? '',
+        why: (json['why'] as String?) ?? '',
+      );
+}
+
+/// Full N-day micro-habit plan. `intent` echoes the user's free-form
+/// goal so the import view can render it as the plan's title without
+/// re-storing it.
+@immutable
+class HabitsPlan {
+  const HabitsPlan({
+    required this.model,
+    required this.intent,
+    required this.days,
+    this.summary = '',
+  });
+
+  final String model;
+  final String intent;
+  final String summary;
+  final List<HabitDay> days;
+
+  factory HabitsPlan.fromJson(Map<String, Object?> json) => HabitsPlan(
+        model: (json['model'] as String?) ?? '',
+        intent: (json['intent'] as String?) ?? '',
+        summary: (json['summary'] as String?) ?? '',
+        days: ((json['days'] as List?) ?? const [])
+            .whereType<Map<String, Object?>>()
+            .map(HabitDay.fromJson)
+            .toList(),
+      );
+}
+
 class ToolsApiException implements Exception {
   ToolsApiException(this.message, {this.status});
   final String message;
@@ -204,6 +253,52 @@ class ToolsApi {
     return MenuPlan.fromJson(json);
   }
 
+  Future<HabitsPlan> generateHabits({
+    required String intent,
+    required int durationDays,
+    String axisHint = '',
+    String notes = '',
+  }) async {
+    final uri = Uri.parse('$_baseUrl/tools/habits/generate');
+    final payload = <String, Object?>{
+      'intent': intent,
+      'duration_days': durationDays,
+      'axis_hint': axisHint,
+      'notes': notes,
+    };
+    final json = await _post(uri, payload, _generateTimeout);
+    return HabitsPlan.fromJson(json);
+  }
+
+  /// Universal manifest runtime — POSTs the manifest's prompt
+  /// templates + form values to `/tools/run`. The server renders
+  /// `{key}` placeholders, calls Groq, and returns a
+  /// `GeneratorRunResult { model, summary, items[] }`.
+  ///
+  /// Authors don't have to provide N specialised endpoints anymore —
+  /// every user-authored or builtin tool that opts into the universal
+  /// runtime hits this single route.
+  Future<GeneratorRunResult> runGenerator({
+    required String manifestId,
+    required String promptSystem,
+    required String promptUser,
+    required Map<String, Object?> inputs,
+    int maxItems = 15,
+    double temperature = 0.6,
+  }) async {
+    final uri = Uri.parse('$_baseUrl/tools/run');
+    final payload = <String, Object?>{
+      'manifest_id': manifestId,
+      'prompt_system': promptSystem,
+      'prompt_user': promptUser,
+      'inputs': inputs,
+      'max_items': maxItems,
+      'temperature': temperature,
+    };
+    final json = await _post(uri, payload, _generateTimeout);
+    return GeneratorRunResult.fromJson(json);
+  }
+
   Future<String> generateRecipe({
     required String mealName,
     required List<MenuIngredient> ingredients,
@@ -227,21 +322,22 @@ class ToolsApi {
     Duration timeout,
   ) async {
     final token = _auth?.current?.accessToken;
-    if (token == null || token.isEmpty) {
+    if (!kDevSkipAuth && (token == null || token.isEmpty)) {
       throw ToolsApiException(
         'Не выполнен вход в Google. Перезайдите и попробуйте снова.',
         status: 401,
       );
     }
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+    };
     http.Response response;
     try {
       response = await _client
           .post(
             uri,
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
+            headers: headers,
             body: jsonEncode(payload),
           )
           .timeout(timeout);

@@ -1,7 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io' show Platform;
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -118,7 +116,7 @@ class AuthService {
 
   Future<AuthSession?> restore() async {
     if (_skipAuth) {
-      _current = _devStubSession();
+      _current = await _devSession();
       _stateController.add(_current);
       return _current;
     }
@@ -146,7 +144,7 @@ class AuthService {
   /// ID token for a Noetica JWT, and persist both.
   Future<AuthSession> signInWithGoogle() async {
     if (_skipAuth) {
-      _current = _devStubSession();
+      _current = await _devSession();
       _stateController.add(_current);
       return _current!;
     }
@@ -187,7 +185,8 @@ class AuthService {
     // chooser next time instead of being silently re-signed-in.
     if (!kIsWeb) {
       try {
-        if (Platform.isAndroid || Platform.isIOS) {
+        if (defaultTargetPlatform == TargetPlatform.android ||
+            defaultTargetPlatform == TargetPlatform.iOS) {
           await GoogleSignIn(serverClientId: _webClientId).signOut();
         }
       } catch (_) {}
@@ -213,11 +212,19 @@ class AuthService {
   }
 
   Future<String> _obtainGoogleIdToken() async {
-    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+    if (!kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.android ||
+         defaultTargetPlatform == TargetPlatform.iOS)) {
       return _googleSignInIdToken();
     }
-    if (!kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
+    if (!kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.windows ||
+         defaultTargetPlatform == TargetPlatform.macOS ||
+         defaultTargetPlatform == TargetPlatform.linux)) {
       return _desktopInstalledAppIdToken();
+    }
+    if (kIsWeb) {
+      return _googleSignInIdToken();
     }
     throw AuthException('Sign-in is not supported on this platform.');
   }
@@ -283,13 +290,34 @@ class AuthService {
     _http.close();
   }
 
-  AuthSession _devStubSession() => const AuthSession(
-        accessToken: 'dev-skip-auth-token',
-        user: AuthUser(
-          id: 'dev-local-user',
-          email: 'dev@noetica.local',
-          name: 'Dev',
-          pictureUrl: '',
-        ),
-      );
+  Future<AuthSession> _devSession() async {
+    if (_current != null) return _current!;
+    try {
+      final response = await _http
+          .post(
+            Uri.parse('$_baseUrl/auth/google'),
+            headers: const {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'id_token': 'fake:dev-local-user:dev@noetica.local',
+            }),
+          )
+          .timeout(const Duration(seconds: 3));
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        return AuthSession(
+          accessToken: body['access_token'] as String,
+          user: AuthUser.fromJson(body['user'] as Map<String, dynamic>),
+        );
+      }
+    } catch (_) {}
+    return const AuthSession(
+      accessToken: 'dev-skip-auth-token',
+      user: AuthUser(
+        id: 'dev-local-user',
+        email: 'dev@noetica.local',
+        name: 'Dev',
+        pictureUrl: '',
+      ),
+    );
+  }
 }

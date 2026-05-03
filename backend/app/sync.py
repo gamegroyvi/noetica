@@ -20,6 +20,7 @@ import time
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
 
 from . import db
 from .auth import CurrentUser
@@ -28,8 +29,6 @@ router = APIRouter(prefix="/sync", tags=["sync"])
 
 
 # ---------- payload schemas ----------
-
-from pydantic import BaseModel, Field
 
 
 class PullRequest(BaseModel):

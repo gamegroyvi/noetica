@@ -3,8 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../providers.dart';
 import '../../services/generator_manifest.dart';
+import '../../services/user_manifest.dart';
 import '../../theme/app_theme.dart';
 import '../home/home_shell.dart' show kFloatingTabBarReserve;
+import 'authoring/manifest_editor_screen.dart';
+import 'runtime/generator_run_screen.dart';
 
 /// "Ассистент" — каталог AI-инструментов, которые умеют генерировать
 /// готовые планы (меню, тренировки, учебные курсы, привычки) и
@@ -16,10 +19,36 @@ import '../home/home_shell.dart' show kFloatingTabBarReserve;
 class ToolsScreen extends ConsumerWidget {
   const ToolsScreen({super.key});
 
-  /// Set to `false` to hide "Скоро" placeholder cards from the UI.
-  /// The underlying manifests and code stay intact — flip back to
-  /// `true` when the feature is ready to be surfaced.
-  static const _showComingSoon = false;
+  Future<void> _openEditor(BuildContext context, UserManifest? existing) {
+    return Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ManifestEditorScreen(existing: existing),
+      ),
+    );
+  }
+
+  /// Long-press on a user-authored card → open editor. We resolve the
+  /// `GeneratorManifest` (id like `user/<uuid>`) back to its source
+  /// `UserManifest` via the store snapshot so we can pre-populate the
+  /// editor's fields.
+  Future<void> _openEditorById(
+    BuildContext context,
+    WidgetRef ref,
+    GeneratorManifest manifest,
+  ) async {
+    final id = manifest.id.replaceFirst('user/', '');
+    final users =
+        ref.read(userManifestsProvider).valueOrNull ?? const <UserManifest>[];
+    UserManifest? existing;
+    for (final u in users) {
+      if (u.id == id) {
+        existing = u;
+        break;
+      }
+    }
+    if (existing == null || !context.mounted) return;
+    await _openEditor(context, existing);
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -27,16 +56,24 @@ class ToolsScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     final width = MediaQuery.of(context).size.width;
     final registry = ref.watch(generatorRegistryProvider);
-    final available = registry
-        .list()
-        .where((m) => m.status != GeneratorStatus.soon)
+    final all = registry.list();
+    final builtinAvailable = all
+        .where((m) =>
+            m.source == GeneratorSource.builtin &&
+            m.status != GeneratorStatus.soon)
         .toList(growable: false);
-    final soon = _showComingSoon
-        ? registry
-            .list()
-            .where((m) => m.status == GeneratorStatus.soon)
-            .toList(growable: false)
-        : const <GeneratorManifest>[];
+    final userTools = all
+        .where((m) => m.source == GeneratorSource.user)
+        .toList(growable: false);
+    final soon = all
+        .where((m) =>
+            m.source == GeneratorSource.builtin &&
+            m.status == GeneratorStatus.soon)
+        .toList(growable: false);
+    // Match HomeShell's `_kRailMin` (720): at/above this the sidebar is
+    // visible and the floating tabbar is gone, so we don't need to
+    // reserve room for it. Below 720 the capsule overlays the bottom
+    // of the viewport and the last card would otherwise hide under it.
     final hasSidebar = width >= 720;
     final bottomReserve = hasSidebar ? 32.0 : kFloatingTabBarReserve + 16;
 
@@ -48,6 +85,9 @@ class ToolsScreen extends ConsumerWidget {
         bottom: false,
         child: LayoutBuilder(
           builder: (context, constraints) {
+            // Centered "page" column — on phones it just fills the
+            // viewport, on tablets/desktop we cap at 920px so cards
+            // don't stretch into something unreadable.
             final maxColumn = constraints.maxWidth.clamp(0, 920).toDouble();
             final horizontal = hasSidebar ? 32.0 : 16.0;
             return ListView(
@@ -65,30 +105,58 @@ class ToolsScreen extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         _Header(palette: palette, theme: theme),
-                        if (available.isNotEmpty) ...[
-                          const SizedBox(height: 28),
+                        if (builtinAvailable.isNotEmpty) ...[
+                          const SizedBox(height: 24),
                           _SectionLabel(
                             'Доступно',
                             theme: theme,
                             palette: palette,
                           ),
                           const SizedBox(height: 12),
-                          _ToolCarousel(
-                            tools: available,
+                          _ToolGrid(
+                            tools: builtinAvailable,
+                            isWide: width >= 720,
                             palette: palette,
                             theme: theme,
                           ),
                         ],
+                        const SizedBox(height: 24),
+                        _SectionLabel(
+                          'Мои инструменты',
+                          theme: theme,
+                          palette: palette,
+                          trailing: TextButton.icon(
+                            onPressed: () => _openEditor(context, null),
+                            icon: const Icon(Icons.add, size: 18),
+                            label: const Text('Создать'),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        if (userTools.isEmpty)
+                          _UserToolsEmpty(
+                            palette: palette,
+                            theme: theme,
+                            onCreate: () => _openEditor(context, null),
+                          )
+                        else
+                          _ToolGrid(
+                            tools: userTools,
+                            isWide: width >= 720,
+                            palette: palette,
+                            theme: theme,
+                            onLongPress: (m) => _openEditorById(context, ref, m),
+                          ),
                         if (soon.isNotEmpty) ...[
-                          const SizedBox(height: 28),
+                          const SizedBox(height: 24),
                           _SectionLabel(
                             'Скоро',
                             theme: theme,
                             palette: palette,
                           ),
                           const SizedBox(height: 12),
-                          _ToolCarousel(
+                          _ToolGrid(
                             tools: soon,
+                            isWide: width >= 720,
                             palette: palette,
                             theme: theme,
                           ),
@@ -168,123 +236,128 @@ class _Header extends StatelessWidget {
 }
 
 class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.text, {required this.theme, required this.palette});
+  const _SectionLabel(
+    this.text, {
+    required this.theme,
+    required this.palette,
+    this.trailing,
+  });
 
   final String text;
   final ThemeData theme;
   final NoeticaPalette palette;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
+    final label = Text(
+      text.toUpperCase(),
+      style: theme.textTheme.labelSmall?.copyWith(
+        color: palette.muted,
+        letterSpacing: 1.6,
+        fontWeight: FontWeight.w700,
+      ),
+    );
+    if (trailing == null) {
+      return Padding(
+        padding: const EdgeInsets.only(left: 4),
+        child: label,
+      );
+    }
     return Padding(
       padding: const EdgeInsets.only(left: 4),
-      child: Text(
-        text.toUpperCase(),
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: palette.muted,
-          letterSpacing: 1.6,
-          fontWeight: FontWeight.w700,
-        ),
+      child: Row(
+        children: [
+          label,
+          const Spacer(),
+          trailing!,
+        ],
       ),
     );
   }
 }
 
-/// Horizontal carousel of tool cards with a page-snap feel.
-/// Each card takes ~80 % of the viewport width on phones and a fixed
-/// 320 px on wider screens so the user can always peek at the next card.
-class _ToolCarousel extends StatefulWidget {
-  const _ToolCarousel({
+class _ToolGrid extends StatelessWidget {
+  const _ToolGrid({
     required this.tools,
+    required this.isWide,
     required this.palette,
     required this.theme,
+    this.onLongPress,
   });
 
+  static const double _gap = 12;
+
   final List<GeneratorManifest> tools;
+  final bool isWide;
   final NoeticaPalette palette;
   final ThemeData theme;
-
-  @override
-  State<_ToolCarousel> createState() => _ToolCarouselState();
-}
-
-class _ToolCarouselState extends State<_ToolCarousel> {
-  late final PageController _ctrl;
-  int _current = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = PageController(viewportFraction: 0.88);
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
+  final void Function(GeneratorManifest)? onLongPress;
 
   @override
   Widget build(BuildContext context) {
-    final tools = widget.tools;
     if (tools.isEmpty) return const SizedBox.shrink();
-
-    if (tools.length == 1) {
-      return _ToolCard(
-        tool: tools.first,
-        palette: widget.palette,
-        theme: widget.theme,
-      );
-    }
-
-    return Column(
-      children: [
-        SizedBox(
-          height: 220,
-          child: PageView.builder(
-            controller: _ctrl,
-            itemCount: tools.length,
-            onPageChanged: (i) => setState(() => _current = i),
-            itemBuilder: (_, i) {
-              return AnimatedScale(
-                scale: i == _current ? 1.0 : 0.95,
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.easeOut,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                  child: _ToolCard(
-                    tool: tools[i],
-                    palette: widget.palette,
-                    theme: widget.theme,
-                  ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Decide column count from available width. We don't use the
+        // outer screen width because the parent already centers + caps
+        // the column at 920px, so the constraint is the truth.
+        final columns = _columnsFor(constraints.maxWidth);
+        // Group tools into rows of [columns] entries each. The last row
+        // gets padded with empty placeholders so card widths stay equal
+        // (otherwise a lone card on a half-row would stretch to 100%).
+        final rows = <List<GeneratorManifest?>>[];
+        for (var i = 0; i < tools.length; i += columns) {
+          final row = <GeneratorManifest?>[];
+          for (var j = 0; j < columns; j++) {
+            row.add(i + j < tools.length ? tools[i + j] : null);
+          }
+          rows.add(row);
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var rowIdx = 0; rowIdx < rows.length; rowIdx++) ...[
+              if (rowIdx > 0) const SizedBox(height: _gap),
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (var colIdx = 0; colIdx < columns; colIdx++) ...[
+                      if (colIdx > 0) const SizedBox(width: _gap),
+                      Expanded(
+                        child: rows[rowIdx][colIdx] == null
+                            ? const SizedBox.shrink()
+                            : _ToolCard(
+                                tool: rows[rowIdx][colIdx]!,
+                                palette: palette,
+                                theme: theme,
+                                onLongPress: onLongPress == null
+                                    ? null
+                                    : () => onLongPress!(
+                                          rows[rowIdx][colIdx]!,
+                                        ),
+                              ),
+                      ),
+                    ],
+                  ],
                 ),
-              );
-            },
-          ),
-        ),
-        if (tools.length > 1) ...[
-          const SizedBox(height: 14),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              for (var i = 0; i < tools.length; i++)
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                  width: i == _current ? 20 : 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: i == _current
-                        ? widget.palette.fg
-                        : widget.palette.line,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
+              ),
             ],
-          ),
-        ],
-      ],
+          ],
+        );
+      },
     );
+  }
+
+  int _columnsFor(double width) {
+    // Phones (no sidebar visible) — always single column even if width
+    // happens to exceed the breakpoint (e.g. landscape phone).
+    if (!isWide) return 1;
+    // Tablet/desktop. We could go to 3 columns at very wide layouts but
+    // 920px max-column from the parent caps useful width, so 2 is the
+    // ceiling here.
+    return width >= 560 ? 2 : 1;
   }
 }
 
@@ -293,11 +366,13 @@ class _ToolCard extends StatelessWidget {
     required this.tool,
     required this.palette,
     required this.theme,
+    this.onLongPress,
   });
 
   final GeneratorManifest tool;
   final NoeticaPalette palette;
   final ThemeData theme;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -310,6 +385,7 @@ class _ToolCard extends StatelessWidget {
       ),
       child: InkWell(
         onTap: () => _onTap(context, interactable),
+        onLongPress: onLongPress,
         borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
@@ -394,6 +470,14 @@ class _ToolCard extends StatelessWidget {
       );
       return;
     }
+    if (interactable && tool.hasUniversalRuntime) {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => GeneratorRunScreen(manifest: tool),
+        ),
+      );
+      return;
+    }
     final messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(
@@ -405,6 +489,73 @@ class _ToolCard extends StatelessWidget {
               ? 'Открываю «${tool.title}»…'
               : 'Скоро: «${tool.title}»',
         ),
+      ),
+    );
+  }
+}
+
+class _UserToolsEmpty extends StatelessWidget {
+  const _UserToolsEmpty({
+    required this.palette,
+    required this.theme,
+    required this.onCreate,
+  });
+
+  final NoeticaPalette palette;
+  final ThemeData theme;
+  final VoidCallback onCreate;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 22, 20, 22),
+      decoration: BoxDecoration(
+        color: palette.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: palette.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: palette.bg,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.add, color: palette.fg),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Свой AI-инструмент',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Опиши, что должен делать AI, и какой вопрос задавать тебе. '
+            'Готовый инструмент окажется в каталоге и будет генерировать '
+            'задачи на сегодня — как любой встроенный.',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: palette.muted,
+              height: 1.45,
+            ),
+          ),
+          const SizedBox(height: 14),
+          FilledButton.tonalIcon(
+            onPressed: onCreate,
+            icon: const Icon(Icons.add),
+            label: const Text('Создать инструмент'),
+          ),
+        ],
       ),
     );
   }

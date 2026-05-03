@@ -17,6 +17,11 @@ import httpx
 from .schemas import (
     AxisDraft,
     AxisInput,
+    GeneratorItem,
+    GeneratorRunRequest,
+    GeneratorRunResponse,
+    HabitDay,
+    HabitsPlan,
     KnowledgeInput,
     MenuDay,
     MenuIngredient,
@@ -25,6 +30,17 @@ from .schemas import (
     ProfileInput,
     RoadmapTask,
 )
+from .prompts_habits import (
+    habits_system_prompt,
+    habits_user_prompt,
+)
+from .prompts_coach import (
+    evening_system_prompt,
+    evening_user_prompt,
+    morning_system_prompt,
+    morning_user_prompt,
+)
+from .prompts_runtime import render_template, schema_addendum
 from .prompts_menu import (
     menu_system_prompt,
     menu_user_prompt,
@@ -191,8 +207,212 @@ def _user_prompt(
     return "\n\n".join(sections)
 
 
+def _fake_axes(
+    profile: ProfileInput,
+    interests: list[str],
+    count: int,
+) -> list[AxisDraft]:
+    source = [s.strip() for s in interests if s.strip()]
+    if not source and profile.aspiration.strip():
+        source = [profile.aspiration.strip()]
+    defaults = [
+        ("Тело", "◐", "Энергия, сон, движение и здоровье."),
+        ("Ум", "◇", "Обучение, ясность мышления и навыки."),
+        ("Дело", "■", "Карьера, проекты и деньги."),
+        ("Связи", "◯", "Семья, друзья и окружение."),
+        ("Смысл", "✦", "Ценности, рефлексия и долгий вектор."),
+        ("Творчество", "✎", "Идеи, письмо, музыка и эксперименты."),
+        ("Быт", "⌂", "Среда, порядок и личная система."),
+        ("Ритм", "☼", "Привычки и устойчивость недели."),
+    ]
+    axes: list[AxisDraft] = []
+    for i in range(count):
+        name, symbol, description = defaults[i % len(defaults)]
+        if i < len(source):
+            name = source[i].strip()[:40] or name
+            description = f"Рост вокруг направления «{name}»."
+        axes.append(AxisDraft(name=name, symbol=symbol, description=description))
+    return axes
+
+
+def _fake_roadmap(
+    goal: str,
+    axes: list[AxisInput],
+    horizon_days: int,
+    task_count: int,
+) -> tuple[list[RoadmapTask], str]:
+    tasks: list[RoadmapTask] = []
+    axis_ids = [a.id for a in axes]
+    for i in range(task_count):
+        primary = axis_ids[i % len(axis_ids)] if axis_ids else ""
+        secondary = axis_ids[(i + 1) % len(axis_ids)] if len(axis_ids) > 1 else primary
+        picked = [a for a in [primary, secondary] if a]
+        due = round((i + 1) * horizon_days / max(task_count, 1)) - 1
+        tasks.append(
+            RoadmapTask(
+                title=f"Шаг {i + 1}: продвинуть «{goal[:48]}»",
+                body=(
+                    "Тестовый roadmap без внешней LLM: сделай маленький "
+                    "измеримый шаг, зафиксируй результат и отметь, что "
+                    "помогло или мешало."
+                ),
+                steps=[
+                    "Определи конкретный результат на 30–60 минут",
+                    "Сделай действие без переключения контекста",
+                    "Запиши короткий вывод после выполнения",
+                ],
+                axis_ids=picked,
+                axis_weights={primary: 0.7, secondary: 0.3}
+                if primary and secondary and primary != secondary
+                else {},
+                xp=min(60, 20 + i * 5),
+                due_in_days=max(0, due),
+            )
+        )
+    return tasks, "DEV_FAKE_LLM: тестовый план создан без внешнего API."
+
+
+def _fake_menu_plan(goal: str, servings: int) -> MenuPlan:
+    days: list[MenuDay] = []
+    day_names = [
+        "Понедельник",
+        "Вторник",
+        "Среда",
+        "Четверг",
+        "Пятница",
+        "Суббота",
+        "Воскресенье",
+    ]
+    for day_index in range(1, 8):
+        days.append(
+            MenuDay(
+                day_name=day_names[day_index - 1],
+                breakfast=MenuMeal(
+                    name=f"Овсянка с ягодами {day_index}",
+                    ingredients=[
+                        MenuIngredient(name="овсянка", amount="60 г"),
+                        MenuIngredient(name="ягоды", amount="100 г"),
+                    ],
+                    calories=420,
+                    protein=18,
+                    fat=12,
+                    carbs=62,
+                ),
+                lunch=MenuMeal(
+                    name=f"Гречка с курицей {day_index}",
+                    ingredients=[
+                        MenuIngredient(name="гречка", amount="80 г"),
+                        MenuIngredient(name="курица", amount=f"{150 * servings} г"),
+                    ],
+                    calories=620,
+                    protein=42,
+                    fat=14,
+                    carbs=76,
+                ),
+                dinner=MenuMeal(
+                    name=f"Рыба с овощами {day_index}",
+                    ingredients=[
+                        MenuIngredient(name="овощи", amount="250 г"),
+                        MenuIngredient(name="рыба", amount=f"{140 * servings} г"),
+                    ],
+                    calories=480,
+                    protein=36,
+                    fat=18,
+                    carbs=38,
+                ),
+            )
+        )
+    return MenuPlan(
+        model="dev-fake-llm",
+        days=days,
+        daily_avg_calories=1520,
+        notes=f"DEV_FAKE_LLM: тестовое меню под цель «{goal}».",
+        shopping_list={
+            "Крупы": [MenuIngredient(name="овсянка", amount="420 г")],
+            "Фрукты": [MenuIngredient(name="ягоды", amount="700 г")],
+            "Белок": [
+                MenuIngredient(name="курица", amount=f"{1050 * servings} г"),
+                MenuIngredient(name="рыба", amount=f"{980 * servings} г"),
+            ],
+            "Овощи": [MenuIngredient(name="овощи", amount="1.75 кг")],
+        },
+    )
+
+
+def _fake_habits_plan(
+    intent: str,
+    duration_days: int,
+) -> HabitsPlan:
+    return HabitsPlan(
+        model="dev-fake-llm",
+        intent=intent,
+        summary="DEV_FAKE_LLM: микро-челлендж без внешнего API.",
+        days=[
+            HabitDay(
+                day_index=i,
+                title=f"День {i}: 2 минуты для «{intent[:40]}»",
+                why="Маленькое действие снижает порог входа и строит ритм.",
+            )
+            for i in range(1, duration_days + 1)
+        ],
+    )
+
+
+def _fake_coach(mode: str) -> dict:
+    if mode == "morning":
+        return {
+            "model": "dev-fake-llm",
+            "mode": "morning",
+            "greeting": "Доброе утро. Сегодня берём один ясный фокус.",
+            "focus": "Сделать самый маленький следующий шаг и зафиксировать вывод.",
+            "tasks": [
+                "Выбери одну задачу на 25 минут",
+                "Убери лишние вкладки перед стартом",
+                "После выполнения запиши короткую рефлексию",
+            ],
+            "motivation": "Noetica тестируется без внешней LLM и billing.",
+        }
+    return {
+        "model": "dev-fake-llm",
+        "mode": "evening",
+        "summary": "День закрыт: важно не количество, а связка действие → вывод.",
+        "wins": ["Ты дошёл до вечерней проверки"],
+        "improvements": ["Завтра заранее выбери один главный шаг"],
+        "encouragement": "Система растёт через маленькие честные итерации.",
+    }
+
+
+def _fake_generator_run(request: GeneratorRunRequest) -> GeneratorRunResponse:
+    items = [
+        GeneratorItem(
+            title=f"Тестовый пункт {i}",
+            body=(
+                "Сгенерировано локально через DEV_FAKE_LLM. "
+                "Подключи реальный ключ LLM для продуктивного результата."
+            ),
+            due_offset_days=i - 1,
+        )
+        for i in range(1, request.max_items + 1)
+    ]
+    return GeneratorRunResponse(
+        model="dev-fake-llm",
+        summary="DEV_FAKE_LLM: универсальный runtime работает без внешнего API.",
+        items=items,
+    )
+
+
 class LlmClient:
     def __init__(self) -> None:
+        self.dev_fake = os.getenv("DEV_FAKE_LLM", "").lower() in {
+            "1",
+            "true",
+            "yes",
+        }
+        if self.dev_fake:
+            self.api_key = "dev-fake"
+            self.base_url = "dev-fake"
+            self.model = "dev-fake-llm"
+            return
         self.api_key = os.getenv("GROQ_API_KEY", "")
         if not self.api_key:
             raise LlmConfigError(
@@ -213,6 +433,8 @@ class LlmClient:
         task_count: int,
         knowledge: KnowledgeInput | None = None,
     ) -> tuple[list[RoadmapTask], str]:
+        if self.dev_fake:
+            return _fake_roadmap(goal, axes, horizon_days, task_count)
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
@@ -292,6 +514,8 @@ class LlmClient:
         the user's free-form intents and produces names + symbols + a one-line
         description per axis. The Flutter UI lets the user edit them after.
         """
+        if self.dev_fake:
+            return _fake_axes(profile, interests, count)
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
@@ -352,6 +576,8 @@ class LlmClient:
         client. The model is asked for strict JSON; we hard-fail with a
         502 if it doesn't parse so callers can surface a retry button.
         """
+        if self.dev_fake:
+            return _fake_menu_plan(goal, servings)
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
@@ -412,6 +638,20 @@ class LlmClient:
         than stage 1 so we get terse recipes that respect the template
         rather than chatty re-introductions.
         """
+        if self.dev_fake:
+            items = ", ".join(
+                str(i.get("name", "")).strip()
+                for i in ingredients
+                if str(i.get("name", "")).strip()
+            )
+            return (
+                f"## {meal_name}\n\n"
+                f"Тестовый рецепт для цели `{goal}` на {servings} порц.\n\n"
+                f"**Ингредиенты:** {items or 'базовые продукты'}.\n\n"
+                "1. Подготовь ингредиенты.\n"
+                "2. Приготовь на среднем огне 10–15 минут.\n"
+                "3. Зафиксируй в Noetica, что подошло по вкусу."
+            )
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
@@ -466,6 +706,280 @@ class LlmClient:
         if not markdown:
             raise LlmUpstreamError(502, "Empty recipe content from LLM.")
         return markdown
+
+    async def generate_habits_plan(
+        self,
+        intent: str,
+        duration_days: int,
+        axis_hint: str,
+        notes: str,
+    ) -> HabitsPlan:
+        """Single-stage habit plan — `duration_days` micro-actions.
+
+        We ask for strict JSON shaped like `HabitsPlan`. The route
+        validates the day count post-hoc; the normaliser drops
+        malformed entries silently and lets the route decide whether
+        the remaining list is acceptable.
+        """
+        if self.dev_fake:
+            return _fake_habits_plan(intent, duration_days)
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        payload: dict[str, Any] = {
+            "model": self.model,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": habits_system_prompt(duration_days, axis_hint),
+                },
+                {
+                    "role": "user",
+                    "content": habits_user_prompt(intent, duration_days, notes),
+                },
+            ],
+            "response_format": {"type": "json_object"},
+            "temperature": 0.6,
+            # 30 days × ~80 tokens per micro-action + summary fits under
+            # 3 k tokens with comfort. Bump if we ever extend the cap.
+            "max_tokens": 3000,
+        }
+        url = f"{self.base_url}/chat/completions"
+        async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+            response = await client.post(url, json=payload, headers=headers)
+        if response.status_code >= 400:
+            raise LlmUpstreamError(
+                response.status_code,
+                f"LLM upstream error ({response.status_code}): {response.text[:500]}",
+            )
+        data = response.json()
+        try:
+            content = data["choices"][0]["message"]["content"]
+            finish = data["choices"][0].get("finish_reason")
+        except (KeyError, IndexError, TypeError) as exc:
+            raise LlmUpstreamError(
+                502, f"Malformed LLM response: {exc}: {data!r}"
+            ) from exc
+        if finish == "length":
+            raise LlmUpstreamError(
+                502,
+                "LLM habits response was truncated (finish_reason=length). "
+                "Reduce duration_days or simplify the intent.",
+            )
+        parsed = _parse_json(content)
+        return _normalize_habits_plan(
+            parsed,
+            model=self.model,
+            intent=intent,
+            duration_days=duration_days,
+        )
+
+    async def generate_coach(
+        self,
+        *,
+        mode: str,
+        name: str,
+        aspiration: str,
+        axes: list[str],
+        active_tasks: list[str],
+        completed_today: list[str],
+        remaining: list[str],
+        entries_today: int,
+        streak: int,
+    ) -> dict:
+        """Generate morning plan or evening reflection."""
+        if self.dev_fake:
+            return _fake_coach(mode)
+        if mode == "morning":
+            sys_prompt = morning_system_prompt()
+            usr_prompt = morning_user_prompt(
+                name=name,
+                aspiration=aspiration,
+                axes=axes,
+                active_tasks=active_tasks,
+                streak=streak,
+            )
+        else:
+            sys_prompt = evening_system_prompt()
+            usr_prompt = evening_user_prompt(
+                name=name,
+                completed_today=completed_today,
+                remaining=remaining,
+                entries_today=entries_today,
+                streak=streak,
+            )
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        payload: dict[str, Any] = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": sys_prompt},
+                {"role": "user", "content": usr_prompt},
+            ],
+            "response_format": {"type": "json_object"},
+            "temperature": 0.7,
+            "max_tokens": 800,
+        }
+        url = f"{self.base_url}/chat/completions"
+        async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+            response = await client.post(url, json=payload, headers=headers)
+        if response.status_code >= 400:
+            raise LlmUpstreamError(
+                response.status_code,
+                f"LLM upstream error ({response.status_code}): "
+                f"{response.text[:500]}",
+            )
+        data = response.json()
+        try:
+            content = data["choices"][0]["message"]["content"]
+        except (KeyError, IndexError, TypeError) as exc:
+            raise LlmUpstreamError(
+                502, f"Malformed LLM response: {exc}"
+            ) from exc
+
+        parsed = _parse_json(content)
+        parsed["model"] = self.model
+        parsed["mode"] = mode
+        return parsed
+
+    async def run_generator(
+        self,
+        request: GeneratorRunRequest,
+    ) -> GeneratorRunResponse:
+        """Universal manifest runtime.
+
+        Renders the author's prompts against the form values, calls
+        the LLM with strict JSON mode, validates against the fixed
+        item schema, trims overshoot. Author-controlled prompts +
+        server-controlled output contract = the same client can
+        consume any tool's results.
+
+        We choose `max_tokens` proportionally to `max_items` — each
+        item is roughly 100 tokens (title + body + offset + JSON
+        overhead) so 50 items × ~100 = 5 k tokens with headroom.
+        """
+        if self.dev_fake:
+            return _fake_generator_run(request)
+        try:
+            user_prompt = render_template(
+                request.prompt_user, dict(request.inputs),
+            )
+            system_prompt = render_template(
+                request.prompt_system, dict(request.inputs),
+            ) + schema_addendum(request.max_items)
+        except KeyError as exc:
+            # 422-shaped error — the route catches and rewraps.
+            raise ValueError(
+                f"prompt template references unknown input: {exc.args[0]!r}",
+            ) from exc
+
+        max_tokens = min(8000, 600 + request.max_items * 110)
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        payload: dict[str, Any] = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            "response_format": {"type": "json_object"},
+            "temperature": float(request.temperature),
+            "max_tokens": max_tokens,
+        }
+        url = f"{self.base_url}/chat/completions"
+        async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+            response = await client.post(url, json=payload, headers=headers)
+        if response.status_code >= 400:
+            raise LlmUpstreamError(
+                response.status_code,
+                f"LLM upstream error ({response.status_code}): "
+                f"{response.text[:500]}",
+            )
+        data = response.json()
+        try:
+            content = data["choices"][0]["message"]["content"]
+            finish = data["choices"][0].get("finish_reason")
+        except (KeyError, IndexError, TypeError) as exc:
+            raise LlmUpstreamError(
+                502, f"Malformed LLM response: {exc}: {data!r}",
+            ) from exc
+        if finish == "length":
+            raise LlmUpstreamError(
+                502,
+                "LLM run was truncated (finish_reason=length). "
+                "Reduce max_items or simplify the prompt.",
+            )
+        parsed = _parse_json(content)
+        return _normalize_run_response(
+            parsed,
+            model=self.model,
+            max_items=request.max_items,
+        )
+
+
+def _normalize_run_response(
+    parsed: dict[str, Any],
+    *,
+    model: str,
+    max_items: int,
+) -> GeneratorRunResponse:
+    """Coerce a possibly-fuzzy LLM JSON into a clean response.
+
+    Rules:
+    - Drop items missing a non-empty title.
+    - Truncate `body` and `title` if they exceed schema limits (the
+      LLM occasionally overshoots even with explicit caps).
+    - Coerce `due_offset_days` to int when string-typed; drop if
+      out-of-range or unparseable rather than 502'ing the whole run.
+    - Trim to `max_items`. The LLM occasionally returns one extra.
+    """
+    items_raw = parsed.get("items") if isinstance(parsed, dict) else None
+    if not isinstance(items_raw, list):
+        raise LlmUpstreamError(
+            502, "LLM response missing `items` array.",
+        )
+
+    cleaned: list[GeneratorItem] = []
+    for raw in items_raw:
+        if not isinstance(raw, dict):
+            continue
+        title = str(raw.get("title", "")).strip()
+        if not title:
+            continue
+        if len(title) > 120:
+            title = title[:117] + "\u2026"
+        body = str(raw.get("body", "") or "").strip()
+        if len(body) > 2000:
+            body = body[:1997] + "\u2026"
+
+        due: int | None = None
+        due_raw = raw.get("due_offset_days")
+        if due_raw is not None:
+            try:
+                due_int = int(due_raw)
+                if 0 <= due_int <= 365:
+                    due = due_int
+            except (TypeError, ValueError):
+                pass
+
+        cleaned.append(
+            GeneratorItem(title=title, body=body, due_offset_days=due),
+        )
+
+    cleaned = cleaned[:max_items]
+    summary = str(parsed.get("summary", "") or "").strip()
+    if len(summary) > 500:
+        summary = summary[:497] + "\u2026"
+    return GeneratorRunResponse(
+        model=model, summary=summary, items=cleaned,
+    )
 
 
 def _axes_system_prompt(count: int) -> str:
@@ -542,7 +1056,7 @@ def _axes_user_prompt(
         '{\n'
         '  "axes": [\n'
         '    {"name": "", "symbol": "", "description": ""}\n'
-        f"  ]\n"  # exactly {count} items
+        "  ]\n"  # exactly {count} items
         "}"
     )
     sections = [
@@ -793,3 +1307,54 @@ def _normalize_ingredient(raw: Any) -> MenuIngredient | None:
         return None
     amount = str(raw.get("amount") or "").strip()
     return MenuIngredient(name=name[:80], amount=amount[:40])
+
+
+def _normalize_habits_plan(
+    parsed: dict[str, Any],
+    *,
+    model: str,
+    intent: str,
+    duration_days: int,
+) -> HabitsPlan:
+    """Coerce the LLM's JSON into our `HabitsPlan` schema.
+
+    Drops malformed entries (missing title, non-int day_index, etc.).
+    Re-numbers `day_index` linearly (1..N) so the client doesn't have
+    to handle gaps when the model occasionally skips a day.
+    """
+    raw_days = parsed.get("days") or []
+    days: list[HabitDay] = []
+    if isinstance(raw_days, list):
+        for d in raw_days:
+            if not isinstance(d, dict):
+                continue
+            title = str(d.get("title") or "").strip()
+            if not title:
+                continue
+            why = str(d.get("why") or "").strip()
+            days.append(
+                HabitDay(
+                    # Re-numbered below; pass a placeholder that
+                    # satisfies pydantic's ge=1 constraint.
+                    day_index=1,
+                    title=title[:80],
+                    why=why[:240],
+                )
+            )
+
+    # Trim to `duration_days` so prompts that overshoot don't blow the
+    # cap, and re-number linearly. We never undershoot — the route
+    # raises 502 on `len(days) < requested`.
+    days = days[:duration_days]
+    days = [
+        HabitDay(day_index=i + 1, title=d.title, why=d.why)
+        for i, d in enumerate(days)
+    ]
+
+    summary = str(parsed.get("summary") or "").strip()[:400]
+    return HabitsPlan(
+        model=model,
+        intent=intent.strip()[:300],
+        summary=summary,
+        days=days,
+    )

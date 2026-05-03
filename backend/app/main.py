@@ -28,6 +28,12 @@ from .llm import LlmClient, LlmConfigError, LlmUpstreamError
 from .schemas import (
     AxesRequest,
     AxesResponse,
+    CoachRequest,
+    CoachResponse,
+    GeneratorRunRequest,
+    GeneratorRunResponse,
+    HabitsPlan,
+    HabitsRequest,
     MenuPlan,
     MenuRecipeRequest,
     MenuRecipeResponse,
@@ -284,6 +290,69 @@ async def tools_menu_generate(
     return plan
 
 
+@app.post("/coach/generate", response_model=CoachResponse)
+async def generate_coach(
+    request: CoachRequest,
+    user: CurrentUser,
+) -> CoachResponse:
+    """AI Coach — morning plan or evening reflection."""
+    try:
+        client = LlmClient()
+    except LlmConfigError as exc:
+        logger.error("LLM config error: %s", exc)
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    try:
+        result = await client.generate_coach(
+            mode=request.mode,
+            name=request.name,
+            aspiration=request.aspiration,
+            axes=request.axes,
+            active_tasks=request.active_tasks,
+            completed_today=request.completed_today,
+            remaining=request.remaining,
+            entries_today=request.entries_today,
+            streak=request.streak,
+        )
+    except LlmUpstreamError as exc:
+        logger.warning("LLM coach upstream error: status=%s", exc.status)
+        raise HTTPException(
+            status_code=502, detail="LLM upstream error.",
+        ) from exc
+
+    mode = request.mode
+    if mode == "morning":
+        resp = CoachResponse(
+            model=result.get("model", ""),
+            mode=mode,
+            morning={
+                "greeting": result.get("greeting", ""),
+                "focus": result.get("focus", ""),
+                "tasks": result.get("tasks", []),
+                "motivation": result.get("motivation", ""),
+            },
+        )
+    else:
+        resp = CoachResponse(
+            model=result.get("model", ""),
+            mode=mode,
+            evening={
+                "summary": result.get("summary", ""),
+                "wins": result.get("wins", []),
+                "improvements": result.get("improvements", []),
+                "encouragement": result.get("encouragement", ""),
+            },
+        )
+
+    logger.info(
+        "Coach generated: user=%s mode=%s model=%s",
+        user["id"][:8],
+        mode,
+        resp.model,
+    )
+    return resp
+
+
 @app.post("/tools/menu/recipe", response_model=MenuRecipeResponse)
 async def tools_menu_recipe(
     request: MenuRecipeRequest,
@@ -317,6 +386,100 @@ async def tools_menu_recipe(
         len(request.ingredients),
     )
     return MenuRecipeResponse(model=client.model, markdown=markdown)
+
+
+@app.post("/tools/habits/generate", response_model=HabitsPlan)
+async def tools_habits_generate(
+    request: HabitsRequest,
+    user: CurrentUser,
+) -> HabitsPlan:
+    """Generate an N-day micro-habit plan from a free-form intent.
+
+    Returns one tiny daily action per requested day. The client
+    imports them as N due-dated tasks tagged with `challenge/<id>`.
+    """
+    try:
+        client = LlmClient()
+    except LlmConfigError as exc:
+        logger.error("LLM config error: %s", exc)
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    try:
+        plan = await client.generate_habits_plan(
+            intent=request.intent,
+            duration_days=request.duration_days,
+            axis_hint=request.axis_hint,
+            notes=request.notes,
+        )
+    except LlmUpstreamError as exc:
+        logger.warning("LLM habits upstream error: status=%s", exc.status)
+        raise HTTPException(
+            status_code=502, detail="LLM upstream error.",
+        ) from exc
+
+    if len(plan.days) < request.duration_days:
+        raise HTTPException(
+            status_code=502,
+            detail=(
+                f"LLM returned {len(plan.days)} days but {request.duration_days} "
+                "were requested."
+            ),
+        )
+
+    logger.info(
+        "Generated habits: user=%s model=%s days=%d",
+        user["id"][:8],
+        plan.model,
+        len(plan.days),
+    )
+    return plan
+
+
+@app.post("/tools/run", response_model=GeneratorRunResponse)
+async def tools_run(
+    request: GeneratorRunRequest,
+    user: CurrentUser,
+) -> GeneratorRunResponse:
+    """Universal manifest runtime.
+
+    Accepts a manifest's prompt template + form values, returns a
+    generic `{summary, items[]}` shape that the client knows how to
+    import. This is the endpoint user-authored tools (PR #33+) talk
+    to — builtins gradually migrate to it as well so we don't have
+    to maintain N specialised endpoints.
+
+    We log only the manifest_id and shape stats — NEVER prompts,
+    inputs or outputs (they are user content).
+    """
+    try:
+        client = LlmClient()
+    except LlmConfigError as exc:
+        logger.error("LLM config error: %s", exc)
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    try:
+        result = await client.run_generator(request)
+    except ValueError as exc:
+        # render_template raised on an unknown placeholder — surface
+        # to the author as 422 with a precise message.
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except LlmUpstreamError as exc:
+        logger.warning(
+            "LLM run upstream error: manifest=%s status=%s",
+            request.manifest_id, exc.status,
+        )
+        raise HTTPException(
+            status_code=502, detail="LLM upstream error.",
+        ) from exc
+
+    logger.info(
+        "Generated run: user=%s manifest=%s model=%s items=%d",
+        user["id"][:8],
+        request.manifest_id,
+        result.model,
+        len(result.items),
+    )
+    return result
 
 
 _ = Depends  # silence unused import warning when no other Depends is used here

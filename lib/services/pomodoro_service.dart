@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'analytics_service.dart';
 import 'notifications.dart';
 
 /// Persisted across app restarts.
@@ -198,6 +199,10 @@ class PomodoroService extends ChangeNotifier {
     int dur;
     if (wasFocus) {
       _completedFocus += 1;
+      AnalyticsService.instance.track(AnalyticsEvents.pomodoroCompleted, {
+        'focus_minutes': _focusMinutes,
+        'completed_count': _completedFocus,
+      });
       final isLong = _completedFocus % _longBreakEvery == 0;
       next = isLong ? PomodoroPhase.longBreak : PomodoroPhase.breakTime;
       dur = isLong ? _longBreakMinutes : _breakMinutes;
@@ -343,6 +348,9 @@ class PomodoroService extends ChangeNotifier {
     _endAt = DateTime.now().add(_remaining);
     _startTicker();
     _scheduleEndOfPhaseNotification();
+    AnalyticsService.instance.track(AnalyticsEvents.pomodoroStarted, {
+      'focus_minutes': _focusMinutes,
+    });
     notifyListeners();
     await _persistRunning();
   }

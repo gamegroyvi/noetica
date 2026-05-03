@@ -9,6 +9,7 @@ import '../../data/models.dart';
 import '../../providers.dart';
 import '../../services/backend_urls_service.dart';
 import '../../services/notifications.dart';
+import '../../services/sync_service.dart';
 import '../../theme/app_theme.dart';
 import '../onboarding/onboarding_screen.dart';
 import '../onboarding/onboarding_chat_screen.dart';
@@ -25,6 +26,8 @@ class SettingsScreen extends ConsumerStatefulWidget {
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _notifEnabled = true;
   TimeOfDay _morning = const TimeOfDay(hour: 8, minute: 0);
+  TimeOfDay _evening = const TimeOfDay(hour: 21, minute: 0);
+  bool _coachNotifEnabled = false;
   bool _loadingNotif = true;
 
   @override
@@ -37,10 +40,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final svc = NotificationsService.instance;
     final enabled = await svc.isEnabled();
     final time = await svc.morningTime();
+    final eveningTime = await svc.eveningTime();
+    final coachOn = await svc.isCoachEnabled();
     if (!mounted) return;
     setState(() {
       _notifEnabled = enabled;
       _morning = TimeOfDay(hour: time.hour, minute: time.minute);
+      _evening = TimeOfDay(hour: eveningTime.hour, minute: eveningTime.minute);
+      _coachNotifEnabled = coachOn;
       _loadingNotif = false;
     });
   }
@@ -98,6 +105,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (picked == null) return;
     setState(() => _morning = picked);
     await NotificationsService.instance.setMorningTime(picked.hour, picked.minute);
+  }
+
+  Future<void> _pickEvening() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _evening,
+      builder: (ctx, child) => child!,
+    );
+    if (picked == null) return;
+    setState(() => _evening = picked);
+    await NotificationsService.instance.setEveningTime(picked.hour, picked.minute);
+    await NotificationsService.instance.scheduleCoachReminders();
   }
 
   Future<void> _exportJson() async {
@@ -206,7 +225,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Future<void> _syncNow() async {
     final messenger = ScaffoldMessenger.of(context);
     messenger.showSnackBar(
-      const SnackBar(content: Text('Синхронизация…')),
+      const SnackBar(content: Text('Синхронизация: pull → push…')),
     );
     try {
       final sync = await ref.read(syncServiceProvider.future);
@@ -214,8 +233,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       await sync.pushPending();
       if (!mounted) return;
       messenger.hideCurrentSnackBar();
+      final current = sync.currentStatus;
+      if (current.phase == SyncPhase.error) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              'Синхронизация не завершилась: ${current.lastError ?? 'ошибка'}',
+            ),
+          ),
+        );
+        return;
+      }
       messenger.showSnackBar(
-        const SnackBar(content: Text('Готово. Данные подтянуты с облака.')),
+        const SnackBar(content: Text('Готово. Локальные и облачные данные сверены.')),
       );
     } catch (e) {
       if (!mounted) return;
@@ -376,6 +406,32 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               enabled: _notifEnabled,
               onTap: _notifEnabled ? _pickMorning : null,
             ),
+            const Divider(height: 1, indent: 16, endIndent: 16),
+            SwitchListTile(
+              title: const Text('AI-коуч напоминания'),
+              subtitle: const Text(
+                'Утренний план и вечерний разбор',
+              ),
+              value: _coachNotifEnabled,
+              onChanged: _notifEnabled
+                  ? (v) async {
+                      setState(() => _coachNotifEnabled = v);
+                      await NotificationsService.instance.setCoachEnabled(v);
+                    }
+                  : null,
+            ),
+            if (_coachNotifEnabled)
+              ListTile(
+                leading: const Icon(Icons.nightlight_round),
+                title: const Text('Вечерний разбор'),
+                subtitle: Text(
+                  _evening.format(context),
+                  style: TextStyle(color: palette.muted),
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                enabled: _notifEnabled,
+                onTap: _notifEnabled ? _pickEvening : null,
+              ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
               child: Text(
@@ -416,8 +472,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const Divider(height: 1),
           const _SectionHeader(title: 'Бэкенд'),
           _BackendActiveTile(),
+          _SyncStatusTile(),
           const Divider(height: 1),
           const _SectionHeader(title: 'Данные'),
+          _TrustDataTile(palette: palette),
           ListTile(
             leading: const Icon(Icons.copy_outlined),
             title: const Text('Экспорт в JSON'),
@@ -509,6 +567,145 @@ class _BackendActiveTile extends ConsumerWidget {
     if (mod10 == 1 && mod100 != 11) return '';
     if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'а';
     return 'ов';
+  }
+}
+
+class _SyncStatusTile extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final palette = context.palette;
+    final status = ref.watch(syncStatusProvider).valueOrNull;
+    final phase = status?.phase ?? SyncPhase.idle;
+    final busy = status?.isBusy ?? false;
+    final isError = phase == SyncPhase.error;
+    final subtitle = isError
+        ? 'Ошибка: ${status?.lastError ?? 'не удалось синхронизировать'}'
+        : status?.lastSuccessAt == null
+            ? 'Синхронизация запустится после входа в Google'
+            : 'Последний успех: ${_formatTime(context, status!.lastSuccessAt!)}';
+    return ListTile(
+      leading: Icon(
+        isError ? Icons.cloud_off_outlined : Icons.cloud_done_outlined,
+      ),
+      title: Text(_phaseLabel(phase)),
+      subtitle: Text(subtitle, style: TextStyle(color: palette.muted)),
+      trailing: busy
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : null,
+    );
+  }
+
+  String _phaseLabel(SyncPhase phase) {
+    switch (phase) {
+      case SyncPhase.pulling:
+        return 'Синхронизация: получаем облако';
+      case SyncPhase.pushing:
+        return 'Синхронизация: отправляем изменения';
+      case SyncPhase.done:
+        return 'Синхронизация в порядке';
+      case SyncPhase.error:
+        return 'Синхронизация требует внимания';
+      case SyncPhase.idle:
+        return 'Синхронизация готова';
+    }
+  }
+
+  String _formatTime(BuildContext context, DateTime value) {
+    final t = TimeOfDay.fromDateTime(value);
+    return '${value.day.toString().padLeft(2, '0')}.'
+        '${value.month.toString().padLeft(2, '0')} '
+        '${t.format(context)}';
+  }
+}
+
+class _TrustDataTile extends StatelessWidget {
+  const _TrustDataTile({required this.palette});
+
+  final NoeticaPalette palette;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: const Icon(Icons.verified_user_outlined),
+      title: const Text('Приватность и хранение'),
+      subtitle: Text(
+        'Данные сначала хранятся локально. После входа в Google включается '
+        'облачная синхронизация; AI получает только контекст запроса.',
+        style: TextStyle(color: palette.muted),
+      ),
+      onTap: () => showModalBottomSheet<void>(
+        context: context,
+        showDragHandle: true,
+        builder: (ctx) => Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Как Noetica работает с данными',
+                style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
+              const SizedBox(height: 12),
+              const _TrustBullet(
+                icon: Icons.storage_outlined,
+                text: 'Профиль, оси, задачи и заметки живут на устройстве.',
+              ),
+              const _TrustBullet(
+                icon: Icons.cloud_sync_outlined,
+                text: 'Cloud sync включается после входа и синхронизирует '
+                    'изменения между устройствами.',
+              ),
+              const _TrustBullet(
+                icon: Icons.auto_awesome_outlined,
+                text: 'AI-запросы отправляют только нужный для генерации '
+                    'контекст: цель, оси, задачи и выбранные заметки.',
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Полный экспорт доступен ниже: можно забрать JSON-дамп и '
+                'стереть локальные данные в любой момент.',
+                style: TextStyle(color: context.palette.muted, height: 1.4),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TrustBullet extends StatelessWidget {
+  const _TrustBullet({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 20, color: palette.fg),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(color: palette.muted, height: 1.4),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

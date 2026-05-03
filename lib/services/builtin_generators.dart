@@ -3,6 +3,36 @@ import 'package:flutter/material.dart';
 import '../features/tools/menu/menu_generator_screen.dart';
 import 'generator_input.dart';
 import 'generator_manifest.dart';
+import 'generator_run_spec.dart';
+
+/// System prompt for the «Микро-привычки» builtin. Carries the
+/// hard-won «≤ 2 minutes» rule the bespoke `prompts_habits.py`
+/// enforced. Uses `{duration_days}` and `{axis_id_name}` placeholders
+/// the universal runtime resolves before the LLM call.
+const String _habitsSystemPromptText = 'Ты — Noetica-коуч по микро-'
+    'привычкам. Преврати желание пользователя в план из '
+    'ровно {duration_days} крошечных ежедневных действий.\n\n'
+    'ПРАВИЛА:\n'
+    '1. Каждое действие — НЕ БОЛЬШЕ 2 минут реального усилия. '
+    '«Завести таймер на 60 секунд», «положить телефон в другую '
+    'комнату», «выпить стакан воды». НЕ «помедитировать 20 минут», '
+    'НЕ «сходить в зал». Если по другому никак — раздели на два дня.\n'
+    '2. Дни идут по нарастающей: первый элемент — самое лёгкое '
+    '(тренируем появление), последний — закрепляющий ритуал.\n'
+    '3. Не повторяй формулировки. Каждый элемент — новое микро-'
+    'действие или эволюция вчерашнего (2–3 шт. подряд можно как '
+    '«связка»).\n'
+    '4. `title` — императивный, на «ты», ≤ 80 символов.\n'
+    '5. `body` — ОДНО предложение, до 200 символов. Зачем '
+    'именно это действие, без воды, без «это поможет тебе…».\n'
+    '6. Отвечай на ТОМ ЖЕ языке, на котором написан intent.\n'
+    '7. Сфера (если указана): {axis_id_name}. Не уходи в смежные темы.';
+
+const String _habitsUserPromptText = 'Цель пользователя:\n{intent}\n\n'
+    'Длительность: ровно {duration_days} дней.\n\n'
+    'Дополнительно: {notes}\n\n'
+    'Сгенерируй ровно {duration_days} элементов в массиве `items` — '
+    'по одному на каждый день, в порядке от лёгкого к закрепляющему.';
 
 /// Form schema for the «Меню недели» generator. Kept as a top-level
 /// constant so tests can verify the shape and the future authoring
@@ -66,6 +96,51 @@ List<GeneratorInputField> menuWeekInputs() => const [
       ),
     ];
 
+/// Form schema for the «Микро-привычки» generator. Same authoring
+/// surface as `menuWeekInputs()` — pure declaration of fields, no
+/// behaviour. The screen wires defaults and reads values by id.
+List<GeneratorInputField> habitsInputs() => const [
+      GeneratorInputText(
+        id: 'intent',
+        label: 'Какую привычку хочешь освоить?',
+        required: true,
+        placeholder:
+            'хочу засыпать раньше · перестать залипать в телефон утром · '
+            'пить больше воды',
+        multiline: true,
+        minLines: 2,
+        maxLines: 4,
+      ),
+      GeneratorInputInt(
+        id: 'duration_days',
+        label: 'Сколько дней',
+        required: true,
+        // Min matches `HabitsRequest.duration_days` ge=3 on the
+        // backend; max matches le=30.
+        min: 3,
+        max: 21,
+        initial: 7,
+        presentation: IntInputPresentation.chips,
+      ),
+      GeneratorInputAxisRef(
+        id: 'axis_id',
+        label: 'Ось роста',
+        help:
+            'Все мини-задачи получат XP от выполнения и будут расти '
+            'вместе с этой осью.',
+      ),
+      GeneratorInputText(
+        id: 'notes',
+        label: 'Доп. пожелания (опционально)',
+        placeholder:
+            'буду делать утром · уже пробовал, не получалось · '
+            'хочу без приложений',
+        multiline: true,
+        minLines: 1,
+        maxLines: 3,
+      ),
+    ];
+
 /// All hand-coded generators known to this build. Edit this list when
 /// adding a new builtin tool — the catalog screen, deep-links, and
 /// (eventually) analytics all read from here.
@@ -116,17 +191,36 @@ List<GeneratorManifest> defaultBuiltinManifests() => [
           'Конспекты — заметки, связанные [[wiki-ссылками]]',
         ],
       ),
-      const GeneratorManifest(
+      GeneratorManifest(
         id: 'micro-habits',
         title: 'Микро-привычки',
         description: '7-дневный челлендж из коротких ежедневных задач.',
         icon: Icons.eco_outlined,
-        status: GeneratorStatus.soon,
+        status: GeneratorStatus.available,
         category: 'discipline',
-        bullets: [
-          'Подбираем под выбранную ось',
-          'Серии и стрик-счётчик из коробки',
+        bullets: const [
+          'Каждое действие ≤ 2 минут — реально доходишь',
+          'Подбираем под выбранную ось, идут по нарастающей',
+          'Появятся в Задачах с дедлайнами по дням',
         ],
+        inputs: habitsInputs(),
+        // Universal runtime — no bespoke `builder`. /tools/run renders
+        // these templates server-side and returns generic items.
+        promptSystem: _habitsSystemPromptText,
+        promptUser: _habitsUserPromptText,
+        // Worst-case cap; the prompt asks for exactly N items via
+        // the `{duration_days}` placeholder, so the runtime trims if
+        // the LLM returns more.
+        maxItems: 21,
+        temperature: 0.6,
+        importSpec: const GeneratorImportSpec(
+          importAs: GeneratorImportTarget.task,
+          dueStrategy: GeneratorDueStrategy.ladder,
+          dueHourLocal: 9,
+          axisIdInputId: 'axis_id',
+          tagPrefix: 'challenge',
+          xpPerItem: 5,
+        ),
       ),
     ];
 

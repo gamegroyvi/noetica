@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/personal_knowledge_service.dart';
 import '../../data/profile.dart';
 import '../../providers.dart';
+import '../../services/analytics_service.dart';
 import '../../theme/app_theme.dart';
 
 /// Chat-style 7-step onboarding. Each step is presented as an assistant
@@ -224,8 +225,10 @@ class _OnboardingChatScreenState
         _thread.add(_ChatMsg.bot(_questionFor(_step)));
       }
     });
+    AnalyticsService.instance.track(AnalyticsEvents.onboardingStepCompleted, {
+      'step': _step,
+    });
     if (_step >= _stepCount - 1) {
-      // Last step's answer is now committed; finish.
       _finish();
     }
   }
@@ -288,6 +291,7 @@ class _OnboardingChatScreenState
             'Что мешает: ${_painPoints.join(", ")}',
         ],
       );
+      AnalyticsService.instance.track(AnalyticsEvents.onboardingCompleted);
       ref.invalidate(profileProvider);
       if (widget.onDone != null) {
         widget.onDone!();

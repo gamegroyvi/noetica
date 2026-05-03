@@ -7,9 +7,11 @@ import 'package:uuid/uuid.dart';
 
 import '../../../data/models.dart';
 import '../../../providers.dart';
+import '../../../services/analytics_service.dart';
 import '../../../services/builtin_generators.dart';
 import '../../../services/tools_api.dart';
 import '../../../theme/app_theme.dart';
+import '../../../widgets/paywall_sheet.dart';
 import '../../entry/entry_editor_sheet.dart';
 import '../manifest/generator_form_view.dart';
 
@@ -285,6 +287,15 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
   // --------------------------------------------------------------- generate
 
   Future<void> _generate() async {
+    final premiumSvc = ref.read(premiumServiceProvider);
+    final canGen = await premiumSvc.canGenerate();
+    if (!canGen) {
+      if (mounted) {
+        AnalyticsService.instance.track(AnalyticsEvents.aiGenerationBlocked);
+        PaywallSheet.show(context, PaywallFeature.aiGeneration);
+      }
+      return;
+    }
     setState(() {
       _stage = _Stage.generating;
       _error = null;
@@ -298,6 +309,8 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
         extraNotes: _extraNotes,
       );
       if (!mounted) return;
+      AnalyticsService.instance.track(AnalyticsEvents.menuGenerated);
+      await premiumSvc.recordGeneration();
       setState(() {
         _plan = plan;
         _stage = _Stage.preview;

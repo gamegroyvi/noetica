@@ -202,3 +202,159 @@ class MenuRecipeResponse(BaseModel):
 
     model: str
     markdown: str
+
+
+# ---------- /tools/habits ----------
+
+
+class HabitsRequest(BaseModel):
+    """User-facing form for the «Микро-привычки» 7-day micro-action plan.
+
+    `intent` is the free-form goal ("заснуть раньше", "перестать
+    залипать в телефон утром"). The LLM expands it into a sequence of
+    tiny daily actions; the client imports them as N due-dated tasks.
+    """
+
+    intent: str = Field(min_length=3, max_length=300)
+    duration_days: int = Field(default=7, ge=3, le=30)
+    axis_hint: str = Field(default="", max_length=40)
+    notes: str = Field(default="", max_length=400)
+
+
+class HabitDay(BaseModel):
+    """A single day's micro-action."""
+
+    day_index: int = Field(ge=1, le=30)
+    title: str = Field(min_length=1, max_length=80)
+    why: str = Field(default="", max_length=240)
+
+
+class HabitsPlan(BaseModel):
+    """Structured result for the habits generator.
+
+    `intent` echoes the user's goal so the client can render it as the
+    plan's header without re-storing it. `summary` is a one-line
+    framing the LLM uses to explain how the days build on each other —
+    optional but useful for the preview screen.
+    """
+
+    model: str
+    intent: str = Field(default="", max_length=300)
+    summary: str = Field(default="", max_length=400)
+    days: list[HabitDay]
+
+
+# ---------------------------------------------------------------------------
+# AI Coach
+# ---------------------------------------------------------------------------
+
+class CoachRequest(BaseModel):
+    """Request for morning plan or evening reflection."""
+
+    mode: Literal["morning", "evening"]
+    name: str = ""
+    aspiration: str = ""
+    axes: list[str] = Field(default_factory=list)
+    active_tasks: list[str] = Field(default_factory=list)
+    completed_today: list[str] = Field(default_factory=list)
+    remaining: list[str] = Field(default_factory=list)
+    entries_today: int = 0
+    streak: int = 0
+
+
+class MorningPlan(BaseModel):
+    greeting: str
+    focus: str
+    tasks: list[str]
+    motivation: str
+
+
+class EveningReflection(BaseModel):
+    summary: str
+    wins: list[str]
+    improvements: list[str]
+    encouragement: str
+
+
+class CoachResponse(BaseModel):
+    model: str
+    mode: Literal["morning", "evening"]
+    morning: MorningPlan | None = None
+    evening: EveningReflection | None = None
+
+
+# ---------- /tools/run (universal generator runtime) ----------
+
+
+# Bounded JSON-serialisable scalar value. `bool` is intentionally
+# allowed — manifest authors may want toggle inputs (e.g. "include
+# weekends?") and they should round-trip cleanly through the prompt.
+GeneratorInputValue = str | int | float | bool
+
+
+class GeneratorRunRequest(BaseModel):
+    """A single run of a user- or builtin-authored manifest.
+
+    The client owns the manifest. Server doesn't persist anything; it
+    just renders the prompt template, gates the LLM call (auth + rate
+    limit + size caps), validates the JSON response, and returns it.
+
+    `prompt_system` and `prompt_user` may contain `{input_id}` markers
+    that the server resolves against `inputs`. We DO NOT support
+    arbitrary Python format spec — only `{name}`-style placeholders —
+    so authors can't leak format tricks into the prompt.
+    """
+
+    # Free-form id so we can log per-manifest stats once user manifests
+    # exist. Not enforced as unique — author A's "morning-ritual" and
+    # author B's "morning-ritual" both log the same key, which is fine
+    # for now.
+    manifest_id: str = Field(min_length=1, max_length=80)
+    prompt_system: str = Field(min_length=1, max_length=4000)
+    prompt_user: str = Field(min_length=1, max_length=4000)
+    inputs: dict[str, GeneratorInputValue] = Field(default_factory=dict)
+    # Soft cap on item count. The model is asked to produce
+    # ≤ `max_items`; we trim post-hoc and warn if the model overshoot.
+    max_items: int = Field(default=15, ge=1, le=50)
+    # Temperature is exposed because some authors want
+    # determinism (e.g. recipe-style tools) while others want variety
+    # (e.g. ideation tools). Clamped to a sane window.
+    temperature: float = Field(default=0.6, ge=0.0, le=1.5)
+
+    @field_validator("inputs")
+    @classmethod
+    def _bound_inputs(
+        cls, v: dict[str, GeneratorInputValue],
+    ) -> dict[str, GeneratorInputValue]:
+        if len(v) > 30:
+            raise ValueError("too many inputs (max 30)")
+        for k, val in v.items():
+            if not k or len(k) > 40:
+                raise ValueError(f"invalid input key: {k!r}")
+            if isinstance(val, str) and len(val) > 1000:
+                raise ValueError(
+                    f"input {k!r} exceeds 1000 chars",
+                )
+        return v
+
+
+class GeneratorItem(BaseModel):
+    """One output row from a universal tool run.
+
+    Deliberately minimal: `title` is the only required field.
+    Optional `body` carries longer prose, `due_offset_days` lets the
+    LLM signal scheduling (day 1 = today, day 2 = tomorrow, …) without
+    the manifest having to encode it via post-processing.
+    """
+
+    title: str = Field(min_length=1, max_length=120)
+    body: str = Field(default="", max_length=2000)
+    due_offset_days: int | None = Field(default=None, ge=0, le=365)
+
+
+class GeneratorRunResponse(BaseModel):
+    """Universal tool-run output. The client decides how to import."""
+
+    model: str
+    summary: str = Field(default="", max_length=500)
+    items: list[GeneratorItem]
