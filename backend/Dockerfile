@@ -20,7 +20,8 @@ RUN pip install --upgrade pip \
 
 # /data is the Fly volume mount point; if no volume is attached the path
 # falls back to a local directory inside the container.
-ENV NOETICA_DB_PATH=/data/noetica.db
+ENV NOETICA_DB_PATH=/data/noetica.db \
+    DEV_SKIP_AUTH=true
 RUN mkdir -p /data
 
 EXPOSE 8080

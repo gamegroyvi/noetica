@@ -25,6 +25,8 @@ class SettingsScreen extends ConsumerStatefulWidget {
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _notifEnabled = true;
   TimeOfDay _morning = const TimeOfDay(hour: 8, minute: 0);
+  TimeOfDay _evening = const TimeOfDay(hour: 21, minute: 0);
+  bool _coachNotifEnabled = false;
   bool _loadingNotif = true;
 
   @override
@@ -37,10 +39,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final svc = NotificationsService.instance;
     final enabled = await svc.isEnabled();
     final time = await svc.morningTime();
+    final eveningTime = await svc.eveningTime();
+    final coachOn = await svc.isCoachEnabled();
     if (!mounted) return;
     setState(() {
       _notifEnabled = enabled;
       _morning = TimeOfDay(hour: time.hour, minute: time.minute);
+      _evening = TimeOfDay(hour: eveningTime.hour, minute: eveningTime.minute);
+      _coachNotifEnabled = coachOn;
       _loadingNotif = false;
     });
   }
@@ -98,6 +104,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (picked == null) return;
     setState(() => _morning = picked);
     await NotificationsService.instance.setMorningTime(picked.hour, picked.minute);
+  }
+
+  Future<void> _pickEvening() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _evening,
+      builder: (ctx, child) => child!,
+    );
+    if (picked == null) return;
+    setState(() => _evening = picked);
+    await NotificationsService.instance.setEveningTime(picked.hour, picked.minute);
+    await NotificationsService.instance.scheduleCoachReminders();
   }
 
   Future<void> _exportJson() async {
@@ -376,6 +394,32 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               enabled: _notifEnabled,
               onTap: _notifEnabled ? _pickMorning : null,
             ),
+            const Divider(height: 1, indent: 16, endIndent: 16),
+            SwitchListTile(
+              title: const Text('AI-коуч напоминания'),
+              subtitle: const Text(
+                'Утренний план и вечерний разбор',
+              ),
+              value: _coachNotifEnabled,
+              onChanged: _notifEnabled
+                  ? (v) async {
+                      setState(() => _coachNotifEnabled = v);
+                      await NotificationsService.instance.setCoachEnabled(v);
+                    }
+                  : null,
+            ),
+            if (_coachNotifEnabled)
+              ListTile(
+                leading: const Icon(Icons.nightlight_round),
+                title: const Text('Вечерний разбор'),
+                subtitle: Text(
+                  _evening.format(context),
+                  style: TextStyle(color: palette.muted),
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                enabled: _notifEnabled,
+                onTap: _notifEnabled ? _pickEvening : null,
+              ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
               child: Text(

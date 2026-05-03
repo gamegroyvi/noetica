@@ -28,6 +28,10 @@ from .llm import LlmClient, LlmConfigError, LlmUpstreamError
 from .schemas import (
     AxesRequest,
     AxesResponse,
+    CoachRequest,
+    CoachResponse,
+    HabitsPlan,
+    HabitsRequest,
     MenuPlan,
     MenuRecipeRequest,
     MenuRecipeResponse,
@@ -61,17 +65,12 @@ app = FastAPI(
     lifespan=_lifespan,
 )
 
-_cors_origins = [
-    o.strip()
-    for o in os.getenv(
-        "CORS_ORIGINS",
-        "http://localhost:8080",
-    ).split(",")
-    if o.strip()
-]
+_cors_raw = os.getenv("CORS_ORIGINS", "")
+_cors_origins = [o.strip() for o in _cors_raw.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_cors_origins if _cors_origins else ["http://localhost:8080"],
+    allow_origins=_cors_origins if _cors_origins else ["*"],
+    allow_credentials=True,
     allow_methods=["POST", "GET", "OPTIONS"],
     allow_headers=["*"],
 )
@@ -317,6 +316,111 @@ async def tools_menu_recipe(
         len(request.ingredients),
     )
     return MenuRecipeResponse(model=client.model, markdown=markdown)
+
+
+@app.post("/tools/habits/generate", response_model=HabitsPlan)
+async def tools_habits_generate(
+    request: HabitsRequest,
+    user: CurrentUser,
+) -> HabitsPlan:
+    """Generate an N-day micro-habit plan from a free-form intent.
+
+    Returns one tiny daily action per requested day. The client
+    imports them as N due-dated tasks tagged with `challenge/<id>`.
+    """
+    try:
+        client = LlmClient()
+    except LlmConfigError as exc:
+        logger.error("LLM config error: %s", exc)
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    try:
+        plan = await client.generate_habits_plan(
+            intent=request.intent,
+            duration_days=request.duration_days,
+            axis_hint=request.axis_hint,
+            notes=request.notes,
+        )
+    except LlmUpstreamError as exc:
+        logger.warning("LLM habits upstream error: status=%s", exc.status)
+        raise HTTPException(
+            status_code=502, detail="LLM upstream error.",
+        ) from exc
+
+    if len(plan.days) < request.duration_days:
+        raise HTTPException(
+            status_code=502,
+            detail=(
+                f"LLM returned {len(plan.days)} days but {request.duration_days} "
+                "were requested."
+            ),
+        )
+
+    logger.info(
+        "Generated habits: user=%s model=%s days=%d",
+        user["id"][:8],
+        plan.model,
+        len(plan.days),
+    )
+    return plan
+
+
+@app.post("/coach/generate", response_model=CoachResponse)
+async def generate_coach(
+    request: CoachRequest,
+    user: CurrentUser,
+):
+    """AI Coach — morning plan or evening reflection."""
+    try:
+        result = await llm.generate_coach(
+            mode=request.mode,
+            name=request.name,
+            aspiration=request.aspiration,
+            axes=request.axes,
+            active_tasks=request.active_tasks,
+            completed_today=request.completed_today,
+            remaining=request.remaining,
+            entries_today=request.entries_today,
+            streak=request.streak,
+        )
+    except LlmConfigError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except LlmUpstreamError as exc:
+        raise HTTPException(status_code=exc.status, detail=str(exc)) from exc
+
+    mode = request.mode
+    if mode == "morning":
+        morning_data = {
+            "greeting": result.get("greeting", ""),
+            "focus": result.get("focus", ""),
+            "tasks": result.get("tasks", []),
+            "motivation": result.get("motivation", ""),
+        }
+        resp = CoachResponse(
+            model=result.get("model", ""),
+            mode=mode,
+            morning=morning_data,
+        )
+    else:
+        evening_data = {
+            "summary": result.get("summary", ""),
+            "wins": result.get("wins", []),
+            "improvements": result.get("improvements", []),
+            "encouragement": result.get("encouragement", ""),
+        }
+        resp = CoachResponse(
+            model=result.get("model", ""),
+            mode=mode,
+            evening=evening_data,
+        )
+
+    logger.info(
+        "Coach generated: user=%s mode=%s model=%s",
+        user["id"][:8],
+        mode,
+        resp.model,
+    )
+    return resp
 
 
 _ = Depends  # silence unused import warning when no other Depends is used here

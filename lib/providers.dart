@@ -11,6 +11,7 @@ import 'services/backend_urls_service.dart';
 import 'services/builtin_generators.dart';
 import 'services/generator_manifest.dart';
 import 'services/levels.dart';
+import 'services/premium_service.dart';
 import 'services/roadmap_api.dart';
 import 'services/sync_service.dart';
 import 'services/tools_api.dart';
@@ -168,6 +169,22 @@ final backendUrlsStateProvider = StreamProvider<BackendUrlsState>((ref) async* {
 final activeBackendUrlProvider = Provider<String>((ref) {
   final state = ref.watch(backendUrlsStateProvider).valueOrNull;
   return state?.activeUrl ?? ref.watch(backendUrlsServiceProvider).activeUrlOrDefault;
+});
+
+// ---- premium ----
+
+final premiumServiceProvider = Provider<PremiumService>((ref) {
+  final svc = PremiumService();
+  ref.onDispose(svc.dispose);
+  return svc;
+});
+
+/// Emits true/false whenever premium status changes.
+final isPremiumProvider = StreamProvider<bool>((ref) async* {
+  final svc = ref.watch(premiumServiceProvider);
+  await svc.load();
+  yield svc.isPremium;
+  yield* PremiumService.changes;
 });
 
 final authServiceProvider = Provider<AuthService>((ref) {
