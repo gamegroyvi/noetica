@@ -16,6 +16,11 @@ import '../home/home_shell.dart' show kFloatingTabBarReserve;
 class ToolsScreen extends ConsumerWidget {
   const ToolsScreen({super.key});
 
+  /// Set to `false` to hide "Скоро" placeholder cards from the UI.
+  /// The underlying manifests and code stay intact — flip back to
+  /// `true` when the feature is ready to be surfaced.
+  static const _showComingSoon = false;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final palette = context.palette;
@@ -26,14 +31,12 @@ class ToolsScreen extends ConsumerWidget {
         .list()
         .where((m) => m.status != GeneratorStatus.soon)
         .toList(growable: false);
-    final soon = registry
-        .list()
-        .where((m) => m.status == GeneratorStatus.soon)
-        .toList(growable: false);
-    // Match HomeShell's `_kRailMin` (720): at/above this the sidebar is
-    // visible and the floating tabbar is gone, so we don't need to
-    // reserve room for it. Below 720 the capsule overlays the bottom
-    // of the viewport and the last card would otherwise hide under it.
+    final soon = _showComingSoon
+        ? registry
+            .list()
+            .where((m) => m.status == GeneratorStatus.soon)
+            .toList(growable: false)
+        : const <GeneratorManifest>[];
     final hasSidebar = width >= 720;
     final bottomReserve = hasSidebar ? 32.0 : kFloatingTabBarReserve + 16;
 
@@ -45,9 +48,6 @@ class ToolsScreen extends ConsumerWidget {
         bottom: false,
         child: LayoutBuilder(
           builder: (context, constraints) {
-            // Centered "page" column — on phones it just fills the
-            // viewport, on tablets/desktop we cap at 920px so cards
-            // don't stretch into something unreadable.
             final maxColumn = constraints.maxWidth.clamp(0, 920).toDouble();
             final horizontal = hasSidebar ? 32.0 : 16.0;
             return ListView(
@@ -66,31 +66,29 @@ class ToolsScreen extends ConsumerWidget {
                       children: [
                         _Header(palette: palette, theme: theme),
                         if (available.isNotEmpty) ...[
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 28),
                           _SectionLabel(
                             'Доступно',
                             theme: theme,
                             palette: palette,
                           ),
                           const SizedBox(height: 12),
-                          _ToolGrid(
+                          _ToolCarousel(
                             tools: available,
-                            isWide: width >= 720,
                             palette: palette,
                             theme: theme,
                           ),
                         ],
                         if (soon.isNotEmpty) ...[
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 28),
                           _SectionLabel(
                             'Скоро',
                             theme: theme,
                             palette: palette,
                           ),
                           const SizedBox(height: 12),
-                          _ToolGrid(
+                          _ToolCarousel(
                             tools: soon,
-                            isWide: width >= 720,
                             palette: palette,
                             theme: theme,
                           ),
@@ -192,80 +190,101 @@ class _SectionLabel extends StatelessWidget {
   }
 }
 
-class _ToolGrid extends StatelessWidget {
-  const _ToolGrid({
+/// Horizontal carousel of tool cards with a page-snap feel.
+/// Each card takes ~80 % of the viewport width on phones and a fixed
+/// 320 px on wider screens so the user can always peek at the next card.
+class _ToolCarousel extends StatefulWidget {
+  const _ToolCarousel({
     required this.tools,
-    required this.isWide,
     required this.palette,
     required this.theme,
   });
 
-  static const double _gap = 12;
-
   final List<GeneratorManifest> tools;
-  final bool isWide;
   final NoeticaPalette palette;
   final ThemeData theme;
 
   @override
-  Widget build(BuildContext context) {
-    if (tools.isEmpty) return const SizedBox.shrink();
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // Decide column count from available width. We don't use the
-        // outer screen width because the parent already centers + caps
-        // the column at 920px, so the constraint is the truth.
-        final columns = _columnsFor(constraints.maxWidth);
-        // Group tools into rows of [columns] entries each. The last row
-        // gets padded with empty placeholders so card widths stay equal
-        // (otherwise a lone card on a half-row would stretch to 100%).
-        final rows = <List<GeneratorManifest?>>[];
-        for (var i = 0; i < tools.length; i += columns) {
-          final row = <GeneratorManifest?>[];
-          for (var j = 0; j < columns; j++) {
-            row.add(i + j < tools.length ? tools[i + j] : null);
-          }
-          rows.add(row);
-        }
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (var rowIdx = 0; rowIdx < rows.length; rowIdx++) ...[
-              if (rowIdx > 0) const SizedBox(height: _gap),
-              IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    for (var colIdx = 0; colIdx < columns; colIdx++) ...[
-                      if (colIdx > 0) const SizedBox(width: _gap),
-                      Expanded(
-                        child: rows[rowIdx][colIdx] == null
-                            ? const SizedBox.shrink()
-                            : _ToolCard(
-                                tool: rows[rowIdx][colIdx]!,
-                                palette: palette,
-                                theme: theme,
-                              ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-          ],
-        );
-      },
-    );
+  State<_ToolCarousel> createState() => _ToolCarouselState();
+}
+
+class _ToolCarouselState extends State<_ToolCarousel> {
+  late final PageController _ctrl;
+  int _current = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = PageController(viewportFraction: 0.88);
   }
 
-  int _columnsFor(double width) {
-    // Phones (no sidebar visible) — always single column even if width
-    // happens to exceed the breakpoint (e.g. landscape phone).
-    if (!isWide) return 1;
-    // Tablet/desktop. We could go to 3 columns at very wide layouts but
-    // 920px max-column from the parent caps useful width, so 2 is the
-    // ceiling here.
-    return width >= 560 ? 2 : 1;
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tools = widget.tools;
+    if (tools.isEmpty) return const SizedBox.shrink();
+
+    if (tools.length == 1) {
+      return _ToolCard(
+        tool: tools.first,
+        palette: widget.palette,
+        theme: widget.theme,
+      );
+    }
+
+    return Column(
+      children: [
+        SizedBox(
+          height: 220,
+          child: PageView.builder(
+            controller: _ctrl,
+            itemCount: tools.length,
+            onPageChanged: (i) => setState(() => _current = i),
+            itemBuilder: (_, i) {
+              return AnimatedScale(
+                scale: i == _current ? 1.0 : 0.95,
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeOut,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  child: _ToolCard(
+                    tool: tools[i],
+                    palette: widget.palette,
+                    theme: widget.theme,
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        if (tools.length > 1) ...[
+          const SizedBox(height: 14),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              for (var i = 0; i < tools.length; i++)
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  width: i == _current ? 20 : 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: i == _current
+                        ? widget.palette.fg
+                        : widget.palette.line,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ],
+    );
   }
 }
 

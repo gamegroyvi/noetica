@@ -332,6 +332,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     const KnowledgeGraphScreen(),
     const CalendarScreen(),
     const ToolsScreen(),
+    const MenuGeneratorScreen(),
     const SettingsScreen(),
   ];
 
@@ -514,6 +515,8 @@ class _DesktopSidebar extends StatelessWidget {
     required this.onCalendar,
     required this.toolsSelected,
     required this.onTools,
+    required this.menuSelected,
+    required this.onMenu,
     required this.settingsSelected,
     required this.onSettings,
     required this.onPomodoro,
@@ -533,6 +536,8 @@ class _DesktopSidebar extends StatelessWidget {
   final VoidCallback onCalendar;
   final bool toolsSelected;
   final VoidCallback onTools;
+  final bool menuSelected;
+  final VoidCallback onMenu;
   final bool settingsSelected;
   final VoidCallback onSettings;
   final VoidCallback onPomodoro;
@@ -638,6 +643,42 @@ class _DesktopSidebar extends StatelessWidget {
                 onTap: onTools,
               ),
               _SidebarTile(
+                icon: Icons.restaurant_menu_outlined,
+                selectedIcon: Icons.restaurant_menu,
+                label: 'Меню недели',
+                selected: menuSelected,
+                extended: extended,
+                palette: palette,
+                onTap: onMenu,
+              ),
+              const SizedBox(height: 12),
+              Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: extended ? 16 : 12,
+                  vertical: 4,
+                ),
+                child: extended
+                    ? FilledButton.icon(
+                        onPressed: onAdd,
+                        icon: const Icon(Icons.add, size: 18),
+                        label: const Text('Новая запись'),
+                      )
+                    : Center(
+                        child: FloatingActionButton.small(
+                          onPressed: onAdd,
+                          child: const Icon(Icons.add),
+                        ),
+                      ),
+              ),
+              const Spacer(),
+              Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: extended ? 16 : 0,
+                  vertical: 4,
+                ),
+                child: Divider(color: palette.line, height: 1),
+              ),
+              _SidebarTile(
                 icon: Icons.timer_outlined,
                 selectedIcon: Icons.timer,
                 label: 'Pomodoro',
@@ -656,24 +697,6 @@ class _DesktopSidebar extends StatelessWidget {
                 onTap: onSettings,
               ),
               const SizedBox(height: 8),
-              Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: extended ? 16 : 12,
-                  vertical: 12,
-                ),
-                child: extended
-                    ? FilledButton.icon(
-                        onPressed: onAdd,
-                        icon: const Icon(Icons.add, size: 18),
-                        label: const Text('Новая запись'),
-                      )
-                    : Center(
-                        child: FloatingActionButton.small(
-                          onPressed: onAdd,
-                          child: const Icon(Icons.add),
-                        ),
-                      ),
-              ),
             ],
           ),
         ),

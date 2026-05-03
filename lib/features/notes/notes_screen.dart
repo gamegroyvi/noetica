@@ -136,6 +136,8 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                 final axesById = {for (final a in axes) a.id: a};
                 final notes = entries
                     .where((e) => e.kind == EntryKind.note)
+                    .where((e) =>
+                        !e.tags.any((t) => t.startsWith('menu/')))
                     .where((e) => _matches(e, _query))
                     .toList();
 
