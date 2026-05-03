@@ -16,6 +16,7 @@ import '../entry/entry_editor_sheet.dart';
 import '../home/home_shell.dart' show kFloatingTabBarReserve;
 import '../knowledge/knowledge_graph_screen.dart';
 import '../pomodoro/pomodoro_sheet.dart';
+import '../reflection/reflection_sheet.dart' show toggleTaskWithReflection;
 import '../reflection/weekly_reflection_sheet.dart';
 import '../roadmap/roadmap_screen.dart';
 import '../self/self_screen.dart';
