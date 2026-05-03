@@ -1,7 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io' show Platform;
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -187,7 +185,8 @@ class AuthService {
     // chooser next time instead of being silently re-signed-in.
     if (!kIsWeb) {
       try {
-        if (Platform.isAndroid || Platform.isIOS) {
+        if (defaultTargetPlatform == TargetPlatform.android ||
+            defaultTargetPlatform == TargetPlatform.iOS) {
           await GoogleSignIn(serverClientId: _webClientId).signOut();
         }
       } catch (_) {}
@@ -213,11 +212,19 @@ class AuthService {
   }
 
   Future<String> _obtainGoogleIdToken() async {
-    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+    if (!kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.android ||
+         defaultTargetPlatform == TargetPlatform.iOS)) {
       return _googleSignInIdToken();
     }
-    if (!kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
+    if (!kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.windows ||
+         defaultTargetPlatform == TargetPlatform.macOS ||
+         defaultTargetPlatform == TargetPlatform.linux)) {
       return _desktopInstalledAppIdToken();
+    }
+    if (kIsWeb) {
+      return _googleSignInIdToken();
     }
     throw AuthException('Sign-in is not supported on this platform.');
   }

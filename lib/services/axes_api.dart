@@ -90,21 +90,22 @@ class AxesApi {
     };
 
     final token = _auth?.current?.accessToken;
-    if (token == null || token.isEmpty) {
+    if (!kDevSkipAuth && (token == null || token.isEmpty)) {
       throw AxesApiException(
         'Не выполнен вход в Google. Перезайдите и попробуйте снова.',
         status: 401,
       );
     }
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+    };
     http.Response response;
     try {
       response = await _client
           .post(
             uri,
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
+            headers: headers,
             body: jsonEncode(payload),
           )
           .timeout(const Duration(seconds: 60));

@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../services/analytics_service.dart';
 import '../../services/pomodoro_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/brand_glyph.dart';
@@ -16,8 +17,10 @@ import '../pomodoro/pomodoro_sheet.dart';
 import '../self/self_screen.dart';
 import '../settings/settings_screen.dart';
 import '../tasks/tasks_screen.dart';
-import '../tools/menu/menu_generator_screen.dart';
+import '../coach/coach_screen.dart';
 import '../tools/tools_screen.dart';
+import '../tools/menu/menu_generator_screen.dart';
+import '../roadmap/roadmap_screen.dart';
 
 /// Layout breakpoints. Below `_kRailMin`: bottom navigation bar. Between
 /// `_kRailMin` and `_kRailExtended`: compact NavigationRail (icons only).
@@ -134,8 +137,177 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   static const _knowledgeIndex = 4;
   static const _calendarIndex = 5;
   static const _toolsIndex = 6;
-  static const _menuIndex = 7;
-  static const _settingsIndex = 8;
+  static const _settingsIndex = 7;
+  static const _moreTabIndex = 3; // "Ещё" tab in the floating bar
+
+  static const _screenNames = [
+    'dashboard', 'self', 'tasks', 'journal',
+    'knowledge', 'calendar', 'tools', 'settings',
+  ];
+
+  void _switchTab(int i) {
+    if (i == _index) return;
+    setState(() => _index = i);
+    AnalyticsService.instance.track(AnalyticsEvents.screenViewed, {
+      'screen': _screenNames[i],
+    });
+  }
+
+  void _onMobileTabTap(int i) {
+    if (i == _moreTabIndex) {
+      _showMoreSheet();
+      return;
+    }
+    _switchTab(i);
+  }
+
+  void _showMoreSheet() {
+    final palette = context.palette;
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: palette.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 32,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: palette.muted.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                GridView.count(
+                  crossAxisCount: 4,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  mainAxisSpacing: 8,
+                  crossAxisSpacing: 8,
+                  children: [
+                    _MoreGridItem(
+                      icon: Icons.psychology_outlined,
+                      label: 'AI Коуч',
+                      palette: palette,
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const CoachScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _MoreGridItem(
+                      icon: Icons.bookmark_border_outlined,
+                      label: 'Журнал',
+                      palette: palette,
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _openJournal();
+                      },
+                    ),
+                    _MoreGridItem(
+                      icon: Icons.calendar_today_outlined,
+                      label: 'Календарь',
+                      palette: palette,
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _openCalendar();
+                      },
+                    ),
+                    _MoreGridItem(
+                      icon: Icons.account_tree_outlined,
+                      label: 'База',
+                      palette: palette,
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const KnowledgeGraphScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _MoreGridItem(
+                      icon: Icons.auto_awesome_outlined,
+                      label: 'Ассистент',
+                      palette: palette,
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const ToolsScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _MoreGridItem(
+                      icon: Icons.rocket_launch_outlined,
+                      label: 'Роадмап',
+                      palette: palette,
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const RoadmapScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _MoreGridItem(
+                      icon: Icons.restaurant_menu_outlined,
+                      label: 'Меню',
+                      palette: palette,
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const MenuGeneratorScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _MoreGridItem(
+                      icon: Icons.timer_outlined,
+                      label: 'Pomodoro',
+                      palette: palette,
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        PomodoroSheet.show(context);
+                      },
+                    ),
+                    _MoreGridItem(
+                      icon: Icons.settings_outlined,
+                      label: 'Настройки',
+                      palette: palette,
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const SettingsScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   // Pages must be built lazily so the dashboard can receive callbacks
   // bound to *this* state instance (`setState`).
@@ -149,8 +321,8 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   // or calendar entry) they push a route with a real back button.
   late final List<Widget> _pages = [
     DashboardScreen(
-      onOpenSelf: () => setState(() => _index = _selfIndex),
-      onOpenTasks: () => setState(() => _index = _tasksIndex),
+      onOpenSelf: () => _switchTab(_selfIndex),
+      onOpenTasks: () => _switchTab(_tasksIndex),
       onOpenJournal: _openJournal,
       onOpenCalendar: _openCalendar,
     ),
@@ -167,7 +339,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   void _openJournal() {
     final wide = MediaQuery.of(context).size.width >= _kRailMin;
     if (wide) {
-      setState(() => _index = _journalIndex);
+      _switchTab(_journalIndex);
     } else {
       Navigator.of(context).push(
         MaterialPageRoute<void>(builder: (_) => const NotesScreen()),
@@ -178,7 +350,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   void _openCalendar() {
     final wide = MediaQuery.of(context).size.width >= _kRailMin;
     if (wide) {
-      setState(() => _index = _calendarIndex);
+      _switchTab(_calendarIndex);
     } else {
       Navigator.of(context).push(
         MaterialPageRoute<void>(builder: (_) => const CalendarScreen()),
@@ -202,6 +374,11 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       selectedIcon: Icons.checklist,
       label: 'Задачи',
     ),
+    _Destination(
+      icon: Icons.grid_view_outlined,
+      selectedIcon: Icons.grid_view,
+      label: 'Ещё',
+    ),
   ];
 
   @override
@@ -217,7 +394,9 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       // Journal stays accessible via the AppBar bookmark icon. We clamp
       // the bar's selectedIndex so it doesn't break when index = 3 (would
       // happen if user navigated to journal then resized to mobile).
-      final mobileSelected = _index < _destinations.length ? _index : 0;
+      // Clamp to the first 3 real tabs; "Ещё" (index 3) is a menu trigger,
+      // not a real page — never show it as selected.
+      final mobileSelected = _index < _moreTabIndex ? _index : 0;
       final bottomSafe = MediaQuery.of(context).padding.bottom;
       // Telegram-style truly-floating capsule: drop the bottomNavigationBar
       // slot (which forced Scaffold to reserve a strip and made the bar
@@ -260,8 +439,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                         palette: palette,
                         selectedIndex: mobileSelected,
                         destinations: _destinations,
-                        onDestinationSelected: (i) =>
-                            setState(() => _index = i),
+                        onDestinationSelected: _onMobileTabTap,
                       ),
                     ),
                     const SizedBox(width: kFloatingFabGap),
@@ -286,24 +464,18 @@ class _HomeShellState extends ConsumerState<HomeShell> {
             extended: extended,
             destinations: _destinations,
             selectedIndex: _index,
-            onDestinationSelected: (i) => setState(() => _index = i),
+            onDestinationSelected: _switchTab,
             onAdd: () => showEntryEditor(context, ref),
             journalSelected: _index == _journalIndex,
-            onJournal: () => setState(() => _index = _journalIndex),
+            onJournal: () => _switchTab(_journalIndex),
             knowledgeSelected: _index == _knowledgeIndex,
             calendarSelected: _index == _calendarIndex,
-            onCalendar: () => setState(() => _index = _calendarIndex),
+            onCalendar: () => _switchTab(_calendarIndex),
             toolsSelected: _index == _toolsIndex,
-            onTools: () => setState(() => _index = _toolsIndex),
-            menuSelected: _index == _menuIndex,
-            onMenu: () => setState(() => _index = _menuIndex),
-            // Knowledge graph used to push a new route, which hid the
-            // sidebar and trapped the user (no back button on the
-            // graph screen). It's now a proper sidebar tab — selects
-            // page index 4 in the IndexedStack, sidebar stays visible.
-            onKnowledge: () => setState(() => _index = _knowledgeIndex),
+            onTools: () => _switchTab(_toolsIndex),
+            onKnowledge: () => _switchTab(_knowledgeIndex),
             settingsSelected: _index == _settingsIndex,
-            onSettings: () => setState(() => _index = _settingsIndex),
+            onSettings: () => _switchTab(_settingsIndex),
             onPomodoro: () => PomodoroSheet.show(context),
             palette: palette,
           ),
@@ -409,22 +581,31 @@ class _DesktopSidebar extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24),
+              // Skip the "Ещё" tab (mobile-only) on desktop sidebar.
               for (var i = 0; i < destinations.length; i++)
-                _SidebarTile(
-                  icon: destinations[i].icon,
-                  selectedIcon: destinations[i].selectedIcon,
-                  label: destinations[i].label,
-                  selected: selectedIndex == i &&
-                      !journalSelected &&
-                      !knowledgeSelected &&
-                      !calendarSelected &&
-                      !toolsSelected &&
-                      !menuSelected &&
-                      !settingsSelected,
-                  extended: extended,
-                  palette: palette,
-                  onTap: () => onDestinationSelected(i),
+                if (i != _HomeShellState._moreTabIndex)
+                  _SidebarTile(
+                    icon: destinations[i].icon,
+                    selectedIcon: destinations[i].selectedIcon,
+                    label: destinations[i].label,
+                    selected: selectedIndex == i &&
+                        !journalSelected &&
+                        !knowledgeSelected &&
+                        !calendarSelected &&
+                        !toolsSelected &&
+                        !settingsSelected,
+                    extended: extended,
+                    palette: palette,
+                    onTap: () => onDestinationSelected(i),
+                  ),
+              const Spacer(),
+              Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: extended ? 16 : 0,
+                  vertical: 4,
                 ),
+                child: Divider(color: palette.line, height: 1),
+              ),
               _SidebarTile(
                 icon: Icons.calendar_month_outlined,
                 selectedIcon: Icons.calendar_month,
@@ -858,4 +1039,52 @@ class _PentagonPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _PentagonPainter oldDelegate) =>
       oldDelegate.fill != fill || oldDelegate.stroke != stroke;
+}
+
+class _MoreGridItem extends StatelessWidget {
+  const _MoreGridItem({
+    required this.icon,
+    required this.label,
+    required this.palette,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final NoeticaPalette palette;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: palette.fg.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: palette.fg, size: 22),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: palette.fg,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
 }
