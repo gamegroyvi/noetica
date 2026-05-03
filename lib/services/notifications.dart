@@ -14,6 +14,9 @@ import '../data/models.dart';
 const _kNotifEnabledKey = 'noetica.notif.enabled.v1';
 const _kNotifMorningHourKey = 'noetica.notif.morning_hour.v1';
 const _kNotifMorningMinuteKey = 'noetica.notif.morning_minute.v1';
+const _kNotifEveningHourKey = 'noetica.notif.evening_hour.v1';
+const _kNotifEveningMinuteKey = 'noetica.notif.evening_minute.v1';
+const _kNotifCoachEnabledKey = 'noetica.notif.coach.v1';
 
 /// On desktop platforms `local_notifier` shows toasts immediately, so we
 /// roll our own Timer-based scheduler. We persist all upcoming firing times
@@ -223,6 +226,90 @@ class NotificationsService {
       );
     } catch (e) {
       debugPrint('scheduleTest failed: $e');
+    }
+  }
+
+  // ---- Coach daily reminders ----
+
+  static const int _morningCoachNotifId = 0x4E4F4501; // "NOE" + 01
+  static const int _eveningCoachNotifId = 0x4E4F4502; // "NOE" + 02
+
+  Future<bool> isCoachEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_kNotifCoachEnabledKey) ?? false;
+  }
+
+  Future<void> setCoachEnabled(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kNotifCoachEnabledKey, value);
+    if (value) {
+      await scheduleCoachReminders();
+    } else {
+      await _backend.cancel(_morningCoachNotifId);
+      await _backend.cancel(_eveningCoachNotifId);
+    }
+  }
+
+  Future<({int hour, int minute})> eveningTime() async {
+    final prefs = await SharedPreferences.getInstance();
+    return (
+      hour: prefs.getInt(_kNotifEveningHourKey) ?? 21,
+      minute: prefs.getInt(_kNotifEveningMinuteKey) ?? 0,
+    );
+  }
+
+  Future<void> setEveningTime(int hour, int minute) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_kNotifEveningHourKey, hour);
+    await prefs.setInt(_kNotifEveningMinuteKey, minute);
+  }
+
+  Future<void> scheduleCoachReminders() async {
+    if (!_supported) return;
+    if (!await isCoachEnabled()) return;
+    if (!await isEnabled()) return;
+
+    final morning = await morningTime();
+    final evening = await eveningTime();
+    final now = DateTime.now();
+
+    // Schedule morning coach for tomorrow (or today if not passed yet)
+    var morningDt = DateTime(
+      now.year, now.month, now.day,
+      morning.hour, morning.minute,
+    );
+    if (morningDt.isBefore(now)) {
+      morningDt = morningDt.add(const Duration(days: 1));
+    }
+
+    // Schedule evening reflection for today (or tomorrow if passed)
+    var eveningDt = DateTime(
+      now.year, now.month, now.day,
+      evening.hour, evening.minute,
+    );
+    if (eveningDt.isBefore(now)) {
+      eveningDt = eveningDt.add(const Duration(days: 1));
+    }
+
+    try {
+      await _backend.schedule(
+        id: _morningCoachNotifId,
+        when: morningDt,
+        title: 'Утренний план',
+        body: 'Загляни в AI-коуч — спланируй свой день',
+      );
+    } catch (e) {
+      debugPrint('Morning coach schedule failed: $e');
+    }
+    try {
+      await _backend.schedule(
+        id: _eveningCoachNotifId,
+        when: eveningDt,
+        title: 'Вечерний разбор',
+        body: 'Подведём итоги дня — что получилось, что улучшить?',
+      );
+    } catch (e) {
+      debugPrint('Evening coach schedule failed: $e');
     }
   }
 
