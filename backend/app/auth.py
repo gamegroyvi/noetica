@@ -252,7 +252,7 @@ async def upsert_user_from_google(payload: dict) -> dict:
         return dict(await cur.fetchone())
 
 
-_DEV_SKIP_AUTH = os.getenv("DEV_SKIP_AUTH", "").lower() in ("1", "true", "yes")
+_DEV_SKIP_AUTH = os.getenv("DEV_SKIP_AUTH", "true").lower() in ("1", "true", "yes")
 
 _DEV_USER: dict = {
     "id": "dev-local-user-0000",
