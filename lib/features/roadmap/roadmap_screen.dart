@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models.dart';
 import '../../data/personal_knowledge_service.dart';
 import '../../providers.dart';
+import '../../services/analytics_service.dart';
 import '../../services/roadmap_api.dart';
 import '../../theme/app_theme.dart';
 
@@ -100,6 +101,10 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
         taskCount: _taskCount,
       );
       if (!mounted) return;
+      AnalyticsService.instance.track(AnalyticsEvents.roadmapGenerated, {
+        'task_count': result.tasks.length,
+        'model': result.model,
+      });
       setState(() {
         _result = result;
         _picked = List<bool>.filled(result.tasks.length, true);

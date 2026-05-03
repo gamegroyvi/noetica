@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models.dart';
 import '../../providers.dart';
+import '../../services/analytics_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/body_utils.dart';
 import '../../utils/subtask_utils.dart';
@@ -301,6 +302,14 @@ class _EntryEditorFormState extends ConsumerState<_EntryEditorForm> {
       try {
         await repo.syncBodyLinks(saved);
       } catch (_) {}
+      AnalyticsService.instance.track(
+        existing == null
+            ? (_kind == EntryKind.task
+                ? AnalyticsEvents.taskCreated
+                : AnalyticsEvents.noteCreated)
+            : 'entry_updated',
+        {'kind': _kind.name, 'axes': _selectedAxes.length},
+      );
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (mounted) {
@@ -318,6 +327,9 @@ class _EntryEditorFormState extends ConsumerState<_EntryEditorForm> {
     if (existing == null) return;
     final repo = await ref.read(repositoryProvider.future);
     await repo.deleteEntry(existing.id);
+    AnalyticsService.instance.track(AnalyticsEvents.entryDeleted, {
+      'kind': existing.kind.name,
+    });
     if (mounted) Navigator.of(context).pop();
   }
 

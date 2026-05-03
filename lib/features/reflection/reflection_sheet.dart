@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models.dart';
 import '../../data/personal_knowledge_service.dart';
 import '../../providers.dart';
+import '../../services/analytics_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/body_utils.dart';
 
@@ -80,7 +81,15 @@ Future<void> toggleTaskWithReflection(
     task,
     reflectionStatus: result?.status,
   );
+  AnalyticsService.instance.track(AnalyticsEvents.taskCompleted, {
+    'task_id': task.id,
+    'xp': task.xp,
+    'had_reflection': result != null,
+  });
   if (result != null) {
+    AnalyticsService.instance.track(AnalyticsEvents.reflectionSubmitted, {
+      'status': result.status.name,
+    });
     await repo.saveReflection(
       entryId: task.id,
       status: result.status,
@@ -88,8 +97,6 @@ Future<void> toggleTaskWithReflection(
       difficulties: result.difficulties,
       actualMinutes: result.actualMinutes,
     );
-    // Feed the reflection into the personal knowledge base so it shows up
-    // in future LLM prompts.
     await PersonalKnowledgeService().recordReflection(
       taskTitle: task.title,
       status: result.status,
