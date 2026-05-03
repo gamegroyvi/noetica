@@ -252,10 +252,24 @@ async def upsert_user_from_google(payload: dict) -> dict:
         return dict(await cur.fetchone())
 
 
+_DEV_SKIP_AUTH = os.getenv("DEV_SKIP_AUTH", "").lower() in ("1", "true", "yes")
+
+_DEV_USER: dict = {
+    "id": "dev-local-user-0000",
+    "email": "dev@localhost",
+    "name": "Dev User",
+    "picture_url": None,
+}
+
+
 async def current_user(
     authorization: Annotated[str | None, Header()] = None,
 ) -> dict:
     """FastAPI dependency: 401 unless the request carries a valid Bearer JWT."""
+    if _DEV_SKIP_AUTH and (
+        not authorization or not authorization.lower().startswith("bearer ")
+    ):
+        return _DEV_USER
     if not authorization or not authorization.lower().startswith("bearer "):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
