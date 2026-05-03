@@ -17,6 +17,7 @@ import '../pomodoro/pomodoro_sheet.dart';
 import '../self/self_screen.dart';
 import '../settings/settings_screen.dart';
 import '../tasks/tasks_screen.dart';
+import '../coach/coach_screen.dart';
 import '../tools/tools_screen.dart';
 import '../tools/menu/menu_generator_screen.dart';
 import '../roadmap/roadmap_screen.dart';
@@ -192,6 +193,19 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                   mainAxisSpacing: 8,
                   crossAxisSpacing: 8,
                   children: [
+                    _MoreGridItem(
+                      icon: Icons.psychology_outlined,
+                      label: 'AI Коуч',
+                      palette: palette,
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const CoachScreen(),
+                          ),
+                        );
+                      },
+                    ),
                     _MoreGridItem(
                       icon: Icons.bookmark_border_outlined,
                       label: 'Журнал',
@@ -562,21 +576,23 @@ class _DesktopSidebar extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24),
+              // Skip the "Ещё" tab (mobile-only) on desktop sidebar.
               for (var i = 0; i < destinations.length; i++)
-                _SidebarTile(
-                  icon: destinations[i].icon,
-                  selectedIcon: destinations[i].selectedIcon,
-                  label: destinations[i].label,
-                  selected: selectedIndex == i &&
-                      !journalSelected &&
-                      !knowledgeSelected &&
-                      !calendarSelected &&
-                      !toolsSelected &&
-                      !settingsSelected,
-                  extended: extended,
-                  palette: palette,
-                  onTap: () => onDestinationSelected(i),
-                ),
+                if (i != _HomeShellState._moreTabIndex)
+                  _SidebarTile(
+                    icon: destinations[i].icon,
+                    selectedIcon: destinations[i].selectedIcon,
+                    label: destinations[i].label,
+                    selected: selectedIndex == i &&
+                        !journalSelected &&
+                        !knowledgeSelected &&
+                        !calendarSelected &&
+                        !toolsSelected &&
+                        !settingsSelected,
+                    extended: extended,
+                    palette: palette,
+                    onTap: () => onDestinationSelected(i),
+                  ),
               const Spacer(),
               Padding(
                 padding: EdgeInsets.symmetric(

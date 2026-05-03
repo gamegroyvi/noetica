@@ -242,3 +242,42 @@ class HabitsPlan(BaseModel):
     intent: str = Field(default="", max_length=300)
     summary: str = Field(default="", max_length=400)
     days: list[HabitDay]
+
+
+# ---------------------------------------------------------------------------
+# AI Coach
+# ---------------------------------------------------------------------------
+
+class CoachRequest(BaseModel):
+    """Request for morning plan or evening reflection."""
+
+    mode: Literal["morning", "evening"]
+    name: str = ""
+    aspiration: str = ""
+    axes: list[str] = Field(default_factory=list)
+    active_tasks: list[str] = Field(default_factory=list)
+    completed_today: list[str] = Field(default_factory=list)
+    remaining: list[str] = Field(default_factory=list)
+    entries_today: int = 0
+    streak: int = 0
+
+
+class MorningPlan(BaseModel):
+    greeting: str
+    focus: str
+    tasks: list[str]
+    motivation: str
+
+
+class EveningReflection(BaseModel):
+    summary: str
+    wins: list[str]
+    improvements: list[str]
+    encouragement: str
+
+
+class CoachResponse(BaseModel):
+    model: str
+    mode: Literal["morning", "evening"]
+    morning: MorningPlan | None = None
+    evening: EveningReflection | None = None

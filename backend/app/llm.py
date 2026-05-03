@@ -27,6 +27,12 @@ from .schemas import (
     ProfileInput,
     RoadmapTask,
 )
+from .prompts_coach import (
+    evening_system_prompt,
+    evening_user_prompt,
+    morning_system_prompt,
+    morning_user_prompt,
+)
 from .prompts_habits import (
     habits_system_prompt,
     habits_user_prompt,
@@ -538,6 +544,75 @@ class LlmClient:
             intent=intent,
             duration_days=duration_days,
         )
+
+    async def generate_coach(
+        self,
+        *,
+        mode: str,
+        name: str,
+        aspiration: str,
+        axes: list[str],
+        active_tasks: list[str],
+        completed_today: list[str],
+        remaining: list[str],
+        entries_today: int,
+        streak: int,
+    ) -> dict:
+        """Generate morning plan or evening reflection."""
+        if mode == "morning":
+            sys_prompt = morning_system_prompt()
+            usr_prompt = morning_user_prompt(
+                name=name,
+                aspiration=aspiration,
+                axes=axes,
+                active_tasks=active_tasks,
+                streak=streak,
+            )
+        else:
+            sys_prompt = evening_system_prompt()
+            usr_prompt = evening_user_prompt(
+                name=name,
+                completed_today=completed_today,
+                remaining=remaining,
+                entries_today=entries_today,
+                streak=streak,
+            )
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        payload: dict[str, Any] = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": sys_prompt},
+                {"role": "user", "content": usr_prompt},
+            ],
+            "response_format": {"type": "json_object"},
+            "temperature": 0.7,
+            "max_tokens": 800,
+        }
+        url = f"{self.base_url}/chat/completions"
+        async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+            response = await client.post(url, json=payload, headers=headers)
+        if response.status_code >= 400:
+            raise LlmUpstreamError(
+                response.status_code,
+                f"LLM upstream error ({response.status_code}): "
+                f"{response.text[:500]}",
+            )
+        data = response.json()
+        try:
+            content = data["choices"][0]["message"]["content"]
+        except (KeyError, IndexError, TypeError) as exc:
+            raise LlmUpstreamError(
+                502, f"Malformed LLM response: {exc}"
+            ) from exc
+
+        parsed = _parse_json(content)
+        parsed["model"] = self.model
+        parsed["mode"] = mode
+        return parsed
 
 
 def _axes_system_prompt(count: int) -> str:
