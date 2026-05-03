@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 
 import 'api_config.dart';
 import 'auth_service.dart';
+import 'generator_run_spec.dart';
 
 /// One ingredient line item — name + free-form amount string. The
 /// backend produces these for each meal and for the consolidated weekly
@@ -267,6 +268,35 @@ class ToolsApi {
     };
     final json = await _post(uri, payload, _generateTimeout);
     return HabitsPlan.fromJson(json);
+  }
+
+  /// Universal manifest runtime — POSTs the manifest's prompt
+  /// templates + form values to `/tools/run`. The server renders
+  /// `{key}` placeholders, calls Groq, and returns a
+  /// `GeneratorRunResult { model, summary, items[] }`.
+  ///
+  /// Authors don't have to provide N specialised endpoints anymore —
+  /// every user-authored or builtin tool that opts into the universal
+  /// runtime hits this single route.
+  Future<GeneratorRunResult> runGenerator({
+    required String manifestId,
+    required String promptSystem,
+    required String promptUser,
+    required Map<String, Object?> inputs,
+    int maxItems = 15,
+    double temperature = 0.6,
+  }) async {
+    final uri = Uri.parse('$_baseUrl/tools/run');
+    final payload = <String, Object?>{
+      'manifest_id': manifestId,
+      'prompt_system': promptSystem,
+      'prompt_user': promptUser,
+      'inputs': inputs,
+      'max_items': maxItems,
+      'temperature': temperature,
+    };
+    final json = await _post(uri, payload, _generateTimeout);
+    return GeneratorRunResult.fromJson(json);
   }
 
   Future<String> generateRecipe({
