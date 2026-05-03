@@ -13,14 +13,12 @@ import '../../services/weekly_reflection_service.dart';
 import '../calendar/calendar_screen.dart';
 import '../calendar/day_detail_sheet.dart';
 import '../entry/entry_editor_sheet.dart';
+import '../home/home_shell.dart' show kFloatingTabBarReserve;
 import '../knowledge/knowledge_graph_screen.dart';
-import '../notes/notes_screen.dart';
 import '../pomodoro/pomodoro_sheet.dart';
-import '../reflection/reflection_sheet.dart';
 import '../reflection/weekly_reflection_sheet.dart';
 import '../roadmap/roadmap_screen.dart';
 import '../self/self_screen.dart';
-import '../settings/settings_screen.dart';
 import '../tasks/tasks_screen.dart';
 import 'widgets/activity_heatmap.dart';
 import 'widgets/dashboard_stats.dart';
@@ -96,17 +94,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
   }
 
-  void _openJournal() {
-    final cb = widget.onOpenJournal;
-    if (cb != null) {
-      cb();
-    } else {
-      Navigator.of(context).push(
-        MaterialPageRoute<void>(builder: (_) => const NotesScreen()),
-      );
-    }
-  }
-
   /// Tasks live in the primary-tab rail (index 1 in HomeShell), so a tab
   /// switch works everywhere. We still fall back to a push when the
   /// dashboard is hosted outside the shell.
@@ -119,12 +106,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         MaterialPageRoute<void>(builder: (_) => const TasksScreen()),
       );
     }
-  }
-
-  void _openSettings() {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
-    );
   }
 
   void _openCalendar() {
@@ -144,7 +125,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final entriesAsync = ref.watch(entriesProvider);
     final axesAsync = ref.watch(axesProvider);
     final profileAsync = ref.watch(profileProvider);
-    final isDesktop = MediaQuery.of(context).size.width >= 900;
 
     return Scaffold(
       appBar: AppBar(
@@ -257,7 +237,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ),
                 ),
                 onOpenTasks: _openTasks,
-                onCreateReflection: () => ReflectionSheet.show(context, ref),
+                onCreateReflection: () =>
+                    showEntryEditor(context, ref, initialKind: EntryKind.note),
                 onOpenSelf: _openSelf,
               ),
               const SizedBox(height: 18),

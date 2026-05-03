@@ -9,6 +9,7 @@ import '../../data/models.dart';
 import '../../providers.dart';
 import '../../services/backend_urls_service.dart';
 import '../../services/notifications.dart';
+import '../../services/sync_service.dart';
 import '../../theme/app_theme.dart';
 import '../onboarding/onboarding_screen.dart';
 import '../onboarding/onboarding_chat_screen.dart';
@@ -652,16 +653,16 @@ class _TrustDataTile extends StatelessWidget {
                     ),
               ),
               const SizedBox(height: 12),
-              _TrustBullet(
+              const _TrustBullet(
                 icon: Icons.storage_outlined,
                 text: 'Профиль, оси, задачи и заметки живут на устройстве.',
               ),
-              _TrustBullet(
+              const _TrustBullet(
                 icon: Icons.cloud_sync_outlined,
                 text: 'Cloud sync включается после входа и синхронизирует '
                     'изменения между устройствами.',
               ),
-              _TrustBullet(
+              const _TrustBullet(
                 icon: Icons.auto_awesome_outlined,
                 text: 'AI-запросы отправляют только нужный для генерации '
                     'контекст: цель, оси, задачи и выбранные заметки.',
