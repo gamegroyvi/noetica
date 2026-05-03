@@ -18,6 +18,8 @@ import '../self/self_screen.dart';
 import '../settings/settings_screen.dart';
 import '../tasks/tasks_screen.dart';
 import '../tools/tools_screen.dart';
+import '../tools/menu/menu_generator_screen.dart';
+import '../roadmap/roadmap_screen.dart';
 
 /// Layout breakpoints. Below `_kRailMin`: bottom navigation bar. Between
 /// `_kRailMin` and `_kRailExtended`: compact NavigationRail (icons only).
@@ -135,6 +137,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   static const _calendarIndex = 5;
   static const _toolsIndex = 6;
   static const _settingsIndex = 7;
+  static const _moreTabIndex = 3; // "Ещё" tab in the floating bar
 
   static const _screenNames = [
     'dashboard', 'self', 'tasks', 'journal',
@@ -147,6 +150,149 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     AnalyticsService.instance.track(AnalyticsEvents.screenViewed, {
       'screen': _screenNames[i],
     });
+  }
+
+  void _onMobileTabTap(int i) {
+    if (i == _moreTabIndex) {
+      _showMoreSheet();
+      return;
+    }
+    _switchTab(i);
+  }
+
+  void _showMoreSheet() {
+    final palette = context.palette;
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: palette.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 32,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: palette.muted.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                GridView.count(
+                  crossAxisCount: 4,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  mainAxisSpacing: 8,
+                  crossAxisSpacing: 8,
+                  children: [
+                    _MoreGridItem(
+                      icon: Icons.bookmark_border_outlined,
+                      label: 'Журнал',
+                      palette: palette,
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _openJournal();
+                      },
+                    ),
+                    _MoreGridItem(
+                      icon: Icons.calendar_today_outlined,
+                      label: 'Календарь',
+                      palette: palette,
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _openCalendar();
+                      },
+                    ),
+                    _MoreGridItem(
+                      icon: Icons.account_tree_outlined,
+                      label: 'База',
+                      palette: palette,
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const KnowledgeGraphScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _MoreGridItem(
+                      icon: Icons.auto_awesome_outlined,
+                      label: 'Ассистент',
+                      palette: palette,
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const ToolsScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _MoreGridItem(
+                      icon: Icons.rocket_launch_outlined,
+                      label: 'Роадмап',
+                      palette: palette,
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const RoadmapScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _MoreGridItem(
+                      icon: Icons.restaurant_menu_outlined,
+                      label: 'Меню',
+                      palette: palette,
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const MenuGeneratorScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _MoreGridItem(
+                      icon: Icons.timer_outlined,
+                      label: 'Pomodoro',
+                      palette: palette,
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        PomodoroSheet.show(context);
+                      },
+                    ),
+                    _MoreGridItem(
+                      icon: Icons.settings_outlined,
+                      label: 'Настройки',
+                      palette: palette,
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const SettingsScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   // Pages must be built lazily so the dashboard can receive callbacks
@@ -213,6 +359,11 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       selectedIcon: Icons.checklist,
       label: 'Задачи',
     ),
+    _Destination(
+      icon: Icons.grid_view_outlined,
+      selectedIcon: Icons.grid_view,
+      label: 'Ещё',
+    ),
   ];
 
   @override
@@ -228,7 +379,9 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       // Journal stays accessible via the AppBar bookmark icon. We clamp
       // the bar's selectedIndex so it doesn't break when index = 3 (would
       // happen if user navigated to journal then resized to mobile).
-      final mobileSelected = _index < _destinations.length ? _index : 0;
+      // Clamp to the first 3 real tabs; "Ещё" (index 3) is a menu trigger,
+      // not a real page — never show it as selected.
+      final mobileSelected = _index < _moreTabIndex ? _index : 0;
       final bottomSafe = MediaQuery.of(context).padding.bottom;
       // Telegram-style truly-floating capsule: drop the bottomNavigationBar
       // slot (which forced Scaffold to reserve a strip and made the bar
@@ -271,7 +424,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                         palette: palette,
                         selectedIndex: mobileSelected,
                         destinations: _destinations,
-                        onDestinationSelected: _switchTab,
+                        onDestinationSelected: _onMobileTabTap,
                       ),
                     ),
                     const SizedBox(width: kFloatingFabGap),
@@ -847,4 +1000,52 @@ class _PentagonPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _PentagonPainter oldDelegate) =>
       oldDelegate.fill != fill || oldDelegate.stroke != stroke;
+}
+
+class _MoreGridItem extends StatelessWidget {
+  const _MoreGridItem({
+    required this.icon,
+    required this.label,
+    required this.palette,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final NoeticaPalette palette;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: palette.fg.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: palette.fg, size: 22),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: palette.fg,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
 }

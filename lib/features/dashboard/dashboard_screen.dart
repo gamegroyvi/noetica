@@ -23,7 +23,6 @@ import '../roadmap/roadmap_screen.dart';
 import '../self/self_screen.dart';
 import '../settings/settings_screen.dart';
 import '../tasks/tasks_screen.dart';
-import '../tools/tools_screen.dart';
 import 'widgets/activity_heatmap.dart';
 import 'widgets/dashboard_stats.dart';
 import 'widgets/mini_tree_card.dart';
@@ -157,43 +156,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         leadingWidth: 48,
         title: const Text('Сейчас'),
         actions: [
-          if (!isDesktop)
-            IconButton(
-              tooltip: 'Журнал',
-              icon: const Icon(Icons.bookmark_border_outlined),
-              onPressed: _openJournal,
-            ),
-          if (!isDesktop)
-            IconButton(
-              tooltip: 'База знаний',
-              icon: const Icon(Icons.account_tree_outlined),
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const KnowledgeGraphScreen(),
-                ),
-              ),
-            ),
-          if (!isDesktop)
-            IconButton(
-              tooltip: 'Ассистент',
-              icon: const Icon(Icons.auto_awesome_outlined),
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const ToolsScreen(),
-                ),
-              ),
-            ),
           IconButton(
             tooltip: 'Pomodoro',
             icon: const Icon(Icons.timer_outlined),
             onPressed: () => PomodoroSheet.show(context),
           ),
-          if (!isDesktop)
-            IconButton(
-              tooltip: 'Настройки',
-              icon: const Icon(Icons.settings_outlined),
-              onPressed: _openSettings,
-            ),
           const SizedBox(width: 4),
         ],
       ),
