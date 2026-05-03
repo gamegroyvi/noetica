@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'api_config.dart';
+
 /// Free-tier limits. Centralised so paywall checks and UI counters
 /// reference the same constants.
 abstract final class FreeLimits {
@@ -61,7 +63,10 @@ class PremiumService {
   }
 
   /// Whether the user currently has an active premium subscription.
+  /// In dev mode (DEV_SKIP_AUTH=true), always returns true so all
+  /// features are testable without a real subscription.
   bool get isPremium {
+    if (kDevSkipAuth) return true;
     if (_premiumUntil == null) return false;
     return _premiumUntil!.isAfter(DateTime.now().toUtc());
   }
