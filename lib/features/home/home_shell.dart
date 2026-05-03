@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../services/analytics_service.dart';
 import '../../services/pomodoro_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/brand_glyph.dart';
@@ -135,6 +136,19 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   static const _toolsIndex = 6;
   static const _settingsIndex = 7;
 
+  static const _screenNames = [
+    'dashboard', 'self', 'tasks', 'journal',
+    'knowledge', 'calendar', 'tools', 'settings',
+  ];
+
+  void _switchTab(int i) {
+    if (i == _index) return;
+    setState(() => _index = i);
+    AnalyticsService.instance.track(AnalyticsEvents.screenViewed, {
+      'screen': _screenNames[i],
+    });
+  }
+
   // Pages must be built lazily so the dashboard can receive callbacks
   // bound to *this* state instance (`setState`).
   //
@@ -147,8 +161,8 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   // or calendar entry) they push a route with a real back button.
   late final List<Widget> _pages = [
     DashboardScreen(
-      onOpenSelf: () => setState(() => _index = _selfIndex),
-      onOpenTasks: () => setState(() => _index = _tasksIndex),
+      onOpenSelf: () => _switchTab(_selfIndex),
+      onOpenTasks: () => _switchTab(_tasksIndex),
       onOpenJournal: _openJournal,
       onOpenCalendar: _openCalendar,
     ),
@@ -164,7 +178,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   void _openJournal() {
     final wide = MediaQuery.of(context).size.width >= _kRailMin;
     if (wide) {
-      setState(() => _index = _journalIndex);
+      _switchTab(_journalIndex);
     } else {
       Navigator.of(context).push(
         MaterialPageRoute<void>(builder: (_) => const NotesScreen()),
@@ -175,7 +189,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   void _openCalendar() {
     final wide = MediaQuery.of(context).size.width >= _kRailMin;
     if (wide) {
-      setState(() => _index = _calendarIndex);
+      _switchTab(_calendarIndex);
     } else {
       Navigator.of(context).push(
         MaterialPageRoute<void>(builder: (_) => const CalendarScreen()),
@@ -257,8 +271,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                         palette: palette,
                         selectedIndex: mobileSelected,
                         destinations: _destinations,
-                        onDestinationSelected: (i) =>
-                            setState(() => _index = i),
+                        onDestinationSelected: _switchTab,
                       ),
                     ),
                     const SizedBox(width: kFloatingFabGap),
@@ -283,22 +296,18 @@ class _HomeShellState extends ConsumerState<HomeShell> {
             extended: extended,
             destinations: _destinations,
             selectedIndex: _index,
-            onDestinationSelected: (i) => setState(() => _index = i),
+            onDestinationSelected: _switchTab,
             onAdd: () => showEntryEditor(context, ref),
             journalSelected: _index == _journalIndex,
-            onJournal: () => setState(() => _index = _journalIndex),
+            onJournal: () => _switchTab(_journalIndex),
             knowledgeSelected: _index == _knowledgeIndex,
             calendarSelected: _index == _calendarIndex,
-            onCalendar: () => setState(() => _index = _calendarIndex),
+            onCalendar: () => _switchTab(_calendarIndex),
             toolsSelected: _index == _toolsIndex,
-            onTools: () => setState(() => _index = _toolsIndex),
-            // Knowledge graph used to push a new route, which hid the
-            // sidebar and trapped the user (no back button on the
-            // graph screen). It's now a proper sidebar tab — selects
-            // page index 4 in the IndexedStack, sidebar stays visible.
-            onKnowledge: () => setState(() => _index = _knowledgeIndex),
+            onTools: () => _switchTab(_toolsIndex),
+            onKnowledge: () => _switchTab(_knowledgeIndex),
             settingsSelected: _index == _settingsIndex,
-            onSettings: () => setState(() => _index = _settingsIndex),
+            onSettings: () => _switchTab(_settingsIndex),
             onPomodoro: () => PomodoroSheet.show(context),
             palette: palette,
           ),
