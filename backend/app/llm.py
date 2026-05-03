@@ -207,8 +207,212 @@ def _user_prompt(
     return "\n\n".join(sections)
 
 
+def _fake_axes(
+    profile: ProfileInput,
+    interests: list[str],
+    count: int,
+) -> list[AxisDraft]:
+    source = [s.strip() for s in interests if s.strip()]
+    if not source and profile.aspiration.strip():
+        source = [profile.aspiration.strip()]
+    defaults = [
+        ("Тело", "◐", "Энергия, сон, движение и здоровье."),
+        ("Ум", "◇", "Обучение, ясность мышления и навыки."),
+        ("Дело", "■", "Карьера, проекты и деньги."),
+        ("Связи", "◯", "Семья, друзья и окружение."),
+        ("Смысл", "✦", "Ценности, рефлексия и долгий вектор."),
+        ("Творчество", "✎", "Идеи, письмо, музыка и эксперименты."),
+        ("Быт", "⌂", "Среда, порядок и личная система."),
+        ("Ритм", "☼", "Привычки и устойчивость недели."),
+    ]
+    axes: list[AxisDraft] = []
+    for i in range(count):
+        name, symbol, description = defaults[i % len(defaults)]
+        if i < len(source):
+            name = source[i].strip()[:40] or name
+            description = f"Рост вокруг направления «{name}»."
+        axes.append(AxisDraft(name=name, symbol=symbol, description=description))
+    return axes
+
+
+def _fake_roadmap(
+    goal: str,
+    axes: list[AxisInput],
+    horizon_days: int,
+    task_count: int,
+) -> tuple[list[RoadmapTask], str]:
+    tasks: list[RoadmapTask] = []
+    axis_ids = [a.id for a in axes]
+    for i in range(task_count):
+        primary = axis_ids[i % len(axis_ids)] if axis_ids else ""
+        secondary = axis_ids[(i + 1) % len(axis_ids)] if len(axis_ids) > 1 else primary
+        picked = [a for a in [primary, secondary] if a]
+        due = round((i + 1) * horizon_days / max(task_count, 1)) - 1
+        tasks.append(
+            RoadmapTask(
+                title=f"Шаг {i + 1}: продвинуть «{goal[:48]}»",
+                body=(
+                    "Тестовый roadmap без внешней LLM: сделай маленький "
+                    "измеримый шаг, зафиксируй результат и отметь, что "
+                    "помогло или мешало."
+                ),
+                steps=[
+                    "Определи конкретный результат на 30–60 минут",
+                    "Сделай действие без переключения контекста",
+                    "Запиши короткий вывод после выполнения",
+                ],
+                axis_ids=picked,
+                axis_weights={primary: 0.7, secondary: 0.3}
+                if primary and secondary and primary != secondary
+                else {},
+                xp=min(60, 20 + i * 5),
+                due_in_days=max(0, due),
+            )
+        )
+    return tasks, "DEV_FAKE_LLM: тестовый план создан без внешнего API."
+
+
+def _fake_menu_plan(goal: str, servings: int) -> MenuPlan:
+    days: list[MenuDay] = []
+    day_names = [
+        "Понедельник",
+        "Вторник",
+        "Среда",
+        "Четверг",
+        "Пятница",
+        "Суббота",
+        "Воскресенье",
+    ]
+    for day_index in range(1, 8):
+        days.append(
+            MenuDay(
+                day_name=day_names[day_index - 1],
+                breakfast=MenuMeal(
+                    name=f"Овсянка с ягодами {day_index}",
+                    ingredients=[
+                        MenuIngredient(name="овсянка", amount="60 г"),
+                        MenuIngredient(name="ягоды", amount="100 г"),
+                    ],
+                    calories=420,
+                    protein=18,
+                    fat=12,
+                    carbs=62,
+                ),
+                lunch=MenuMeal(
+                    name=f"Гречка с курицей {day_index}",
+                    ingredients=[
+                        MenuIngredient(name="гречка", amount="80 г"),
+                        MenuIngredient(name="курица", amount=f"{150 * servings} г"),
+                    ],
+                    calories=620,
+                    protein=42,
+                    fat=14,
+                    carbs=76,
+                ),
+                dinner=MenuMeal(
+                    name=f"Рыба с овощами {day_index}",
+                    ingredients=[
+                        MenuIngredient(name="овощи", amount="250 г"),
+                        MenuIngredient(name="рыба", amount=f"{140 * servings} г"),
+                    ],
+                    calories=480,
+                    protein=36,
+                    fat=18,
+                    carbs=38,
+                ),
+            )
+        )
+    return MenuPlan(
+        model="dev-fake-llm",
+        days=days,
+        daily_avg_calories=1520,
+        notes=f"DEV_FAKE_LLM: тестовое меню под цель «{goal}».",
+        shopping_list={
+            "Крупы": [MenuIngredient(name="овсянка", amount="420 г")],
+            "Фрукты": [MenuIngredient(name="ягоды", amount="700 г")],
+            "Белок": [
+                MenuIngredient(name="курица", amount=f"{1050 * servings} г"),
+                MenuIngredient(name="рыба", amount=f"{980 * servings} г"),
+            ],
+            "Овощи": [MenuIngredient(name="овощи", amount="1.75 кг")],
+        },
+    )
+
+
+def _fake_habits_plan(
+    intent: str,
+    duration_days: int,
+) -> HabitsPlan:
+    return HabitsPlan(
+        model="dev-fake-llm",
+        intent=intent,
+        summary="DEV_FAKE_LLM: микро-челлендж без внешнего API.",
+        days=[
+            HabitDay(
+                day_index=i,
+                title=f"День {i}: 2 минуты для «{intent[:40]}»",
+                why="Маленькое действие снижает порог входа и строит ритм.",
+            )
+            for i in range(1, duration_days + 1)
+        ],
+    )
+
+
+def _fake_coach(mode: str) -> dict:
+    if mode == "morning":
+        return {
+            "model": "dev-fake-llm",
+            "mode": "morning",
+            "greeting": "Доброе утро. Сегодня берём один ясный фокус.",
+            "focus": "Сделать самый маленький следующий шаг и зафиксировать вывод.",
+            "tasks": [
+                "Выбери одну задачу на 25 минут",
+                "Убери лишние вкладки перед стартом",
+                "После выполнения запиши короткую рефлексию",
+            ],
+            "motivation": "Noetica тестируется без внешней LLM и billing.",
+        }
+    return {
+        "model": "dev-fake-llm",
+        "mode": "evening",
+        "summary": "День закрыт: важно не количество, а связка действие → вывод.",
+        "wins": ["Ты дошёл до вечерней проверки"],
+        "improvements": ["Завтра заранее выбери один главный шаг"],
+        "encouragement": "Система растёт через маленькие честные итерации.",
+    }
+
+
+def _fake_generator_run(request: GeneratorRunRequest) -> GeneratorRunResponse:
+    items = [
+        GeneratorItem(
+            title=f"Тестовый пункт {i}",
+            body=(
+                "Сгенерировано локально через DEV_FAKE_LLM. "
+                "Подключи реальный ключ LLM для продуктивного результата."
+            ),
+            due_offset_days=i - 1,
+        )
+        for i in range(1, request.max_items + 1)
+    ]
+    return GeneratorRunResponse(
+        model="dev-fake-llm",
+        summary="DEV_FAKE_LLM: универсальный runtime работает без внешнего API.",
+        items=items,
+    )
+
+
 class LlmClient:
     def __init__(self) -> None:
+        self.dev_fake = os.getenv("DEV_FAKE_LLM", "").lower() in {
+            "1",
+            "true",
+            "yes",
+        }
+        if self.dev_fake:
+            self.api_key = "dev-fake"
+            self.base_url = "dev-fake"
+            self.model = "dev-fake-llm"
+            return
         self.api_key = os.getenv("GROQ_API_KEY", "")
         if not self.api_key:
             raise LlmConfigError(
@@ -229,6 +433,8 @@ class LlmClient:
         task_count: int,
         knowledge: KnowledgeInput | None = None,
     ) -> tuple[list[RoadmapTask], str]:
+        if self.dev_fake:
+            return _fake_roadmap(goal, axes, horizon_days, task_count)
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
@@ -308,6 +514,8 @@ class LlmClient:
         the user's free-form intents and produces names + symbols + a one-line
         description per axis. The Flutter UI lets the user edit them after.
         """
+        if self.dev_fake:
+            return _fake_axes(profile, interests, count)
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
@@ -368,6 +576,8 @@ class LlmClient:
         client. The model is asked for strict JSON; we hard-fail with a
         502 if it doesn't parse so callers can surface a retry button.
         """
+        if self.dev_fake:
+            return _fake_menu_plan(goal, servings)
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
@@ -428,6 +638,20 @@ class LlmClient:
         than stage 1 so we get terse recipes that respect the template
         rather than chatty re-introductions.
         """
+        if self.dev_fake:
+            items = ", ".join(
+                str(i.get("name", "")).strip()
+                for i in ingredients
+                if str(i.get("name", "")).strip()
+            )
+            return (
+                f"## {meal_name}\n\n"
+                f"Тестовый рецепт для цели `{goal}` на {servings} порц.\n\n"
+                f"**Ингредиенты:** {items or 'базовые продукты'}.\n\n"
+                "1. Подготовь ингредиенты.\n"
+                "2. Приготовь на среднем огне 10–15 минут.\n"
+                "3. Зафиксируй в Noetica, что подошло по вкусу."
+            )
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
@@ -497,6 +721,8 @@ class LlmClient:
         malformed entries silently and lets the route decide whether
         the remaining list is acceptable.
         """
+        if self.dev_fake:
+            return _fake_habits_plan(intent, duration_days)
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
@@ -563,6 +789,8 @@ class LlmClient:
         streak: int,
     ) -> dict:
         """Generate morning plan or evening reflection."""
+        if self.dev_fake:
+            return _fake_coach(mode)
         if mode == "morning":
             sys_prompt = morning_system_prompt()
             usr_prompt = morning_user_prompt(
@@ -634,6 +862,8 @@ class LlmClient:
         item is roughly 100 tokens (title + body + offset + JSON
         overhead) so 50 items × ~100 = 5 k tokens with headroom.
         """
+        if self.dev_fake:
+            return _fake_generator_run(request)
         try:
             user_prompt = render_template(
                 request.prompt_user, dict(request.inputs),

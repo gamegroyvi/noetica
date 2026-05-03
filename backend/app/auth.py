@@ -141,6 +141,20 @@ def verify_google_id_token(token: str) -> dict:
     google_sign_in returns one or the other depending on whether
     `serverClientId` is configured.
     """
+    if os.getenv("DEV_FAKE_GOOGLE_AUTH", "").lower() in {"1", "true", "yes"}:
+        parts = token.split(":", 2)
+        if parts[0] != "fake" or len(parts) < 2 or not parts[1]:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="DEV_FAKE_GOOGLE_AUTH expects token fake:<sub>:<email>.",
+            )
+        return {
+            "sub": parts[1],
+            "email": parts[2] if len(parts) > 2 else "dev@noetica.local",
+            "name": "Dev",
+            "picture": "",
+            "iss": "https://accounts.google.com",
+        }
     _ensure_config()
     try:
         # Verify signature + expiry, but skip the audience check inside
