@@ -8,7 +8,9 @@ import 'package:uuid/uuid.dart';
 import '../../data/models.dart';
 import '../../data/personal_knowledge_service.dart';
 import '../../providers.dart';
+import '../../services/premium_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/paywall_sheet.dart';
 import '../onboarding/onboarding_chat_screen.dart';
 
 const _kMinAxes = 3;
@@ -108,6 +110,11 @@ class _AxesEditorScreenState extends ConsumerState<AxesEditorScreen> {
 
   void _add() {
     if (_drafts.length >= _kMaxAxes) return;
+    final isPremium = ref.read(isPremiumProvider).valueOrNull ?? false;
+    if (!isPremium && _drafts.length >= FreeLimits.maxAxes) {
+      PaywallSheet.show(context, PaywallFeature.axes);
+      return;
+    }
     HapticFeedback.selectionClick();
     setState(() {
       _drafts.add(

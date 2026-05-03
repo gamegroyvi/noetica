@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models.dart';
 import '../../providers.dart';
 import '../../services/analytics_service.dart';
+import '../../services/premium_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/paywall_sheet.dart';
 import '../../utils/body_utils.dart';
 import '../../utils/subtask_utils.dart';
 import '../../utils/time_utils.dart';
@@ -265,6 +267,18 @@ class _EntryEditorFormState extends ConsumerState<_EntryEditorForm> {
   Future<void> _save() async {
     _commitTagInput();
     if (_title.text.trim().isEmpty) return;
+    // Premium gate: check active task count before creating a new task.
+    if (widget.existing == null && _kind == EntryKind.task) {
+      final isPremium = ref.read(isPremiumProvider).valueOrNull ?? false;
+      if (!isPremium) {
+        final entries = ref.read(entriesProvider).valueOrNull ?? const [];
+        final activeCount = entries.where((e) => e.isTask && !e.isCompleted).length;
+        if (activeCount >= FreeLimits.maxActiveTasks) {
+          PaywallSheet.show(context, PaywallFeature.tasks);
+          return;
+        }
+      }
+    }
     setState(() => _saving = true);
     try {
       final repo = await ref.read(repositoryProvider.future);

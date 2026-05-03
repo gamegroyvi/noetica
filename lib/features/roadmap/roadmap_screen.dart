@@ -8,6 +8,7 @@ import '../../providers.dart';
 import '../../services/analytics_service.dart';
 import '../../services/roadmap_api.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/paywall_sheet.dart';
 
 /// Goal → AI plan → preview → batch import flow.
 class RoadmapScreen extends ConsumerStatefulWidget {
@@ -74,6 +75,16 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
   Future<void> _generate() async {
     final goal = _goalCtrl.text.trim();
     if (goal.length < 3) return;
+    // Premium gate: check AI generation weekly limit.
+    final premiumSvc = ref.read(premiumServiceProvider);
+    final canGen = await premiumSvc.canGenerate();
+    if (!canGen) {
+      if (mounted) {
+        AnalyticsService.instance.track(AnalyticsEvents.aiGenerationBlocked);
+        PaywallSheet.show(context, PaywallFeature.aiGeneration);
+      }
+      return;
+    }
     final api = ref.read(roadmapApiProvider);
     final profile = ref.read(profileProvider).valueOrNull;
     final axes = ref.read(axesProvider).valueOrNull ?? const [];
@@ -105,6 +116,7 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
         'task_count': result.tasks.length,
         'model': result.model,
       });
+      await premiumSvc.recordGeneration();
       setState(() {
         _result = result;
         _picked = List<bool>.filled(result.tasks.length, true);
