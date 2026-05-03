@@ -1056,7 +1056,7 @@ def _axes_user_prompt(
         '{\n'
         '  "axes": [\n'
         '    {"name": "", "symbol": "", "description": ""}\n'
-        f"  ]\n"  # exactly {count} items
+        "  ]\n"  # exactly {count} items
         "}"
     )
     sections = [
