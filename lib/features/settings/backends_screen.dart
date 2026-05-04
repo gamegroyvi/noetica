@@ -46,6 +46,32 @@ class BackendsScreen extends ConsumerWidget {
                 style: TextStyle(color: palette.muted, height: 1.4),
               ),
             ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: palette.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: palette.line),
+                ),
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.shield_outlined, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Проверка `/healthz` подтверждает только доступность '
+                        'сервера. Данные синхронизируются после входа и '
+                        'отправляются на выбранный здесь backend.',
+                        style: TextStyle(color: palette.muted, height: 1.35),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
             for (final ep in state.endpoints)
               _BackendRow(
                 endpoint: ep,

@@ -39,10 +39,12 @@ const double _kRailExtended = 1100;
 const double kFloatingTabBarHeight = 52;
 const double kFloatingTabBarMargin = 10;
 const double kFloatingTabBarHorizontalInset = 16;
+
 /// Side length of the pentagon FAB that sits inline-right of the
 /// floating tabbar capsule.
 const double kFloatingFabSize = 52;
 const double kFloatingFabGap = 10;
+
 /// Total vertical room the bar visually occupies above the system safe
 /// area (capsule height + top + bottom margin). Used by screens that
 /// build their own ListView padding.
@@ -137,12 +139,20 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   static const _knowledgeIndex = 4;
   static const _calendarIndex = 5;
   static const _toolsIndex = 6;
-  static const _settingsIndex = 7;
+  static const _menuIndex = 7;
+  static const _settingsIndex = 8;
   static const _moreTabIndex = 3; // "Ещё" tab in the floating bar
 
   static const _screenNames = [
-    'dashboard', 'self', 'tasks', 'journal',
-    'knowledge', 'calendar', 'tools', 'settings',
+    'dashboard',
+    'self',
+    'tasks',
+    'journal',
+    'knowledge',
+    'calendar',
+    'tools',
+    'menu',
+    'settings',
   ];
 
   void _switchTab(int i) {
@@ -410,8 +420,8 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       final body3 = MediaQuery(
         data: MediaQuery.of(context).copyWith(
           padding: MediaQuery.of(context).padding.copyWith(
-                bottom:
-                    MediaQuery.of(context).padding.bottom + kFloatingTabBarReserve,
+                bottom: MediaQuery.of(context).padding.bottom +
+                    kFloatingTabBarReserve,
               ),
         ),
         child: body,
@@ -473,6 +483,8 @@ class _HomeShellState extends ConsumerState<HomeShell> {
             onCalendar: () => _switchTab(_calendarIndex),
             toolsSelected: _index == _toolsIndex,
             onTools: () => _switchTab(_toolsIndex),
+            menuSelected: _index == _menuIndex,
+            onMenu: () => _switchTab(_menuIndex),
             onKnowledge: () => _switchTab(_knowledgeIndex),
             settingsSelected: _index == _settingsIndex,
             onSettings: () => _switchTab(_settingsIndex),
@@ -593,6 +605,7 @@ class _DesktopSidebar extends StatelessWidget {
                         !knowledgeSelected &&
                         !calendarSelected &&
                         !toolsSelected &&
+                        !menuSelected &&
                         !settingsSelected,
                     extended: extended,
                     palette: palette,
@@ -651,33 +664,6 @@ class _DesktopSidebar extends StatelessWidget {
                 palette: palette,
                 onTap: onMenu,
               ),
-              const SizedBox(height: 12),
-              Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: extended ? 16 : 12,
-                  vertical: 4,
-                ),
-                child: extended
-                    ? FilledButton.icon(
-                        onPressed: onAdd,
-                        icon: const Icon(Icons.add, size: 18),
-                        label: const Text('Новая запись'),
-                      )
-                    : Center(
-                        child: FloatingActionButton.small(
-                          onPressed: onAdd,
-                          child: const Icon(Icons.add),
-                        ),
-                      ),
-              ),
-              const Spacer(),
-              Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: extended ? 16 : 0,
-                  vertical: 4,
-                ),
-                child: Divider(color: palette.line, height: 1),
-              ),
               _SidebarTile(
                 icon: Icons.timer_outlined,
                 selectedIcon: Icons.timer,
@@ -697,6 +683,24 @@ class _DesktopSidebar extends StatelessWidget {
                 onTap: onSettings,
               ),
               const SizedBox(height: 8),
+              Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: extended ? 16 : 12,
+                  vertical: 12,
+                ),
+                child: extended
+                    ? FilledButton.icon(
+                        onPressed: onAdd,
+                        icon: const Icon(Icons.add, size: 18),
+                        label: const Text('Новая запись'),
+                      )
+                    : Center(
+                        child: FloatingActionButton.small(
+                          onPressed: onAdd,
+                          child: const Icon(Icons.add),
+                        ),
+                      ),
+              ),
             ],
           ),
         ),
@@ -734,9 +738,7 @@ class _SidebarTile extends StatelessWidget {
         color: bg,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
-          side: selected
-              ? BorderSide(color: palette.line)
-              : BorderSide.none,
+          side: selected ? BorderSide(color: palette.line) : BorderSide.none,
         ),
         child: InkWell(
           onTap: onTap,
@@ -756,9 +758,8 @@ class _SidebarTile extends StatelessWidget {
                           label,
                           style: TextStyle(
                             color: fg,
-                            fontWeight: selected
-                                ? FontWeight.w700
-                                : FontWeight.w500,
+                            fontWeight:
+                                selected ? FontWeight.w700 : FontWeight.w500,
                             fontSize: 13,
                           ),
                           overflow: TextOverflow.ellipsis,

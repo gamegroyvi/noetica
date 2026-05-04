@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'generator_input.dart';
+import 'generator_run_spec.dart';
 
 /// Lifecycle of a generator from the user's point of view.
 ///
@@ -37,6 +38,11 @@ class GeneratorManifest {
     this.author = '',
     this.inputs = const [],
     this.builder,
+    this.promptSystem = '',
+    this.promptUser = '',
+    this.maxItems = 15,
+    this.temperature = 0.6,
+    this.importSpec = const GeneratorImportSpec(),
   });
 
   /// Stable identifier used for analytics, deep-links and the future
@@ -60,12 +66,38 @@ class GeneratorManifest {
 
   /// Optional bespoke screen builder. Used while we migrate hand-coded
   /// generators to the manifest runtime — not part of the long-term
-  /// schema. `null` means "render with the universal runtime", which
-  /// today only works for tools that have a typed manifest body.
+  /// schema. `null` means "render with the universal runtime"
+  /// (`GeneratorRunScreen`).
   final WidgetBuilder? builder;
+
+  /// System-role prompt template. May contain `{input_id}` markers
+  /// that the backend resolves against form values. For axis-ref
+  /// inputs the runtime adds a `{<id>_name}` companion key with the
+  /// human-readable axis name, so authors can write either
+  /// `{axis_id}` (the id) or `{axis_id_name}` (the label).
+  final String promptSystem;
+  final String promptUser;
+
+  /// Soft cap on item count requested from the LLM. Server clamps
+  /// to its own ≤ 50 ceiling.
+  final int maxItems;
+
+  /// LLM sampling temperature. 0.0 = deterministic, 1.5 = adventurous.
+  /// Server clamps to its own [0, 1.5] range.
+  final double temperature;
+
+  /// What the runtime should do with the items the LLM returned.
+  final GeneratorImportSpec importSpec;
 
   bool get isInteractable =>
       status == GeneratorStatus.available || status == GeneratorStatus.beta;
+
+  /// True when the manifest carries enough metadata to be executed by
+  /// the universal runtime (`GeneratorRunScreen`). Bespoke `builder`
+  /// generators (currently «Меню недели» with its two-stage flow) skip
+  /// this check.
+  bool get hasUniversalRuntime =>
+      promptSystem.isNotEmpty && promptUser.isNotEmpty;
 }
 
 /// Read-only catalog of generators known to the app. The list is the
@@ -91,10 +123,9 @@ abstract class GeneratorRegistry {
   }
 }
 
-/// In-process registry holding only the compiled-in builtins. Future
-/// phases will compose a `CompositeRegistry` that reads from this
-/// builtin registry plus a `UserGeneratorRegistry` (SharedPreferences
-/// backed) plus a `MarketplaceRegistry` (network backed).
+/// In-process registry holding only the compiled-in builtins. The
+/// `CompositeGeneratorRegistry` below combines this with the user's
+/// authored manifests; future phases add a `MarketplaceRegistry`.
 class BuiltinGeneratorRegistry extends GeneratorRegistry {
   BuiltinGeneratorRegistry(this._items);
 
@@ -102,4 +133,26 @@ class BuiltinGeneratorRegistry extends GeneratorRegistry {
 
   @override
   List<GeneratorManifest> list() => List.unmodifiable(_items);
+}
+
+/// Registry composed of multiple sources. Order matters: builtins
+/// first (their ids are guaranteed unique), user manifests after
+/// (so a custom tool with the same display name as a builtin still
+/// shows up — its id is `user/<uuid>`, never collides).
+class CompositeGeneratorRegistry extends GeneratorRegistry {
+  CompositeGeneratorRegistry(this._sources);
+
+  final List<GeneratorRegistry> _sources;
+
+  @override
+  List<GeneratorManifest> list() {
+    final out = <GeneratorManifest>[];
+    final seen = <String>{};
+    for (final src in _sources) {
+      for (final m in src.list()) {
+        if (seen.add(m.id)) out.add(m);
+      }
+    }
+    return List.unmodifiable(out);
+  }
 }

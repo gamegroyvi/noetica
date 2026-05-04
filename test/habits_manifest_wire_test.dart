@@ -32,12 +32,38 @@ void main() {
       expect(f.multiline, isTrue);
     });
 
-    test('manifest is registered as available with a builder', () {
+    test('manifest is registered as available with universal runtime', () {
       final manifest = defaultBuiltinManifests()
           .firstWhere((m) => m.id == 'micro-habits');
       expect(manifest.status, GeneratorStatus.available);
-      expect(manifest.builder, isNotNull);
+      // Migrated to /tools/run — no bespoke builder anymore.
+      expect(manifest.builder, isNull);
+      expect(manifest.hasUniversalRuntime, isTrue);
       expect(manifest.inputs, isNotEmpty);
+    });
+
+    test('prompt template references known input ids only', () {
+      final manifest = defaultBuiltinManifests()
+          .firstWhere((m) => m.id == 'micro-habits');
+      final fieldIds = manifest.inputs.map((f) => f.id).toSet();
+      // Add the auto-generated `<axis_id>_name` companion the runtime
+      // injects for every axis-ref input.
+      for (final f in manifest.inputs) {
+        if (f is GeneratorInputAxisRef) fieldIds.add('${f.id}_name');
+      }
+      // Walk all `{key}` placeholders in both prompt templates;
+      // each must be backed by an input id (or its `_name` companion).
+      final placeholders = RegExp(r'\{([A-Za-z0-9_\-]+)\}')
+          .allMatches('${manifest.promptSystem}\n${manifest.promptUser}')
+          .map((m) => m.group(1)!)
+          .toSet();
+      for (final p in placeholders) {
+        expect(
+          fieldIds,
+          contains(p),
+          reason: 'prompt references {$p} but no such input field exists',
+        );
+      }
     });
 
     test('HabitsPlan.fromJson tolerates missing fields', () {

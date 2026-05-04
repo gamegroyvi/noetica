@@ -15,6 +15,57 @@ class _AxisDraft {
   String description;
 }
 
+class _KickoffStep extends StatelessWidget {
+  const _KickoffStep({
+    required this.palette,
+    required this.icon,
+    required this.title,
+    required this.body,
+  });
+
+  final NoeticaPalette palette;
+  final IconData icon;
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: palette.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: palette.line),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: palette.fg, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: palette.fg,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  body,
+                  style: TextStyle(color: palette.muted, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 const _fallbackPresets = <Map<String, String>>[
   {'name': 'Тело', 'symbol': '◐'},
   {'name': 'Ум', 'symbol': '◇'},
@@ -83,8 +134,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         if (_drafts.length < 3) {
           for (final p in _fallbackPresets) {
             if (_drafts.length >= 3) break;
-            if (_drafts.any(
-                (d) => d.name.toLowerCase() == p['name']!.toLowerCase())) {
+            if (_drafts
+                .any((d) => d.name.toLowerCase() == p['name']!.toLowerCase())) {
               continue;
             }
             _drafts.add(_AxisDraft(name: p['name']!, symbol: p['symbol']!));
@@ -112,45 +163,94 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     if (aspiration.isEmpty) return;
     if (!mounted) return;
     final palette = context.palette;
-    final accept = await showDialog<bool>(
+    await showModalBottomSheet<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: palette.bg,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-          side: BorderSide(color: palette.line),
-        ),
-        title: Text(
-          'Сразу набросать план?',
-          style: TextStyle(color: palette.fg),
-        ),
-        content: Text(
-          'AI разложит «$aspiration» на 4–10 конкретных задач, '
-          'привязанных к осям, которые ты только что собрала. '
-          'Промпт уже заполнен — можно отредактировать, прежде чем '
-          'запускать генерацию.',
-          style: TextStyle(color: palette.muted, height: 1.4),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text('Позже', style: TextStyle(color: palette.muted)),
+      isScrollControlled: true,
+      backgroundColor: palette.bg,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: palette.line,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                'Система готова',
+                style: TextStyle(
+                  color: palette.fg,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  height: 1.1,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Следующий шаг — превратить цель «$aspiration» в первые задачи. '
+                'Так dashboard сразу покажет фокус дня, а не пустой экран.',
+                style: TextStyle(color: palette.muted, height: 1.45),
+              ),
+              const SizedBox(height: 16),
+              _KickoffStep(
+                palette: palette,
+                icon: Icons.auto_awesome,
+                title: 'AI делает план',
+                body:
+                    'С учётом препятствий, времени, энергии и стиля поддержки.',
+              ),
+              const SizedBox(height: 8),
+              _KickoffStep(
+                palette: palette,
+                icon: Icons.check_circle_outline,
+                title: 'Ты импортируешь задачи',
+                body: 'После этого верх dashboard станет “что делать сейчас”.',
+              ),
+              const SizedBox(height: 18),
+              FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(48),
+                  backgroundColor: palette.fg,
+                  foregroundColor: palette.bg,
+                ),
+                onPressed: () {
+                  Navigator.of(ctx).pop();
+                  Navigator.of(context).push(MaterialPageRoute<void>(
+                    builder: (_) => RoadmapScreen(
+                      initialGoal: aspiration,
+                      autoGenerate: true,
+                      kickoffMode: true,
+                    ),
+                  ));
+                },
+                icon: const Icon(Icons.route_outlined),
+                label: const Text('Сгенерировать первый план'),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                style: TextButton.styleFrom(
+                  minimumSize: const Size.fromHeight(44),
+                  foregroundColor: palette.muted,
+                ),
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Позже, открыть dashboard'),
+              ),
+            ],
           ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: palette.fg,
-              foregroundColor: palette.bg,
-            ),
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Сгенерировать'),
-          ),
-        ],
+        ),
       ),
     );
-    if (accept != true || !mounted) return;
-    await Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (_) => const RoadmapScreen(),
-    ));
   }
 
   void _addAxis() {
@@ -191,8 +291,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         axes.add(LifeAxis(
           id: uuid.v4(),
           name: clean[i].name.trim(),
-          symbol:
-              clean[i].symbol.trim().isEmpty ? '·' : clean[i].symbol.trim(),
+          symbol: clean[i].symbol.trim().isEmpty ? '·' : clean[i].symbol.trim(),
           position: i,
           createdAt: DateTime.now(),
         ));
@@ -272,7 +371,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               Text(
                 widget.seedInterests.isEmpty
                     ? 'Опиши свои оси роста'
-                    : (_generating ? 'AI придумывает оси…' : 'Твои личные оси'),
+                    : (_generating
+                        ? 'AI собирает твою систему…'
+                        : 'Твоя система роста'),
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 8),
@@ -282,8 +383,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     : (_generationError != null
                         ? 'Не удалось связаться с AI: $_generationError. Ниже — запасные оси, отредактируй как хочешь.'
                         : (_generating
-                            ? 'Из ${widget.seedInterests.length} твоих направлений AI рисует персональную пентаграмму…'
-                            : 'Сгенерировано на ${_model.isEmpty ? "AI" : _model}. Переименуй, убери лишние, добавь свои. От 3 до 8.')),
+                            ? 'Из твоей цели, контекста и препятствий AI делает 5 понятных направлений жизни…'
+                            : 'Сгенерировано на ${_model.isEmpty ? "AI" : _model}. Оставь 3–8 направлений, которые реально хочется прокачивать.')),
                 style: Theme.of(context)
                     .textTheme
                     .bodyMedium
@@ -296,9 +397,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   child: TextButton.icon(
                     onPressed: _generating ? null : _generateAxes,
                     icon: const Icon(Icons.refresh, size: 16),
-                    label: Text(_generating
-                        ? 'Генерирую…'
-                        : 'Перегенерировать оси'),
+                    label: Text(
+                        _generating ? 'Генерирую…' : 'Перегенерировать оси'),
                   ),
                 ),
               ],
@@ -325,9 +425,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                           index: i,
                           draft: _drafts[i],
                           onChanged: () => setState(() {}),
-                          onRemove: _drafts.length > 3
-                              ? () => _removeAxis(i)
-                              : null,
+                          onRemove:
+                              _drafts.length > 3 ? () => _removeAxis(i) : null,
                         ),
                       ),
               ),
@@ -347,9 +446,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 child: FilledButton(
                   onPressed: (_saving || _generating) ? null : _finish,
                   child: Text(
-                    _saving
-                        ? '…'
-                        : (canPop ? 'Сохранить' : 'Создать пентаграмму'),
+                    _saving ? '…' : (canPop ? 'Сохранить' : 'Создать систему'),
                   ),
                 ),
               ),

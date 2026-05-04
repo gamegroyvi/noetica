@@ -12,7 +12,16 @@ import '../../widgets/paywall_sheet.dart';
 
 /// Goal → AI plan → preview → batch import flow.
 class RoadmapScreen extends ConsumerStatefulWidget {
-  const RoadmapScreen({super.key});
+  const RoadmapScreen({
+    super.key,
+    this.initialGoal,
+    this.autoGenerate = false,
+    this.kickoffMode = false,
+  });
+
+  final String? initialGoal;
+  final bool autoGenerate;
+  final bool kickoffMode;
 
   @override
   ConsumerState<RoadmapScreen> createState() => _RoadmapScreenState();
@@ -29,40 +38,21 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
   List<bool>? _picked;
   String? _error;
   bool _importing = false;
-  // True after the user explicitly cleared the prefilled aspiration.
-  // Suppresses re-prefill until they navigate away.
   bool _prefilled = false;
+  bool _autoGenerateQueued = false;
 
   @override
   void initState() {
     super.initState();
-    // Prefill the goal field with the user's onboarding aspiration on
-    // first build. Without this the user lands on an empty prompt and
-    // has to retype something they already told us at signup. The
-    // "Из онбординга" / "Очистить" chip lets them wipe it if needed.
+    final initialGoal = widget.initialGoal?.trim() ?? '';
+    if (initialGoal.isNotEmpty) {
+      _goalCtrl.text = initialGoal;
+      _prefilled = true;
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final profile = ref.read(profileProvider).valueOrNull;
-      final aspiration = profile?.aspiration.trim() ?? '';
-      if (aspiration.isNotEmpty && _goalCtrl.text.isEmpty && !_prefilled) {
-        setState(() {
-          _goalCtrl.text = aspiration;
-          _prefilled = true;
-          // Smart defaults: scale task count + horizon by weekly hours.
-          // 0–5 ч/нед → 30 дней, 4 задачи; 6–14 → 30/6 (current default);
-          // 15+ → 90/10 (must match `_SegmentedRow` options 7/30/90
-          // so the selected chip is visually highlighted — using 60
-          // here left no button selected).
-          final hours = profile?.weeklyHours ?? 0;
-          if (hours <= 5) {
-            _horizonDays = 30;
-            _taskCount = 4;
-          } else if (hours >= 15) {
-            _horizonDays = 90;
-            _taskCount = 10;
-          }
-        });
-      }
+      _applyProfileDefaults();
+      _maybeAutoGenerate();
     });
   }
 
@@ -70,6 +60,33 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
   void dispose() {
     _goalCtrl.dispose();
     super.dispose();
+  }
+
+  void _applyProfileDefaults() {
+    final profile = ref.read(profileProvider).valueOrNull;
+    final aspiration = profile?.aspiration.trim() ?? '';
+    final shouldPrefill = aspiration.isNotEmpty && _goalCtrl.text.isEmpty;
+    final hours = profile?.weeklyHours ?? 0;
+    setState(() {
+      if (shouldPrefill) {
+        _goalCtrl.text = aspiration;
+        _prefilled = true;
+      }
+      if (hours <= 5) {
+        _horizonDays = 30;
+        _taskCount = 4;
+      } else if (hours >= 15) {
+        _horizonDays = 90;
+        _taskCount = 10;
+      }
+    });
+  }
+
+  void _maybeAutoGenerate() {
+    if (!widget.autoGenerate || _autoGenerateQueued) return;
+    if (_goalCtrl.text.trim().length < 3) return;
+    _autoGenerateQueued = true;
+    _generate();
   }
 
   Future<void> _generate() async {
@@ -87,7 +104,11 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
     }
     final api = ref.read(roadmapApiProvider);
     final profile = ref.read(profileProvider).valueOrNull;
-    final axes = ref.read(axesProvider).valueOrNull ?? const [];
+    var axes = ref.read(axesProvider).valueOrNull ?? const <LifeAxis>[];
+    if (axes.length < 3) {
+      final repo = await ref.read(repositoryProvider.future);
+      axes = await repo.listAxes();
+    }
     if (axes.length < 3) {
       setState(() {
         _stage = _Stage.error;
@@ -211,12 +232,14 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
       padding: const EdgeInsets.all(20),
       children: [
         Text(
-          'Опиши цель',
+          widget.kickoffMode ? 'Первый AI-план' : 'Опиши цель',
           style: Theme.of(context).textTheme.headlineSmall,
         ),
         const SizedBox(height: 6),
         Text(
-          'Чем конкретнее — тем точнее план. Например: «Хочу пробежать полумарафон через 3 месяца, текущая форма средняя».',
+          widget.kickoffMode
+              ? 'Мы уже взяли цель из онбординга. Проверь, если хочешь — поправь, и сгенерируй задачи.'
+              : 'Чем конкретнее — тем точнее план. Например: «Хочу пробежать полумарафон через 3 месяца, текущая форма средняя».',
           style: Theme.of(context)
               .textTheme
               .bodyMedium
@@ -244,8 +267,8 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
               TextButton.icon(
                 style: TextButton.styleFrom(
                   foregroundColor: palette.muted,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   minimumSize: const Size(0, 28),
                 ),
                 onPressed: () {
@@ -529,9 +552,8 @@ class _SegmentedRow extends StatelessWidget {
                     label,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: v == value ? palette.bg : palette.fg,
-                          fontWeight: v == value
-                              ? FontWeight.w600
-                              : FontWeight.w400,
+                          fontWeight:
+                              v == value ? FontWeight.w600 : FontWeight.w400,
                         ),
                   ),
                 ),

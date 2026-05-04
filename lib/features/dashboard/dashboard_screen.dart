@@ -7,21 +7,21 @@ import '../../providers.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/body_utils.dart';
 import '../../utils/plural.dart';
+import '../../utils/subtask_utils.dart';
 import '../../utils/time_utils.dart';
 import '../../widgets/brand_glyph.dart';
 import '../../services/weekly_reflection_service.dart';
 import '../calendar/calendar_screen.dart';
 import '../calendar/day_detail_sheet.dart';
+import '../coach/coach_screen.dart';
 import '../entry/entry_editor_sheet.dart';
-import '../home/home_shell.dart';
+import '../home/home_shell.dart' show kFloatingTabBarReserve;
 import '../knowledge/knowledge_graph_screen.dart';
-import '../notes/notes_screen.dart';
 import '../pomodoro/pomodoro_sheet.dart';
-import '../reflection/reflection_sheet.dart';
+import '../reflection/reflection_sheet.dart' show toggleTaskWithReflection;
 import '../reflection/weekly_reflection_sheet.dart';
 import '../roadmap/roadmap_screen.dart';
 import '../self/self_screen.dart';
-import '../settings/settings_screen.dart';
 import '../tasks/tasks_screen.dart';
 import 'widgets/activity_heatmap.dart';
 import 'widgets/dashboard_stats.dart';
@@ -97,17 +97,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
   }
 
-  void _openJournal() {
-    final cb = widget.onOpenJournal;
-    if (cb != null) {
-      cb();
-    } else {
-      Navigator.of(context).push(
-        MaterialPageRoute<void>(builder: (_) => const NotesScreen()),
-      );
-    }
-  }
-
   /// Tasks live in the primary-tab rail (index 1 in HomeShell), so a tab
   /// switch works everywhere. We still fall back to a push when the
   /// dashboard is hosted outside the shell.
@@ -120,12 +109,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         MaterialPageRoute<void>(builder: (_) => const TasksScreen()),
       );
     }
-  }
-
-  void _openSettings() {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
-    );
   }
 
   void _openCalendar() {
@@ -145,7 +128,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final entriesAsync = ref.watch(entriesProvider);
     final axesAsync = ref.watch(axesProvider);
     final profileAsync = ref.watch(profileProvider);
-    final isDesktop = MediaQuery.of(context).size.width >= 900;
 
     return Scaffold(
       appBar: AppBar(
@@ -175,8 +157,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             return _OnboardingHints(
               palette: palette,
               profile: profileAsync.valueOrNull,
-              onCreateEntry: () =>
-                  showEntryEditor(context, ref).then((_) {
+              onCreateEntry: () => showEntryEditor(context, ref).then((_) {
                 if (!mounted) return;
                 setState(() {});
               }),
@@ -209,8 +190,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   return b.createdAt.compareTo(a.createdAt);
                 });
 
-          final overdue =
-              activeTasks.where((t) => t.dueAt != null && t.dueAt!.isBefore(now));
+          final overdue = activeTasks
+              .where((t) => t.dueAt != null && t.dueAt!.isBefore(now));
           final dueToday = activeTasks.where((t) =>
               t.dueAt != null &&
               !t.dueAt!.isBefore(today) &&
@@ -234,8 +215,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
           return ListView(
             // Reserve space for the floating capsule + FAB hovering above it.
-            padding: const
-                EdgeInsets.fromLTRB(16, 8, 16, 24 + kFloatingTabBarReserve),
+            padding: const EdgeInsets.fromLTRB(
+                16, 8, 16, 24 + kFloatingTabBarReserve),
             children: [
               if (_showWeeklyBanner) ...[
                 _WeeklyBanner(
@@ -246,11 +227,33 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ],
               _Greeting(
                 title: greeting,
-                subtitle: _todaySubtitle(stats, overdue.length, dueToday.length),
+                subtitle:
+                    _todaySubtitle(stats, overdue.length, dueToday.length),
                 palette: palette,
               ),
+              const SizedBox(height: 12),
+              _ProductLoopStrip(
+                palette: palette,
+                focus: focus,
+                todayCount: dueToday.length,
+                overdueCount: overdue.length,
+                onOpenRoadmap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const RoadmapScreen(),
+                  ),
+                ),
+                onOpenTasks: _openTasks,
+                onOpenCoach: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const CoachScreen(),
+                  ),
+                ),
+                onCreateReflection: () =>
+                    showEntryEditor(context, ref, initialKind: EntryKind.note),
+                onOpenSelf: _openSelf,
+              ),
               const SizedBox(height: 18),
-              _SectionHeader(label: 'СЕЙЧАС', palette: palette),
+              _SectionHeader(label: 'ФОКУС СЕЙЧАС', palette: palette),
               const SizedBox(height: 8),
               _NowFocusCard(
                 task: focus,
@@ -338,12 +341,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               // the top 4 so the header's "НЕДАВНО ЗАКРЫТО" promise
               // actually holds (otherwise a task created long ago but
               // just closed would be hidden behind recent creations).
-              for (final e in (entries
-                      .where((e) => e.isTask && e.isCompleted)
-                      .toList()
-                    ..sort((a, b) => (b.completedAt ?? b.updatedAt)
-                        .compareTo(a.completedAt ?? a.updatedAt)))
-                  .take(4))
+              for (final e
+                  in (entries.where((e) => e.isTask && e.isCompleted).toList()
+                        ..sort((a, b) => (b.completedAt ?? b.updatedAt)
+                            .compareTo(a.completedAt ?? a.updatedAt)))
+                      .take(4))
                 _CompactEntryRow(
                   entry: e,
                   axesById: axesById,
@@ -355,6 +357,102 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         },
       ),
     );
+  }
+}
+
+class _FocusSubtaskList extends ConsumerWidget {
+  const _FocusSubtaskList({
+    required this.task,
+    required this.subtasks,
+    required this.total,
+    required this.done,
+    required this.palette,
+  });
+
+  final Entry task;
+  final List<Subtask> subtasks;
+  final int total;
+  final int done;
+  final NoeticaPalette palette;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Container(
+      decoration: BoxDecoration(
+        color: palette.bg,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: palette.line),
+      ),
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                'Шаги $done/$total',
+                style: TextStyle(
+                  color: palette.muted,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const Spacer(),
+              if (total > subtasks.length)
+                Text(
+                  '+${total - subtasks.length}',
+                  style: TextStyle(color: palette.muted, fontSize: 11),
+                ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          for (var i = 0; i < subtasks.length; i++)
+            InkWell(
+              onTap: () => _toggle(ref, i),
+              borderRadius: BorderRadius.circular(6),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    Icon(
+                      subtasks[i].checked
+                          ? Icons.check_box
+                          : Icons.check_box_outline_blank,
+                      size: 16,
+                      color: subtasks[i].checked ? palette.muted : palette.fg,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        subtasks[i].text,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color:
+                              subtasks[i].checked ? palette.muted : palette.fg,
+                          fontSize: 12,
+                          decoration: subtasks[i].checked
+                              ? TextDecoration.lineThrough
+                              : null,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _toggle(WidgetRef ref, int position) async {
+    final next = toggleSubtask(task.body, position);
+    if (next == task.body) return;
+    final repo = await ref.read(repositoryProvider.future);
+    await repo
+        .upsertEntry(task.copyWith(body: next, updatedAt: DateTime.now()));
   }
 }
 
@@ -370,7 +468,8 @@ String _greeting(DateTime now, String? name) {
 String _todaySubtitle(DashboardStats stats, int overdue, int today) {
   final parts = <String>[];
   if (overdue > 0) {
-    parts.add('$overdue ${plural(overdue, "просрочена", "просрочено", "просрочено")}');
+    parts.add(
+        '$overdue ${plural(overdue, "просрочена", "просрочено", "просрочено")}');
   }
   if (today > 0) parts.add('$today на сегодня');
   if (parts.isEmpty) {
@@ -413,6 +512,157 @@ class _Greeting extends StatelessWidget {
           style: TextStyle(color: palette.muted, fontSize: 13),
         ),
       ],
+    );
+  }
+}
+
+class _ProductLoopStrip extends StatelessWidget {
+  const _ProductLoopStrip({
+    required this.palette,
+    required this.focus,
+    required this.todayCount,
+    required this.overdueCount,
+    required this.onOpenRoadmap,
+    required this.onOpenTasks,
+    required this.onOpenCoach,
+    required this.onCreateReflection,
+    required this.onOpenSelf,
+  });
+
+  final NoeticaPalette palette;
+  final Entry? focus;
+  final int todayCount;
+  final int overdueCount;
+  final VoidCallback onOpenRoadmap;
+  final VoidCallback onOpenTasks;
+  final VoidCallback onOpenCoach;
+  final VoidCallback onCreateReflection;
+  final VoidCallback onOpenSelf;
+
+  @override
+  Widget build(BuildContext context) {
+    final title = _loopTitle(focus, overdueCount, todayCount);
+    final subtitle = _loopSubtitle(focus, overdueCount, todayCount);
+    return Container(
+      decoration: BoxDecoration(
+        color: palette.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: palette.line),
+      ),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: focus == null ? palette.muted : palette.fg,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    color: palette.fg,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    height: 1.2,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: TextStyle(
+              color: palette.muted,
+              fontSize: 12,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _LoopChip(
+                icon: Icons.route_outlined,
+                label: 'План',
+                onTap: onOpenRoadmap,
+              ),
+              _LoopChip(
+                icon: Icons.check_circle_outline,
+                label: 'Задача',
+                onTap: onOpenTasks,
+              ),
+              _LoopChip(
+                icon: Icons.psychology_outlined,
+                label: 'AI Коуч',
+                onTap: onOpenCoach,
+              ),
+              _LoopChip(
+                icon: Icons.psychology_alt_outlined,
+                label: 'Рефлексия',
+                onTap: onCreateReflection,
+              ),
+              _LoopChip(
+                icon: Icons.radar_outlined,
+                label: 'Пентаграмма',
+                onTap: onOpenSelf,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _loopTitle(Entry? focus, int overdueCount, int todayCount) {
+    if (focus == null) return 'Сегодня без активной задачи';
+    if (overdueCount > 0) return 'Сначала закрываем просрочку';
+    if (todayCount > 0) return 'Сегодня есть фокус';
+    return 'Один следующий шаг';
+  }
+
+  String _loopSubtitle(Entry? focus, int overdueCount, int todayCount) {
+    if (focus == null) {
+      return 'Сгенерируй план или создай одну маленькую задачу — Noetica оживёт от первого действия.';
+    }
+    final count = overdueCount > 0 ? overdueCount : todayCount;
+    final prefix = overdueCount > 0
+        ? '$count ${plural(count, "просроченная", "просроченные", "просроченных")}'
+        : '$count ${plural(count, "задача", "задачи", "задач")} на сегодня';
+    return '$prefix. Сделай верхнюю карточку, отметь результат и вечером добавь рефлексию.';
+  }
+}
+
+class _LoopChip extends StatelessWidget {
+  const _LoopChip({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    return ActionChip(
+      avatar: Icon(icon, size: 16),
+      label: Text(label),
+      onPressed: onTap,
+      side: BorderSide(color: palette.line),
+      backgroundColor: palette.bg,
+      labelStyle: TextStyle(color: palette.fg, fontWeight: FontWeight.w700),
     );
   }
 }
@@ -503,8 +753,11 @@ class _NowFocusCard extends ConsumerWidget {
     }
     final t = task!;
     final overdue = t.dueAt != null && t.dueAt!.isBefore(DateTime.now());
-    final firstAxis =
-        t.axisIds.isNotEmpty ? axesById[t.axisIds.first] : null;
+    final firstAxis = t.axisIds.isNotEmpty ? axesById[t.axisIds.first] : null;
+    final markdownBody = stripDisplayMetadata(bodyToMarkdown(t.body));
+    final subtasks = parseSubtasks(markdownBody);
+    final prose = stripSubtasks(markdownBody).trim();
+    final progress = subtaskProgress(markdownBody);
 
     return InkWell(
       onTap: () => showEntryEditor(context, ref, existing: t),
@@ -556,24 +809,39 @@ class _NowFocusCard extends ConsumerWidget {
                 fontWeight: overdue ? FontWeight.w600 : FontWeight.w400,
               ),
             ),
+            if (prose.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Text(
+                prose,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: palette.muted,
+                  fontSize: 13,
+                  height: 1.35,
+                ),
+              ),
+            ],
+            if (subtasks.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _FocusSubtaskList(
+                task: t,
+                subtasks: subtasks.take(3).toList(),
+                total: subtasks.length,
+                done: progress.done,
+                palette: palette,
+              ),
+            ],
             const SizedBox(height: 14),
-            // Primary: mark as done. Secondary: snooze the deadline in
-            // case the user is acting on the task but not ready to
-            // finish yet ("иду в качалку — дай ещё час"). Pomodoro /
-            // focus timer is reachable from the AppBar icon; baking
-            // it into the card as a primary CTA made no sense for the
-            // majority of tasks (physical, chores, errands).
             Row(
               children: [
                 Expanded(
                   child: FilledButton.icon(
-                    onPressed: () =>
-                        toggleTaskWithReflection(context, ref, t),
+                    onPressed: () => toggleTaskWithReflection(context, ref, t),
                     icon: const Icon(Icons.check_rounded, size: 18),
                     label: const Text('Готово'),
                     style: FilledButton.styleFrom(
-                      padding:
-                          const EdgeInsets.symmetric(vertical: 10),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
                       backgroundColor: palette.fg,
                       foregroundColor: palette.bg,
                     ),
@@ -586,8 +854,7 @@ class _NowFocusCard extends ConsumerWidget {
                     icon: const Icon(Icons.schedule_rounded, size: 18),
                     label: const Text('Отложить'),
                     style: OutlinedButton.styleFrom(
-                      padding:
-                          const EdgeInsets.symmetric(vertical: 10),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
                       foregroundColor: palette.fg,
                       side: BorderSide(color: palette.line),
                     ),
@@ -628,6 +895,7 @@ class _NowFocusCard extends ConsumerWidget {
             onTap: () => Navigator.of(context).pop(d),
           );
         }
+
         return SafeArea(
           top: false,
           child: Column(
@@ -682,8 +950,7 @@ class _CompactTaskRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final overdue =
-        task.dueAt != null && task.dueAt!.isBefore(DateTime.now());
+    final overdue = task.dueAt != null && task.dueAt!.isBefore(DateTime.now());
     final firstAxis =
         task.axisIds.isNotEmpty ? axesById[task.axisIds.first] : null;
 
@@ -728,8 +995,7 @@ class _CompactTaskRow extends ConsumerWidget {
                 style: TextStyle(
                   color: overdue ? palette.fg : palette.muted,
                   fontSize: 11,
-                  fontWeight:
-                      overdue ? FontWeight.w600 : FontWeight.w400,
+                  fontWeight: overdue ? FontWeight.w600 : FontWeight.w400,
                 ),
               ),
             ],
@@ -794,7 +1060,9 @@ class _CompactEntryRow extends ConsumerWidget {
                 children: [
                   Text(
                     entry.title.isEmpty
-                        ? (entry.body.isEmpty ? '—' : bodyToPlainText(entry.body))
+                        ? (entry.body.isEmpty
+                            ? '—'
+                            : bodyToPlainText(entry.body))
                         : entry.title,
                     style: TextStyle(
                       color: palette.fg,
@@ -948,7 +1216,8 @@ class _OnboardingHints extends StatelessWidget {
     final name = profile?.name.trim() ?? '';
     final greeting = name.isEmpty ? 'Привет' : 'Привет, $name';
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24 + kFloatingTabBarReserve),
+      padding:
+          const EdgeInsets.fromLTRB(20, 12, 20, 24 + kFloatingTabBarReserve),
       children: [
         Text(
           greeting,
@@ -971,8 +1240,8 @@ class _OnboardingHints extends StatelessWidget {
           accent: const Color(0xFFA78BFA),
           title: 'Сгенерируй план задач',
           subtitle: aspiration.isEmpty
-              ? 'AI разложит твою цель на 4–10 конкретных задач, привязанных к осям пентаграммы.'
-              : 'AI разложит «$aspiration» на 4–10 задач. Поле уже заполнено — можно редактировать.',
+              ? 'AI разложит цель на конкретные задачи, ты выполнишь одну и вечером добавишь рефлексию.'
+              : 'AI разложит «$aspiration» на задачи. После выполнения Noetica учтёт рефлексию в следующем плане.',
           ctaLabel: 'Сгенерировать',
           onPressed: onOpenRoadmap,
         ),
