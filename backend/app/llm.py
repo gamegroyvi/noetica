@@ -80,6 +80,7 @@ def _knowledge_lines(knowledge: KnowledgeInput | None) -> list[str]:
             lines.append(f"  - {snippet}")
     return lines
 
+
 # Groq — free, fast, OpenAI-compatible.
 GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 GROQ_MODEL = "llama-3.3-70b-versatile"
@@ -137,7 +138,14 @@ def _system_prompt(task_count: int, horizon_days: int) -> str:
         '"steps": ["Прочитать главу про Riverpod", "Сделать пример '
         'TodoApp с Riverpod", "Добавить тесты на провайдеры"]}\n'
         "Skip `steps` (or leave empty) for trivial one-liners like "
-        '"Сходить на пробежку 3км".'
+        '"Сходить на пробежку 3км".\n\n'
+        "RESPECT USER CONTEXT. If the context says burnout/low energy, "
+        "make the first steps smaller and recovery-aware. If it says "
+        "founder/project, bias toward shipping, validation and focus. "
+        "If it says student/career switch, bias toward learning loops, "
+        "portfolio proof and interviews. Match the requested support "
+        "style from constraints: gentle, direct, strict, tiny steps or "
+        "challenges."
     )
 
 
@@ -168,7 +176,7 @@ def _user_prompt(
             profile_lines.append(f"  - {interest}: {label}")
 
     schema = (
-        '{\n'
+        "{\n"
         '  "summary": "one-sentence framing of the plan",\n'
         '  "tasks": [\n'
         '    {"title": "str", "body": "str (optional)", '
@@ -196,10 +204,11 @@ def _user_prompt(
     ]
     klines = _knowledge_lines(knowledge)
     if klines:
-        sections.append("CONTEXT (persistent knowledge about the user):\n" + "\n".join(klines))
+        sections.append(
+            "CONTEXT (persistent knowledge about the user):\n" + "\n".join(klines)
+        )
     sections.append(
-        "AXES (vertices of the user's pentagon, use their 'id' fields):\n"
-        + axes_lines
+        "AXES (vertices of the user's pentagon, use their 'id' fields):\n" + axes_lines
     )
     sections.append(
         f"Return JSON exactly in this shape (no extra keys, no fences):\n{schema}"
@@ -419,9 +428,7 @@ class LlmClient:
                 "No API key configured. Set the GROQ_API_KEY "
                 "environment variable (https://console.groq.com/keys)."
             )
-        self.base_url = os.getenv(
-            "LLM_BASE_URL", GROQ_BASE_URL
-        ).rstrip("/")
+        self.base_url = os.getenv("LLM_BASE_URL", GROQ_BASE_URL).rstrip("/")
         self.model = os.getenv("LLM_MODEL", GROQ_MODEL)
 
     async def generate_roadmap(
@@ -527,7 +534,10 @@ class LlmClient:
                 {
                     "role": "user",
                     "content": _axes_user_prompt(
-                        profile, interests, count, knowledge,
+                        profile,
+                        interests,
+                        count,
+                        knowledge,
                         regen_hint=regen_hint,
                         variation_seed=variation_seed,
                     ),
@@ -663,7 +673,10 @@ class LlmClient:
                 {
                     "role": "user",
                     "content": recipe_user_prompt(
-                        meal_name, ingredients, goal, servings,
+                        meal_name,
+                        ingredients,
+                        goal,
+                        servings,
                     ),
                 },
             ],
@@ -701,7 +714,7 @@ class LlmClient:
         if markdown.startswith("```"):
             markdown = markdown.strip("`")
             if markdown.lower().startswith("markdown"):
-                markdown = markdown[len("markdown"):]
+                markdown = markdown[len("markdown") :]
             markdown = markdown.strip()
         if not markdown:
             raise LlmUpstreamError(502, "Empty recipe content from LLM.")
@@ -830,16 +843,13 @@ class LlmClient:
         if response.status_code >= 400:
             raise LlmUpstreamError(
                 response.status_code,
-                f"LLM upstream error ({response.status_code}): "
-                f"{response.text[:500]}",
+                f"LLM upstream error ({response.status_code}): {response.text[:500]}",
             )
         data = response.json()
         try:
             content = data["choices"][0]["message"]["content"]
         except (KeyError, IndexError, TypeError) as exc:
-            raise LlmUpstreamError(
-                502, f"Malformed LLM response: {exc}"
-            ) from exc
+            raise LlmUpstreamError(502, f"Malformed LLM response: {exc}") from exc
 
         parsed = _parse_json(content)
         parsed["model"] = self.model
@@ -866,10 +876,12 @@ class LlmClient:
             return _fake_generator_run(request)
         try:
             user_prompt = render_template(
-                request.prompt_user, dict(request.inputs),
+                request.prompt_user,
+                dict(request.inputs),
             )
             system_prompt = render_template(
-                request.prompt_system, dict(request.inputs),
+                request.prompt_system,
+                dict(request.inputs),
             ) + schema_addendum(request.max_items)
         except KeyError as exc:
             # 422-shaped error — the route catches and rewraps.
@@ -899,8 +911,7 @@ class LlmClient:
         if response.status_code >= 400:
             raise LlmUpstreamError(
                 response.status_code,
-                f"LLM upstream error ({response.status_code}): "
-                f"{response.text[:500]}",
+                f"LLM upstream error ({response.status_code}): {response.text[:500]}",
             )
         data = response.json()
         try:
@@ -908,7 +919,8 @@ class LlmClient:
             finish = data["choices"][0].get("finish_reason")
         except (KeyError, IndexError, TypeError) as exc:
             raise LlmUpstreamError(
-                502, f"Malformed LLM response: {exc}: {data!r}",
+                502,
+                f"Malformed LLM response: {exc}: {data!r}",
             ) from exc
         if finish == "length":
             raise LlmUpstreamError(
@@ -943,7 +955,8 @@ def _normalize_run_response(
     items_raw = parsed.get("items") if isinstance(parsed, dict) else None
     if not isinstance(items_raw, list):
         raise LlmUpstreamError(
-            502, "LLM response missing `items` array.",
+            502,
+            "LLM response missing `items` array.",
         )
 
     cleaned: list[GeneratorItem] = []
@@ -978,7 +991,9 @@ def _normalize_run_response(
     if len(summary) > 500:
         summary = summary[:497] + "\u2026"
     return GeneratorRunResponse(
-        model=model, summary=summary, items=cleaned,
+        model=model,
+        summary=summary,
+        items=cleaned,
     )
 
 
@@ -1010,6 +1025,10 @@ def _axes_system_prompt(count: int) -> str:
         "Family / Work / Soul' unless the user literally listed those. "
         "Names must reflect THEIR phrasing.\n"
         "4. **Distinct symbols.** Each symbol used at most once.\n"
+        "5. **Use audience context.** Student/career-switch users need "
+        "learning/proof/interview axes; founders need project/market/focus "
+        "axes; burnout users need energy/recovery boundaries; discipline "
+        "users need rhythm/environment/accountability.\n"
         "\n"
         "Return STRICT JSON in the SAME language as the user's interests "
         "(Russian if Russian, English if English, etc.). Do not wrap in markdown fences. "
@@ -1053,7 +1072,7 @@ def _axes_user_prompt(
             "INTERESTS: (none provided — design from the aspiration alone)"
         )
     schema = (
-        '{\n'
+        "{\n"
         '  "axes": [\n'
         '    {"name": "", "symbol": "", "description": ""}\n'
         "  ]\n"  # exactly {count} items
@@ -1065,7 +1084,9 @@ def _axes_user_prompt(
     ]
     klines = _knowledge_lines(knowledge)
     if klines:
-        sections.append("CONTEXT (persistent knowledge about the user):\n" + "\n".join(klines))
+        sections.append(
+            "CONTEXT (persistent knowledge about the user):\n" + "\n".join(klines)
+        )
     sections.append(
         f"Design exactly {count} personalised growth axes. "
         "Names should reflect the user's real interests, not abstract life "
@@ -1130,9 +1151,7 @@ def _parse_json(content: str) -> dict[str, Any]:
     try:
         return json.loads(text)
     except json.JSONDecodeError as exc:
-        raise LlmUpstreamError(
-            502, f"LLM did not return valid JSON: {exc}"
-        ) from exc
+        raise LlmUpstreamError(502, f"LLM did not return valid JSON: {exc}") from exc
 
 
 def _normalize_tasks(
@@ -1347,8 +1366,7 @@ def _normalize_habits_plan(
     # raises 502 on `len(days) < requested`.
     days = days[:duration_days]
     days = [
-        HabitDay(day_index=i + 1, title=d.title, why=d.why)
-        for i, d in enumerate(days)
+        HabitDay(day_index=i + 1, title=d.title, why=d.why) for i, d in enumerate(days)
     ]
 
     summary = str(parsed.get("summary") or "").strip()[:400]

@@ -8,14 +8,6 @@ import '../../providers.dart';
 import '../../services/analytics_service.dart';
 import '../../theme/app_theme.dart';
 
-/// Chat-style 7-step onboarding. Each step is presented as an assistant
-/// "bubble" with predefined chip choices (single or multi-select) plus an
-/// optional free-text input — minimising how much the user has to type.
-///
-/// The set of fields collected is the same that the LLM expects on
-/// `/onboarding/axes` and `/roadmap/generate`:
-///   name, aspiration, interests, interest levels, pain points,
-///   weekly-hours, preferred work windows.
 class OnboardingChatScreen extends ConsumerStatefulWidget {
   const OnboardingChatScreen({super.key, this.existing, this.onDone});
 
@@ -27,72 +19,70 @@ class OnboardingChatScreen extends ConsumerStatefulWidget {
       _OnboardingChatScreenState();
 }
 
-class _OnboardingChatScreenState
-    extends ConsumerState<OnboardingChatScreen> {
+class _OnboardingChatScreenState extends ConsumerState<OnboardingChatScreen> {
   static const int _stepCount = 7;
   int _step = 0;
 
-  // Collected answers.
   String _name = '';
-  // Multi-select on the aspiration step — user wanted to be able to
-  // pick more than one goal and also add a custom one. Internally we
-  // still flatten this back into the single `aspiration` string the
-  // backend / LLM expects, by joining with "; ".
+  String _persona = '';
   final List<String> _aspirations = [];
   final List<String> _interests = [];
   final Map<String, String> _interestLevels = {};
   final List<String> _painPoints = [];
   int _weeklyHours = 5;
   final List<String> _windows = [];
+  String _supportStyle = '';
 
-  // Chat thread of "messages" — bot prompt + user reply pairs.
   final List<_ChatMsg> _thread = [];
 
-  // Per-step UI state.
   final _textCtrl = TextEditingController();
   final _customCtrl = TextEditingController();
   bool _customOpen = false;
-  // For interest-levels step we track which interest is being calibrated.
   int _levelIdx = 0;
   bool _saving = false;
 
-  // Suggestions.
+  static const _personaOptions = <String>[
+    'студент / учусь',
+    'джун / меняю карьеру',
+    'фаундер / свой проект',
+    'работаю и выгораю',
+    'хочу дисциплину',
+    'ищу новый вектор',
+  ];
   static const _aspirationOptions = <String>[
-    'поправить здоровье',
-    'сменить профессию',
-    'выучить новое',
-    'стать дисциплинированнее',
-    'развить отношения',
-    'найти баланс',
+    'выйти на новую работу',
     'запустить проект',
+    'стать стабильнее',
+    'восстановить энергию',
+    'прокачать навык',
+    'навести порядок в жизни',
+    'найти фокус',
   ];
   static const _interestOptions = <String>[
-    'учёба',
-    'код',
-    'дизайн',
-    'спорт',
-    'медитация',
-    'чтение',
-    'музыка',
-    'языки',
-    'кулинария',
+    'карьера / учёба',
+    'проект / бизнес',
+    'здоровье / энергия',
+    'дисциплина / ритм',
     'отношения',
-    'финансы',
+    'деньги',
     'творчество',
-    'карьера',
-    'семья',
+    'спокойствие',
+    'навыки / обучение',
+    'дом / быт',
+    'сообщество',
+    'смысл',
   ];
   static const _painOptions = <String>[
+    'хаос в голове',
     'прокрастинация',
-    'не хватает времени',
-    'нет цели',
     'усталость',
-    'перфекционизм',
-    'нет дисциплины',
+    'нет понятного плана',
+    'не хватает времени',
     'распыление',
-    'страх',
+    'перфекционизм',
     'выгорание',
     'отвлечения',
+    'нет поддержки',
   ];
   static const _windowOptions = <String>[
     'утром',
@@ -100,6 +90,13 @@ class _OnboardingChatScreenState
     'вечером',
     'ночью',
     'в выходные',
+  ];
+  static const _supportOptions = <String>[
+    'мягко и без давления',
+    'чётко и по делу',
+    'как строгий тренер',
+    'маленькими шагами',
+    'с челленджами',
   ];
 
   @override
@@ -110,14 +107,18 @@ class _OnboardingChatScreenState
       _name = e.name;
       if (e.aspiration.trim().isNotEmpty) {
         _aspirations.addAll(
-          e.aspiration.split(RegExp(r'[;,]')).map((s) => s.trim())
+          e.aspiration
+              .split(RegExp(r'[;,]'))
+              .map((s) => s.trim())
               .where((s) => s.isNotEmpty),
         );
       }
       _interests.addAll(e.interests);
       _interestLevels.addAll(e.interestLevels);
       _painPoints.addAll(
-        e.painPoint.isNotEmpty ? e.painPoint.split(',').map((s) => s.trim()) : const [],
+        e.painPoint.isNotEmpty
+            ? e.painPoint.split(',').map((s) => s.trim())
+            : const [],
       );
       _weeklyHours = e.weeklyHours;
     }
@@ -138,21 +139,21 @@ class _OnboardingChatScreenState
   String _questionFor(int step) {
     switch (step) {
       case 0:
-        return 'Привет. Я твой ассистент роста. Как тебя зовут?';
+        return 'Привет. Я быстро соберу контекст, чтобы AI не давал generic-план. Как тебя зовут и где ты сейчас?';
       case 1:
         return _name.isNotEmpty
-            ? 'Окей, ${_firstName(_name)}. Чего ты хочешь достичь в ближайший год?'
-            : 'Чего ты хочешь достичь в ближайший год?';
+            ? 'Окей, ${_firstName(_name)}. Куда целимся в ближайшие 3–12 месяцев?'
+            : 'Куда целимся в ближайшие 3–12 месяцев?';
       case 2:
-        return 'В каких сферах ты уже что-то делаешь? Выбери 3–8.';
+        return 'Какие 3–8 сфер сильнее всего влияют на эту цель и качество жизни?';
       case 3:
-        return 'Оцени свой текущий уровень в каждой. Это нужно, чтобы я подбирал задачи по силам.';
+        return 'Если хочешь, уточни уровень по сферам. Так задачи будут не слишком лёгкими и не слишком тяжёлыми.';
       case 4:
-        return 'Что тебе чаще всего мешает? Можно несколько.';
+        return 'Что сейчас чаще всего ломает прогресс? Можно несколько.';
       case 5:
-        return 'Сколько часов в неделю реально готов уделять?';
+        return 'Сколько часов в неделю реально есть без самообмана?';
       case 6:
-        return 'Когда тебе удобнее работать над этим?';
+        return 'Когда удобнее работать и каким тоном тебя поддерживать?';
       default:
         return '';
     }
@@ -161,29 +162,22 @@ class _OnboardingChatScreenState
   String _firstName(String full) =>
       full.trim().isEmpty ? '' : full.trim().split(RegExp(r'\s+')).first;
 
-  // ===== Validation =====
   bool get _canAdvance {
     switch (_step) {
       case 0:
-        return _name.trim().isNotEmpty;
+        return _name.trim().isNotEmpty && _persona.trim().isNotEmpty;
       case 1:
         return _aspirations.isNotEmpty;
       case 2:
         return _interests.length >= 3;
       case 3:
-        // Require each interest to have an explicit level picked.
-        // Before, this silently defaulted to 'novice' which meant the
-        // grade step could be skipped without the user realising —
-        // producing bad roadmap calibration downstream.
-        return _interests.isNotEmpty &&
-            _interests.every((i) =>
-                kInterestLevels.contains(_interestLevels[i]));
+        return true;
       case 4:
         return true;
       case 5:
         return _weeklyHours > 0;
       case 6:
-        return _windows.isNotEmpty;
+        return _windows.isNotEmpty && _supportStyle.trim().isNotEmpty;
     }
     return false;
   }
@@ -191,24 +185,23 @@ class _OnboardingChatScreenState
   String _userReplyFor(int step) {
     switch (step) {
       case 0:
-        return _name.trim();
+        return '${_name.trim()}; сейчас: $_persona';
       case 1:
         return _aspirations.join('; ');
       case 2:
         return _interests.join(', ');
       case 3:
-        return _interests
-            .map((i) =>
-                '$i: ${_levelRu(_interestLevels[i] ?? 'novice')}')
+        final rated = _interests
+            .where((i) => kInterestLevels.contains(_interestLevels[i]))
+            .map((i) => '$i: ${_levelRu(_interestLevels[i]!)}')
             .join('; ');
+        return rated.isEmpty ? 'пропустить грейды' : rated;
       case 4:
-        return _painPoints.isEmpty
-            ? 'ничего особенно'
-            : _painPoints.join(', ');
+        return _painPoints.isEmpty ? 'ничего особенно' : _painPoints.join(', ');
       case 5:
         return '$_weeklyHours ч/нед';
       case 6:
-        return _windows.join(', ');
+        return '${_windows.join(', ')}; стиль: $_supportStyle';
     }
     return '';
   }
@@ -239,10 +232,9 @@ class _OnboardingChatScreenState
       return;
     }
     setState(() {
-      // Pop the last bot message + last user message.
       _thread
-        ..removeLast() // current bot question
-        ..removeLast(); // previous user reply
+        ..removeLast()
+        ..removeLast();
       _step -= 1;
       _customOpen = false;
       _customCtrl.clear();
@@ -257,7 +249,8 @@ class _OnboardingChatScreenState
       final svc = ref.read(profileServiceProvider);
       final cleanLevels = <String, String>{
         for (final i in _interests)
-          i: _interestLevels[i] ?? 'novice',
+          if (kInterestLevels.contains(_interestLevels[i]))
+            i: _interestLevels[i]!,
       };
       final base = widget.existing ??
           UserProfile(
@@ -269,6 +262,11 @@ class _OnboardingChatScreenState
             weeklyHours: 5,
             updatedAt: DateTime.now(),
           );
+      final contextLines = <String>[
+        if (_persona.isNotEmpty) 'Контекст: $_persona',
+        if (_supportStyle.isNotEmpty) 'Стиль поддержки: $_supportStyle',
+        if (_windows.isNotEmpty) 'Время: ${_windows.join(", ")}',
+      ];
       final profile = base.copyWith(
         name: _name.trim(),
         aspiration: _aspirations.join('; '),
@@ -285,10 +283,9 @@ class _OnboardingChatScreenState
         summary: summary,
         goals: profile.aspiration.isEmpty ? const [] : [profile.aspiration],
         constraints: [
+          ...contextLines,
           'В неделю на развитие: ~${profile.weeklyHours} ч',
-          if (_windows.isNotEmpty) 'Время: ${_windows.join(", ")}',
-          if (_painPoints.isNotEmpty)
-            'Что мешает: ${_painPoints.join(", ")}',
+          if (_painPoints.isNotEmpty) 'Что мешает: ${_painPoints.join(", ")}',
         ],
       );
       AnalyticsService.instance.track(AnalyticsEvents.onboardingCompleted);
@@ -314,12 +311,13 @@ class _OnboardingChatScreenState
         .join(', ');
     final parts = <String>[
       if (profile.name.isNotEmpty) 'Зовут ${profile.name}.',
+      if (_persona.isNotEmpty) 'Сейчас: $_persona.',
       if (profile.aspiration.isNotEmpty) 'Цель: ${profile.aspiration}.',
       if (levelsBlurb.isNotEmpty) 'Сейчас: $levelsBlurb.',
-      if (_painPoints.isNotEmpty)
-        'Что мешает: ${_painPoints.join(", ")}.',
+      if (_painPoints.isNotEmpty) 'Что мешает: ${_painPoints.join(", ")}.',
       'Готов уделять около ${profile.weeklyHours} ч/нед.',
       if (_windows.isNotEmpty) 'Удобное время: ${_windows.join(", ")}.',
+      if (_supportStyle.isNotEmpty) 'Нужный стиль поддержки: $_supportStyle.',
     ];
     return parts.join(' ');
   }
@@ -389,10 +387,12 @@ class _OnboardingChatScreenState
     }
     switch (_step) {
       case 0:
-        return _TextReply(
+        return _IdentityReply(
           controller: _textCtrl,
-          hint: 'Имя',
-          onChange: (v) => setState(() => _name = v),
+          personaOptions: _personaOptions,
+          selectedPersona: _persona,
+          onNameChange: (v) => setState(() => _name = v),
+          onPersona: (v) => setState(() => _persona = v),
           onSubmit: _canAdvance ? _advance : null,
           palette: palette,
         );
@@ -411,16 +411,14 @@ class _OnboardingChatScreenState
             }
           }),
           customOpen: _customOpen,
-          onToggleCustom: () =>
-              setState(() => _customOpen = !_customOpen),
+          onToggleCustom: () => setState(() => _customOpen = !_customOpen),
           customCtrl: _customCtrl,
           onSubmitCustom: () {
             final v = _customCtrl.text.trim();
             if (v.isEmpty) return;
             setState(() {
               if (_aspirations
-                      .where(
-                          (e) => e.toLowerCase() == v.toLowerCase())
+                      .where((e) => e.toLowerCase() == v.toLowerCase())
                       .isEmpty &&
                   _aspirations.length < 6) {
                 _aspirations.add(v);
@@ -430,8 +428,7 @@ class _OnboardingChatScreenState
             });
           },
           palette: palette,
-          submitLabel:
-              _aspirations.isEmpty ? 'Выбери хотя бы одну' : 'Далее',
+          submitLabel: _aspirations.isEmpty ? 'Выбери хотя бы одну' : 'Далее',
           onSubmit: _aspirations.isEmpty ? null : _advance,
         );
       case 2:
@@ -447,33 +444,28 @@ class _OnboardingChatScreenState
               _interestLevels.remove(removed);
             } else if (_interests.length < 12) {
               _interests.add(v);
-              _interestLevels.putIfAbsent(v, () => 'novice');
             }
           }),
           customOpen: _customOpen,
-          onToggleCustom: () =>
-              setState(() => _customOpen = !_customOpen),
+          onToggleCustom: () => setState(() => _customOpen = !_customOpen),
           customCtrl: _customCtrl,
           onSubmitCustom: () {
             final v = _customCtrl.text.trim();
             if (v.isEmpty) return;
             setState(() {
               if (_interests
-                      .where(
-                          (e) => e.toLowerCase() == v.toLowerCase())
+                      .where((e) => e.toLowerCase() == v.toLowerCase())
                       .isEmpty &&
                   _interests.length < 12) {
                 _interests.add(v);
-                _interestLevels.putIfAbsent(v, () => 'novice');
               }
               _customOpen = false;
               _customCtrl.clear();
             });
           },
           palette: palette,
-          submitLabel: _canAdvance
-              ? 'Далее'
-              : 'Выбери ещё ${3 - _interests.length}',
+          submitLabel:
+              _canAdvance ? 'Далее' : 'Выбери ещё ${3 - _interests.length}',
           onSubmit: _canAdvance ? _advance : null,
         );
       case 3:
@@ -502,8 +494,7 @@ class _OnboardingChatScreenState
             }
           }),
           customOpen: _customOpen,
-          onToggleCustom: () =>
-              setState(() => _customOpen = !_customOpen),
+          onToggleCustom: () => setState(() => _customOpen = !_customOpen),
           customCtrl: _customCtrl,
           onSubmitCustom: () {
             final v = _customCtrl.text.trim();
@@ -530,25 +521,22 @@ class _OnboardingChatScreenState
           palette: palette,
         );
       case 6:
-        return _ChipsReply(
-          options: _windowOptions,
-          selected: _windows,
-          allowMultiple: true,
-          onPick: (v) => setState(() {
-            final idx = _windows
-                .indexWhere((e) => e.toLowerCase() == v.toLowerCase());
+        return _CadenceReply(
+          windowOptions: _windowOptions,
+          selectedWindows: _windows,
+          supportOptions: _supportOptions,
+          selectedSupport: _supportStyle,
+          onWindow: (v) => setState(() {
+            final idx =
+                _windows.indexWhere((e) => e.toLowerCase() == v.toLowerCase());
             if (idx >= 0) {
               _windows.removeAt(idx);
             } else {
               _windows.add(v);
             }
           }),
-          customOpen: false,
-          onToggleCustom: null,
-          customCtrl: null,
-          onSubmitCustom: null,
+          onSupport: (v) => setState(() => _supportStyle = v),
           palette: palette,
-          submitLabel: _canAdvance ? 'Готово' : 'Выбери хотя бы один',
           onSubmit: _canAdvance ? _advance : null,
         );
     }
@@ -607,59 +595,84 @@ class _Bubble extends StatelessWidget {
   }
 }
 
-class _TextReply extends StatelessWidget {
-  const _TextReply({
+class _IdentityReply extends StatelessWidget {
+  const _IdentityReply({
     required this.controller,
-    required this.hint,
-    required this.onChange,
+    required this.personaOptions,
+    required this.selectedPersona,
+    required this.onNameChange,
+    required this.onPersona,
     required this.onSubmit,
     required this.palette,
   });
 
   final TextEditingController controller;
-  final String hint;
-  final ValueChanged<String> onChange;
+  final List<String> personaOptions;
+  final String selectedPersona;
+  final ValueChanged<String> onNameChange;
+  final ValueChanged<String> onPersona;
   final VoidCallback? onSubmit;
   final NoeticaPalette palette;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Expanded(
-          child: TextField(
-            controller: controller,
-            autofocus: true,
-            onChanged: onChange,
-            onSubmitted: onSubmit == null ? null : (_) => onSubmit!(),
-            decoration: InputDecoration(
-              hintText: hint,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: palette.line),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: palette.line),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: palette.fg, width: 1.5),
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12, vertical: 12),
+        TextField(
+          controller: controller,
+          autofocus: true,
+          onChanged: onNameChange,
+          onSubmitted: onSubmit == null ? null : (_) => onSubmit!(),
+          decoration: InputDecoration(
+            hintText: 'Имя',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: palette.line),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: palette.line),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: palette.fg, width: 1.5),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 12,
             ),
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(height: 12),
+        Text(
+          'Что ближе к твоей ситуации?',
+          style: TextStyle(color: palette.muted, fontSize: 12),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final opt in personaOptions)
+              _Chip(
+                label: opt,
+                selected: selectedPersona == opt,
+                onTap: () => onPersona(opt),
+                palette: palette,
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
         FilledButton(
           onPressed: onSubmit,
           style: FilledButton.styleFrom(
             backgroundColor: palette.fg,
             foregroundColor: palette.bg,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            padding: const EdgeInsets.symmetric(vertical: 12),
           ),
-          child: const Icon(Icons.arrow_forward, size: 18),
+          child: Text(onSubmit == null ? 'Введи имя и контекст' : 'Далее'),
         ),
       ],
     );
@@ -711,8 +724,7 @@ class _ChipsReply extends StatelessWidget {
                 palette: palette,
               ),
             for (final picked in selected)
-              if (!options
-                  .any((o) => o.toLowerCase() == picked.toLowerCase()))
+              if (!options.any((o) => o.toLowerCase() == picked.toLowerCase()))
                 _Chip(
                   label: picked,
                   selected: true,
@@ -750,8 +762,7 @@ class _ChipsReply extends StatelessWidget {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide:
-                          BorderSide(color: palette.fg, width: 1.5),
+                      borderSide: BorderSide(color: palette.fg, width: 1.5),
                     ),
                     contentPadding: const EdgeInsets.symmetric(
                         horizontal: 10, vertical: 10),
@@ -768,23 +779,13 @@ class _ChipsReply extends StatelessWidget {
         ],
         if (allowMultiple && submitLabel != null) ...[
           const SizedBox(height: 12),
-          // UX fix: a ton of users tap "+ своё", type their custom
-          // answer, then immediately tap "Далее" without pressing the
-          // `+` / arrow confirm button first. Under the old flow their
-          // text was silently discarded (and on step 1 the button was
-          // disabled entirely since `selected` was still empty). We
-          // listen to `customCtrl` so the button reacts live to typing,
-          // flush any pending custom text through `onSubmitCustom`
-          // before delegating to the normal submit, and treat that
-          // pending text as a "virtual" selection for enabling the
-          // button.
           AnimatedBuilder(
             animation: customCtrl ?? const AlwaysStoppedAnimation(0),
             builder: (context, _) {
-              final pendingCustom = customOpen &&
-                  (customCtrl?.text.trim().isNotEmpty ?? false);
-              final canAdvance = onSubmit != null ||
-                  (pendingCustom && onSubmitCustom != null);
+              final pendingCustom =
+                  customOpen && (customCtrl?.text.trim().isNotEmpty ?? false);
+              final canAdvance =
+                  onSubmit != null || (pendingCustom && onSubmitCustom != null);
               return FilledButton(
                 onPressed: canAdvance
                     ? () {
@@ -794,13 +795,7 @@ class _ChipsReply extends StatelessWidget {
                         if (onSubmit != null) {
                           onSubmit!();
                         } else if (pendingCustom) {
-                          // Parent lifts `selected` on the next build;
-                          // schedule the actual advance after that
-                          // frame so the parent's `_canAdvance`
-                          // reflects the new chip. Without this you
-                          // can end up needing to press Далее twice.
-                          WidgetsBinding.instance
-                              .addPostFrameCallback((_) {
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
                             onSubmit?.call();
                           });
                         }
@@ -897,30 +892,19 @@ class _LevelsReply extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (interests.isEmpty) return const SizedBox.shrink();
-    // Clamp against the current interests length — the user can
-    // shrink the list by going back to step 2 and removing entries,
-    // leaving `activeIdx` pointing past the tail. Without this,
-    // `interests[activeIdx]` would throw RangeError and crash the
-    // onboarding flow.
     final clampedIdx = activeIdx.clamp(0, interests.length - 1);
     final active = interests[clampedIdx];
-    final activeLevel = levels[active]; // null until first tap
-    // Count only current interests — the map can retain stale keys
-    // from sets the user cleared by editing step 2.
+    final activeLevel = levels[active];
     final rated = interests.where((i) => levels[i] != null).length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Step hint — explicit instruction so the 2-step flow isn't
-        // confusing. Previously both rows looked like identical chips
-        // and users didn't understand they had to pick a sphere first.
         Text(
           'Шаг 1 — выбери сферу (вверху).  Шаг 2 — поставь грейд (внизу).',
           style: TextStyle(color: palette.muted, fontSize: 12),
         ),
         const SizedBox(height: 12),
-        // Interests as bigger pill cards with a checkmark when rated.
         SizedBox(
           height: 44,
           child: ListView.separated(
@@ -947,8 +931,6 @@ class _LevelsReply extends StatelessWidget {
           style: TextStyle(color: palette.muted, fontSize: 11),
         ),
         const SizedBox(height: 18),
-        // Level section now explicitly names the active interest so
-        // the coupling between rows is obvious.
         Text(
           'Твой уровень в «$active»',
           style: TextStyle(
@@ -958,9 +940,6 @@ class _LevelsReply extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 10),
-        // Level options rendered as distinct cards (not chips), each
-        // with a label + short explanation. The visual difference
-        // from the top row makes the two-step flow obvious.
         Column(
           children: [
             for (final level in kInterestLevels) ...[
@@ -984,9 +963,7 @@ class _LevelsReply extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 14),
           ),
           child: Text(
-            onSubmit == null
-                ? 'Оцени все ${interests.length} сфер'
-                : 'Далее',
+            rated == 0 ? 'Пропустить грейды' : 'Далее',
           ),
         ),
       ],
@@ -1080,7 +1057,6 @@ class _LevelCard extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           child: Row(
             children: [
-              // Radio indicator makes the "pick one" semantics explicit.
               Container(
                 width: 18,
                 height: 18,
@@ -1120,8 +1096,7 @@ class _LevelCard extends StatelessWidget {
                     if (hint.isNotEmpty)
                       Text(
                         hint,
-                        style:
-                            TextStyle(color: palette.muted, fontSize: 12),
+                        style: TextStyle(color: palette.muted, fontSize: 12),
                       ),
                   ],
                 ),
@@ -1130,6 +1105,86 @@ class _LevelCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _CadenceReply extends StatelessWidget {
+  const _CadenceReply({
+    required this.windowOptions,
+    required this.selectedWindows,
+    required this.supportOptions,
+    required this.selectedSupport,
+    required this.onWindow,
+    required this.onSupport,
+    required this.onSubmit,
+    required this.palette,
+  });
+
+  final List<String> windowOptions;
+  final List<String> selectedWindows;
+  final List<String> supportOptions;
+  final String selectedSupport;
+  final ValueChanged<String> onWindow;
+  final ValueChanged<String> onSupport;
+  final VoidCallback? onSubmit;
+  final NoeticaPalette palette;
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedLower = selectedWindows.map((e) => e.toLowerCase()).toSet();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          'Когда лучше ставить задачи?',
+          style: TextStyle(color: palette.muted, fontSize: 12),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final opt in windowOptions)
+              _Chip(
+                label: opt,
+                selected: selectedLower.contains(opt.toLowerCase()),
+                onTap: () => onWindow(opt),
+                palette: palette,
+              ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        Text(
+          'Какой стиль поддержки нужен?',
+          style: TextStyle(color: palette.muted, fontSize: 12),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final opt in supportOptions)
+              _Chip(
+                label: opt,
+                selected: selectedSupport == opt,
+                onTap: () => onSupport(opt),
+                palette: palette,
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        FilledButton(
+          onPressed: onSubmit,
+          style: FilledButton.styleFrom(
+            backgroundColor: palette.fg,
+            foregroundColor: palette.bg,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+          ),
+          child: Text(onSubmit == null ? 'Выбери время и стиль' : 'Готово'),
+        ),
+      ],
     );
   }
 }
@@ -1216,9 +1271,17 @@ class _HoursReply extends StatelessWidget {
         ),
         Row(
           children: [
-            Text('1', style: TextStyle(fontFamily: 'IBMPlexMono', fontSize: 11, color: palette.muted)),
+            Text('1',
+                style: TextStyle(
+                    fontFamily: 'IBMPlexMono',
+                    fontSize: 11,
+                    color: palette.muted)),
             const Spacer(),
-            Text('60', style: TextStyle(fontFamily: 'IBMPlexMono', fontSize: 11, color: palette.muted)),
+            Text('60',
+                style: TextStyle(
+                    fontFamily: 'IBMPlexMono',
+                    fontSize: 11,
+                    color: palette.muted)),
           ],
         ),
         const SizedBox(height: 12),
@@ -1226,11 +1289,14 @@ class _HoursReply extends StatelessWidget {
           style: FilledButton.styleFrom(
             backgroundColor: palette.fg,
             foregroundColor: palette.surface,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             padding: const EdgeInsets.symmetric(vertical: 14),
           ),
           onPressed: onSubmit,
-          child: const Text('Далее', style: TextStyle(fontFamily: 'IBMPlexMono', fontWeight: FontWeight.w700)),
+          child: const Text('Далее',
+              style: TextStyle(
+                  fontFamily: 'IBMPlexMono', fontWeight: FontWeight.w700)),
         ),
       ],
     );

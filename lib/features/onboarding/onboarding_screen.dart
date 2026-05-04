@@ -83,8 +83,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         if (_drafts.length < 3) {
           for (final p in _fallbackPresets) {
             if (_drafts.length >= 3) break;
-            if (_drafts.any(
-                (d) => d.name.toLowerCase() == p['name']!.toLowerCase())) {
+            if (_drafts
+                .any((d) => d.name.toLowerCase() == p['name']!.toLowerCase())) {
               continue;
             }
             _drafts.add(_AxisDraft(name: p['name']!, symbol: p['symbol']!));
@@ -125,10 +125,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           style: TextStyle(color: palette.fg),
         ),
         content: Text(
-          'AI разложит «$aspiration» на 4–10 конкретных задач, '
-          'привязанных к осям, которые ты только что собрала. '
-          'Промпт уже заполнен — можно отредактировать, прежде чем '
-          'запускать генерацию.',
+          'AI разложит «$aspiration» на первый план из маленьких задач '
+          'с учётом твоего контекста, препятствий, времени и стиля поддержки. '
+          'Промпт уже заполнен — можно отредактировать перед генерацией.',
           style: TextStyle(color: palette.muted, height: 1.4),
         ),
         actions: [
@@ -191,8 +190,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         axes.add(LifeAxis(
           id: uuid.v4(),
           name: clean[i].name.trim(),
-          symbol:
-              clean[i].symbol.trim().isEmpty ? '·' : clean[i].symbol.trim(),
+          symbol: clean[i].symbol.trim().isEmpty ? '·' : clean[i].symbol.trim(),
           position: i,
           createdAt: DateTime.now(),
         ));
@@ -272,7 +270,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               Text(
                 widget.seedInterests.isEmpty
                     ? 'Опиши свои оси роста'
-                    : (_generating ? 'AI придумывает оси…' : 'Твои личные оси'),
+                    : (_generating
+                        ? 'AI собирает твою систему…'
+                        : 'Твоя система роста'),
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 8),
@@ -282,8 +282,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     : (_generationError != null
                         ? 'Не удалось связаться с AI: $_generationError. Ниже — запасные оси, отредактируй как хочешь.'
                         : (_generating
-                            ? 'Из ${widget.seedInterests.length} твоих направлений AI рисует персональную пентаграмму…'
-                            : 'Сгенерировано на ${_model.isEmpty ? "AI" : _model}. Переименуй, убери лишние, добавь свои. От 3 до 8.')),
+                            ? 'Из твоей цели, контекста и препятствий AI делает 5 понятных направлений жизни…'
+                            : 'Сгенерировано на ${_model.isEmpty ? "AI" : _model}. Оставь 3–8 направлений, которые реально хочется прокачивать.')),
                 style: Theme.of(context)
                     .textTheme
                     .bodyMedium
@@ -296,9 +296,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   child: TextButton.icon(
                     onPressed: _generating ? null : _generateAxes,
                     icon: const Icon(Icons.refresh, size: 16),
-                    label: Text(_generating
-                        ? 'Генерирую…'
-                        : 'Перегенерировать оси'),
+                    label: Text(
+                        _generating ? 'Генерирую…' : 'Перегенерировать оси'),
                   ),
                 ),
               ],
@@ -325,9 +324,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                           index: i,
                           draft: _drafts[i],
                           onChanged: () => setState(() {}),
-                          onRemove: _drafts.length > 3
-                              ? () => _removeAxis(i)
-                              : null,
+                          onRemove:
+                              _drafts.length > 3 ? () => _removeAxis(i) : null,
                         ),
                       ),
               ),
@@ -347,9 +345,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 child: FilledButton(
                   onPressed: (_saving || _generating) ? null : _finish,
                   child: Text(
-                    _saving
-                        ? '…'
-                        : (canPop ? 'Сохранить' : 'Создать пентаграмму'),
+                    _saving ? '…' : (canPop ? 'Сохранить' : 'Создать систему'),
                   ),
                 ),
               ),
