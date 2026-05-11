@@ -399,7 +399,7 @@ class _EntryEditorFormState extends ConsumerState<_EntryEditorForm> {
         focusedBorder: large ? InputBorder.none : null,
         hintStyle: large
             ? theme.textTheme.headlineMedium?.copyWith(
-                color: palette.muted.withOpacity(0.55),
+                color: palette.muted.withValues(alpha: 0.55),
                 fontWeight: FontWeight.w600,
                 height: 1.15,
               )
