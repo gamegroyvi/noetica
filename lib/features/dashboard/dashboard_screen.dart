@@ -97,6 +97,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
   }
 
+  // ignore: unused_element
   void _openJournal() {
     final cb = widget.onOpenJournal;
     if (cb != null) {
@@ -122,6 +123,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
   }
 
+  // ignore: unused_element
   void _openSettings() {
     Navigator.of(context).push(
       MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
@@ -145,6 +147,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final entriesAsync = ref.watch(entriesProvider);
     final axesAsync = ref.watch(axesProvider);
     final profileAsync = ref.watch(profileProvider);
+    // ignore: unused_local_variable
     final isDesktop = MediaQuery.of(context).size.width >= 900;
 
     return Scaffold(

@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models.dart';
 import '../../providers.dart';
 import '../../services/coach_api.dart';
-import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
 import '../dashboard/widgets/dashboard_stats.dart';
 
