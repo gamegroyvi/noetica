@@ -1,8 +1,10 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/models.dart';
@@ -28,6 +30,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   TimeOfDay _evening = const TimeOfDay(hour: 21, minute: 0);
   bool _coachNotifEnabled = false;
   bool _loadingNotif = true;
+  bool _showDebug = false;
 
   @override
   void initState() {
@@ -118,33 +121,111 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     await NotificationsService.instance.scheduleCoachReminders();
   }
 
+  Map<String, dynamic> _buildExportPayload(
+    List<LifeAxis> axes,
+    List<Entry> entries,
+    dynamic profile,
+  ) {
+    return {
+      'exportedAt': DateTime.now().toIso8601String(),
+      'version': 1,
+      'profile': profile?.toJson(),
+      'axes': axes.map((a) => a.toMap()).toList(),
+      'entries': entries
+          .map((e) => {
+                ...e.toMap(),
+                'axisIds': e.axisIds,
+              })
+          .toList(),
+    };
+  }
+
   Future<void> _exportJson() async {
     try {
       final repo = await ref.read(repositoryProvider.future);
       final axes = await repo.listAxes();
       final entries = await repo.listEntries();
       final profile = ref.read(profileProvider).valueOrNull;
-      final payload = {
-        'exportedAt': DateTime.now().toIso8601String(),
-        'profile': profile?.toJson(),
-        'axes': axes.map((a) => a.toMap()).toList(),
-        'entries': entries
-            .map((e) => {
-                  ...e.toMap(),
-                  'axisIds': e.axisIds,
-                })
-            .toList(),
-      };
+      final payload = _buildExportPayload(axes, entries, profile);
       final text = const JsonEncoder.withIndent('  ').convert(payload);
-      await Clipboard.setData(ClipboardData(text: text));
+
+      final dir = await getApplicationDocumentsDirectory();
+      final stamp = DateTime.now().toIso8601String().replaceAll(':', '-').split('.').first;
+      final file = File('${dir.path}/noetica-export-$stamp.json');
+      await file.writeAsString(text);
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Экспорт скопирован в буфер обмена.')),
+        SnackBar(
+          content: Text('Сохранён: ${file.path}'),
+          action: SnackBarAction(
+            label: 'Копировать',
+            onPressed: () => Clipboard.setData(ClipboardData(text: text)),
+          ),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Не удалось экспортировать: $e')),
+      );
+    }
+  }
+
+  Future<void> _importJson() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Импорт данных'),
+        content: const Text(
+          'Вставьте JSON экспорта из буфера обмена. Существующие данные '
+          'объединятся с импортом (entry ID используется для дедупликации).',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Вставить из буфера'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+
+    try {
+      final clip = await Clipboard.getData(Clipboard.kTextPlain);
+      if (clip?.text == null || clip!.text!.trim().isEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Буфер обмена пуст.')),
+        );
+        return;
+      }
+      final data = jsonDecode(clip.text!) as Map<String, dynamic>;
+      final repo = await ref.read(repositoryProvider.future);
+      var imported = 0;
+
+      final entriesList = data['entries'] as List<dynamic>? ?? [];
+      for (final raw in entriesList) {
+        final map = raw as Map<String, dynamic>;
+        final entry = Entry.fromMap(map);
+        await repo.upsertEntry(entry);
+        imported++;
+      }
+
+      ref.invalidate(entriesProvider);
+      ref.invalidate(scoresProvider);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Импортировано $imported записей.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Не удалось импортировать: $e')),
       );
     }
   }
@@ -427,35 +508,31 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 style: TextStyle(color: palette.muted, fontSize: 12),
               ),
             ),
-            // Debug-grade test buttons. Useful for verifying that the
-            // platform actually delivers a notification (especially after
-            // first install on Windows where the user must accept the
-            // toast registration). All three slots use the same code path
-            // as production scheduling.
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  OutlinedButton.icon(
-                    onPressed: _notifEnabled ? _testNow : null,
-                    icon: const Icon(Icons.send, size: 16),
-                    label: const Text('Тест: сейчас'),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: _notifEnabled ? _testIn30 : null,
-                    icon: const Icon(Icons.schedule, size: 16),
-                    label: const Text('Тест: +30 сек'),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: _notifEnabled ? _testIn5Min : null,
-                    icon: const Icon(Icons.schedule, size: 16),
-                    label: const Text('Тест: +5 мин'),
-                  ),
-                ],
+            if (_showDebug)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: _notifEnabled ? _testNow : null,
+                      icon: const Icon(Icons.send, size: 16),
+                      label: const Text('Тест: сейчас'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: _notifEnabled ? _testIn30 : null,
+                      icon: const Icon(Icons.schedule, size: 16),
+                      label: const Text('Тест: +30 сек'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: _notifEnabled ? _testIn5Min : null,
+                      icon: const Icon(Icons.schedule, size: 16),
+                      label: const Text('Тест: +5 мин'),
+                    ),
+                  ],
+                ),
               ),
-            ),
           ],
           const Divider(height: 1),
           const _SectionHeader(title: 'Бэкенд'),
@@ -463,13 +540,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const Divider(height: 1),
           const _SectionHeader(title: 'Данные'),
           ListTile(
-            leading: const Icon(Icons.copy_outlined),
+            leading: const Icon(Icons.download_outlined),
             title: const Text('Экспорт в JSON'),
             subtitle: Text(
-              'Полный дамп профиля, осей и записей в буфер обмена',
+              'Сохранить профиль, оси и записи в файл',
               style: TextStyle(color: palette.muted),
             ),
             onTap: _exportJson,
+          ),
+          ListTile(
+            leading: const Icon(Icons.upload_outlined),
+            title: const Text('Импорт из JSON'),
+            subtitle: Text(
+              'Восстановить данные из буфера обмена',
+              style: TextStyle(color: palette.muted),
+            ),
+            onTap: _importJson,
           ),
           ListTile(
             leading: const Icon(Icons.delete_forever_outlined),
@@ -482,11 +568,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           const Divider(height: 1),
           const _SectionHeader(title: 'О приложении'),
-          ListTile(
-            title: const Text('noetica'),
-            subtitle: Text(
-              'v0.1.0 — minimalist growth tracker',
-              style: TextStyle(color: palette.muted),
+          GestureDetector(
+            onLongPress: () => setState(() => _showDebug = !_showDebug),
+            child: ListTile(
+              title: const Text('noetica'),
+              subtitle: Text(
+                'v0.1.0 — minimalist growth tracker',
+                style: TextStyle(color: palette.muted),
+              ),
             ),
           ),
           ListTile(
@@ -497,13 +586,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               style: TextStyle(color: palette.muted),
             ),
           ),
-          // Debug panel is always visible pre-release — the user
-          // explicitly asked for an easy way to test эпоха-related
-          // flows without having to actually fill the pentagon over
-          // weeks of real usage.
-          const Divider(height: 1),
-          const _SectionHeader(title: '⚙ Разработчик'),
-          _DebugEpochPanel(),
+          // Debug panel — hidden by default. Long-press "О приложении"
+          // row to toggle.
+          if (_showDebug) ...[
+            const Divider(height: 1),
+            const _SectionHeader(title: '⚙ Разработчик'),
+            _DebugEpochPanel(),
+          ],
         ],
       ),
     );

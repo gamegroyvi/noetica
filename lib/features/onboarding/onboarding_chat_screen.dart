@@ -8,14 +8,13 @@ import '../../providers.dart';
 import '../../services/analytics_service.dart';
 import '../../theme/app_theme.dart';
 
-/// Chat-style 7-step onboarding. Each step is presented as an assistant
+/// Chat-style 4-step onboarding. Each step is presented as an assistant
 /// "bubble" with predefined chip choices (single or multi-select) plus an
 /// optional free-text input — minimising how much the user has to type.
 ///
-/// The set of fields collected is the same that the LLM expects on
-/// `/onboarding/axes` and `/roadmap/generate`:
-///   name, aspiration, interests, interest levels, pain points,
-///   weekly-hours, preferred work windows.
+/// Steps: name → aspirations → interests → weekly hours.
+/// Interest levels default to 'novice'; pain points and work windows
+/// can be filled later via Settings → Профиль.
 class OnboardingChatScreen extends ConsumerStatefulWidget {
   const OnboardingChatScreen({super.key, this.existing, this.onDone});
 
@@ -29,7 +28,7 @@ class OnboardingChatScreen extends ConsumerStatefulWidget {
 
 class _OnboardingChatScreenState
     extends ConsumerState<OnboardingChatScreen> {
-  static const int _stepCount = 7;
+  static const int _stepCount = 4;
   int _step = 0;
 
   // Collected answers.
@@ -52,8 +51,6 @@ class _OnboardingChatScreenState
   final _textCtrl = TextEditingController();
   final _customCtrl = TextEditingController();
   bool _customOpen = false;
-  // For interest-levels step we track which interest is being calibrated.
-  int _levelIdx = 0;
   bool _saving = false;
 
   // Suggestions.
@@ -82,25 +79,7 @@ class _OnboardingChatScreenState
     'карьера',
     'семья',
   ];
-  static const _painOptions = <String>[
-    'прокрастинация',
-    'не хватает времени',
-    'нет цели',
-    'усталость',
-    'перфекционизм',
-    'нет дисциплины',
-    'распыление',
-    'страх',
-    'выгорание',
-    'отвлечения',
-  ];
-  static const _windowOptions = <String>[
-    'утром',
-    'днём',
-    'вечером',
-    'ночью',
-    'в выходные',
-  ];
+
 
   @override
   void initState() {
@@ -146,13 +125,7 @@ class _OnboardingChatScreenState
       case 2:
         return 'В каких сферах ты уже что-то делаешь? Выбери 3–8.';
       case 3:
-        return 'Оцени свой текущий уровень в каждой. Это нужно, чтобы я подбирал задачи по силам.';
-      case 4:
-        return 'Что тебе чаще всего мешает? Можно несколько.';
-      case 5:
         return 'Сколько часов в неделю реально готов уделять?';
-      case 6:
-        return 'Когда тебе удобнее работать над этим?';
       default:
         return '';
     }
@@ -171,19 +144,7 @@ class _OnboardingChatScreenState
       case 2:
         return _interests.length >= 3;
       case 3:
-        // Require each interest to have an explicit level picked.
-        // Before, this silently defaulted to 'novice' which meant the
-        // grade step could be skipped without the user realising —
-        // producing bad roadmap calibration downstream.
-        return _interests.isNotEmpty &&
-            _interests.every((i) =>
-                kInterestLevels.contains(_interestLevels[i]));
-      case 4:
-        return true;
-      case 5:
         return _weeklyHours > 0;
-      case 6:
-        return _windows.isNotEmpty;
     }
     return false;
   }
@@ -197,18 +158,7 @@ class _OnboardingChatScreenState
       case 2:
         return _interests.join(', ');
       case 3:
-        return _interests
-            .map((i) =>
-                '$i: ${_levelRu(_interestLevels[i] ?? 'novice')}')
-            .join('; ');
-      case 4:
-        return _painPoints.isEmpty
-            ? 'ничего особенно'
-            : _painPoints.join(', ');
-      case 5:
         return '$_weeklyHours ч/нед';
-      case 6:
-        return _windows.join(', ');
     }
     return '';
   }
@@ -443,8 +393,7 @@ class _OnboardingChatScreenState
             final idx = _interests
                 .indexWhere((e) => e.toLowerCase() == v.toLowerCase());
             if (idx >= 0) {
-              final removed = _interests.removeAt(idx);
-              _interestLevels.remove(removed);
+              _interests.removeAt(idx);
             } else if (_interests.length < 12) {
               _interests.add(v);
               _interestLevels.putIfAbsent(v, () => 'novice');
@@ -477,79 +426,11 @@ class _OnboardingChatScreenState
           onSubmit: _canAdvance ? _advance : null,
         );
       case 3:
-        return _LevelsReply(
-          interests: _interests,
-          levels: _interestLevels,
-          activeIdx: _levelIdx,
-          onLevel: (interest, level) =>
-              setState(() => _interestLevels[interest] = level),
-          onActive: (i) => setState(() => _levelIdx = i),
-          onSubmit: _canAdvance ? _advance : null,
-          palette: palette,
-        );
-      case 4:
-        return _ChipsReply(
-          options: _painOptions,
-          selected: _painPoints,
-          allowMultiple: true,
-          onPick: (v) => setState(() {
-            final idx = _painPoints
-                .indexWhere((e) => e.toLowerCase() == v.toLowerCase());
-            if (idx >= 0) {
-              _painPoints.removeAt(idx);
-            } else {
-              _painPoints.add(v);
-            }
-          }),
-          customOpen: _customOpen,
-          onToggleCustom: () =>
-              setState(() => _customOpen = !_customOpen),
-          customCtrl: _customCtrl,
-          onSubmitCustom: () {
-            final v = _customCtrl.text.trim();
-            if (v.isEmpty) return;
-            setState(() {
-              if (_painPoints
-                  .where((e) => e.toLowerCase() == v.toLowerCase())
-                  .isEmpty) {
-                _painPoints.add(v);
-              }
-              _customOpen = false;
-              _customCtrl.clear();
-            });
-          },
-          palette: palette,
-          submitLabel: 'Далее',
-          onSubmit: _advance,
-        );
-      case 5:
         return _HoursReply(
           value: _weeklyHours.clamp(1, 60),
           onChanged: (v) => setState(() => _weeklyHours = v),
           onSubmit: _canAdvance ? _advance : null,
           palette: palette,
-        );
-      case 6:
-        return _ChipsReply(
-          options: _windowOptions,
-          selected: _windows,
-          allowMultiple: true,
-          onPick: (v) => setState(() {
-            final idx = _windows
-                .indexWhere((e) => e.toLowerCase() == v.toLowerCase());
-            if (idx >= 0) {
-              _windows.removeAt(idx);
-            } else {
-              _windows.add(v);
-            }
-          }),
-          customOpen: false,
-          onToggleCustom: null,
-          customCtrl: null,
-          onSubmitCustom: null,
-          palette: palette,
-          submitLabel: _canAdvance ? 'Готово' : 'Выбери хотя бы один',
-          onSubmit: _canAdvance ? _advance : null,
         );
     }
     return const SizedBox.shrink();
@@ -862,277 +743,7 @@ class _Chip extends StatelessWidget {
   }
 }
 
-class _LevelsReply extends StatelessWidget {
-  const _LevelsReply({
-    required this.interests,
-    required this.levels,
-    required this.activeIdx,
-    required this.onLevel,
-    required this.onActive,
-    required this.onSubmit,
-    required this.palette,
-  });
 
-  final List<String> interests;
-  final Map<String, String> levels;
-  final int activeIdx;
-  final void Function(String interest, String level) onLevel;
-  final ValueChanged<int> onActive;
-  final VoidCallback? onSubmit;
-  final NoeticaPalette palette;
-
-  static const _levelLabels = <String, String>{
-    'novice': 'Новичок',
-    'learning': 'Учусь',
-    'confident': 'Уверенно',
-    'expert': 'Эксперт',
-  };
-  static const _levelHints = <String, String>{
-    'novice': 'только начинаю',
-    'learning': 'в процессе',
-    'confident': 'уверенно справляюсь',
-    'expert': 'давно в теме',
-  };
-
-  @override
-  Widget build(BuildContext context) {
-    if (interests.isEmpty) return const SizedBox.shrink();
-    // Clamp against the current interests length — the user can
-    // shrink the list by going back to step 2 and removing entries,
-    // leaving `activeIdx` pointing past the tail. Without this,
-    // `interests[activeIdx]` would throw RangeError and crash the
-    // onboarding flow.
-    final clampedIdx = activeIdx.clamp(0, interests.length - 1);
-    final active = interests[clampedIdx];
-    final activeLevel = levels[active]; // null until first tap
-    // Count only current interests — the map can retain stale keys
-    // from sets the user cleared by editing step 2.
-    final rated = interests.where((i) => levels[i] != null).length;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // Step hint — explicit instruction so the 2-step flow isn't
-        // confusing. Previously both rows looked like identical chips
-        // and users didn't understand they had to pick a sphere first.
-        Text(
-          'Шаг 1 — выбери сферу (вверху).  Шаг 2 — поставь грейд (внизу).',
-          style: TextStyle(color: palette.muted, fontSize: 12),
-        ),
-        const SizedBox(height: 12),
-        // Interests as bigger pill cards with a checkmark when rated.
-        SizedBox(
-          height: 44,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemBuilder: (_, i) {
-              final interest = interests[i];
-              final isActive = i == clampedIdx;
-              final isRated = levels[interest] != null;
-              return _InterestPill(
-                label: interest,
-                active: isActive,
-                rated: isRated,
-                onTap: () => onActive(i),
-                palette: palette,
-              );
-            },
-            separatorBuilder: (_, __) => const SizedBox(width: 8),
-            itemCount: interests.length,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          'оценено $rated/${interests.length}',
-          style: TextStyle(color: palette.muted, fontSize: 11),
-        ),
-        const SizedBox(height: 18),
-        // Level section now explicitly names the active interest so
-        // the coupling between rows is obvious.
-        Text(
-          'Твой уровень в «$active»',
-          style: TextStyle(
-            color: palette.fg,
-            fontWeight: FontWeight.w700,
-            fontSize: 14,
-          ),
-        ),
-        const SizedBox(height: 10),
-        // Level options rendered as distinct cards (not chips), each
-        // with a label + short explanation. The visual difference
-        // from the top row makes the two-step flow obvious.
-        Column(
-          children: [
-            for (final level in kInterestLevels) ...[
-              _LevelCard(
-                label: _levelLabels[level] ?? level,
-                hint: _levelHints[level] ?? '',
-                selected: activeLevel == level,
-                onTap: () => onLevel(active, level),
-                palette: palette,
-              ),
-              const SizedBox(height: 6),
-            ],
-          ],
-        ),
-        const SizedBox(height: 14),
-        FilledButton(
-          onPressed: onSubmit,
-          style: FilledButton.styleFrom(
-            backgroundColor: palette.fg,
-            foregroundColor: palette.bg,
-            padding: const EdgeInsets.symmetric(vertical: 14),
-          ),
-          child: Text(
-            onSubmit == null
-                ? 'Оцени все ${interests.length} сфер'
-                : 'Далее',
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _InterestPill extends StatelessWidget {
-  const _InterestPill({
-    required this.label,
-    required this.active,
-    required this.rated,
-    required this.onTap,
-    required this.palette,
-  });
-
-  final String label;
-  final bool active;
-  final bool rated;
-  final VoidCallback onTap;
-  final NoeticaPalette palette;
-
-  @override
-  Widget build(BuildContext context) {
-    final bg = active ? palette.fg : palette.surface;
-    final fg = active ? palette.bg : palette.fg;
-    final borderColor = active ? palette.fg : palette.line;
-    return Material(
-      color: bg,
-      shape: StadiumBorder(
-        side: BorderSide(color: borderColor, width: active ? 2 : 1),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        customBorder: const StadiumBorder(),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (rated) ...[
-                Icon(Icons.check, size: 14, color: fg),
-                const SizedBox(width: 6),
-              ],
-              Text(
-                label,
-                style: TextStyle(
-                  color: fg,
-                  fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                  fontSize: 13,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _LevelCard extends StatelessWidget {
-  const _LevelCard({
-    required this.label,
-    required this.hint,
-    required this.selected,
-    required this.onTap,
-    required this.palette,
-  });
-
-  final String label;
-  final String hint;
-  final bool selected;
-  final VoidCallback onTap;
-  final NoeticaPalette palette;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: selected ? palette.fg.withOpacity(0.08) : palette.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-        side: BorderSide(
-          color: selected ? palette.fg : palette.line,
-          width: selected ? 2 : 1,
-        ),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          child: Row(
-            children: [
-              // Radio indicator makes the "pick one" semantics explicit.
-              Container(
-                width: 18,
-                height: 18,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: selected ? palette.fg : palette.line,
-                    width: 2,
-                  ),
-                ),
-                child: selected
-                    ? Center(
-                        child: Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: palette.fg,
-                          ),
-                        ),
-                      )
-                    : null,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label,
-                      style: TextStyle(
-                        color: palette.fg,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14,
-                      ),
-                    ),
-                    if (hint.isNotEmpty)
-                      Text(
-                        hint,
-                        style:
-                            TextStyle(color: palette.muted, fontSize: 12),
-                      ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 class _HoursReply extends StatelessWidget {
   const _HoursReply({

@@ -18,6 +18,8 @@ const _kPomodoroLongBreakEveryKey = 'noetica.pomodoro.long_break_every.v1';
 const _kPomodoroAutoNextKey = 'noetica.pomodoro.auto_next.v1';
 const _kPomodoroSoundKey = 'noetica.pomodoro.sound.v1';
 const _kPomodoroCompletedKey = 'noetica.pomodoro.completed_focus.v1';
+const _kPomodoroLinkedTaskKey = 'noetica.pomodoro.linked_task.v1';
+const _kPomodoroLinkedTitleKey = 'noetica.pomodoro.linked_title.v1';
 
 enum PomodoroPhase { idle, focus, breakTime, longBreak }
 
@@ -66,6 +68,11 @@ class PomodoroService extends ChangeNotifier {
   int _completedFocus = 0;
   bool _hydrated = false;
 
+  /// Optional linked task — when set, the Pomodoro session is
+  /// conceptually "for" this entry.
+  String? _linkedTaskId;
+  String? _linkedTaskTitle;
+
   /// Lazily-instantiated melody player. Loops `assets/sounds/chime.wav`
   /// after a phase ends so the user has a chance to come back to the app
   /// and dismiss before the next phase starts. Re-used across phases —
@@ -93,6 +100,8 @@ class PomodoroService extends ChangeNotifier {
   bool get soundOn => _soundOn;
   int get completedFocus => _completedFocus;
   bool get hydrated => _hydrated;
+  String? get linkedTaskId => _linkedTaskId;
+  String? get linkedTaskTitle => _linkedTaskTitle;
   bool get awaitingDismissal => _awaitingDismissal;
   PomodoroPhase get justCompleted => _justCompleted;
 
@@ -130,6 +139,9 @@ class PomodoroService extends ChangeNotifier {
       _remaining = Duration(minutes: _focusMinutes);
     }
 
+    _linkedTaskId = prefs.getString(_kPomodoroLinkedTaskKey);
+    _linkedTaskTitle = prefs.getString(_kPomodoroLinkedTitleKey);
+
     _hydrated = true;
     notifyListeners();
   }
@@ -151,6 +163,16 @@ class PomodoroService extends ChangeNotifier {
     }
     await prefs.setString(_kPomodoroPhaseKey, _phase.storage);
     await prefs.setInt(_kPomodoroCompletedKey, _completedFocus);
+    if (_linkedTaskId != null) {
+      await prefs.setString(_kPomodoroLinkedTaskKey, _linkedTaskId!);
+    } else {
+      await prefs.remove(_kPomodoroLinkedTaskKey);
+    }
+    if (_linkedTaskTitle != null) {
+      await prefs.setString(_kPomodoroLinkedTitleKey, _linkedTaskTitle!);
+    } else {
+      await prefs.remove(_kPomodoroLinkedTitleKey);
+    }
     await _persistSettings();
   }
 
@@ -159,6 +181,8 @@ class PomodoroService extends ChangeNotifier {
     await prefs.remove(_kPomodoroEndKey);
     await prefs.setString(_kPomodoroPhaseKey, PomodoroPhase.idle.storage);
     await prefs.setInt(_kPomodoroCompletedKey, _completedFocus);
+    await prefs.remove(_kPomodoroLinkedTaskKey);
+    await prefs.remove(_kPomodoroLinkedTitleKey);
     await _persistSettings();
   }
 
@@ -342,7 +366,9 @@ class PomodoroService extends ChangeNotifier {
 
   // ===== Public controls =====
 
-  Future<void> startFocus() async {
+  Future<void> startFocus({String? taskId, String? taskTitle}) async {
+    _linkedTaskId = taskId;
+    _linkedTaskTitle = taskTitle;
     _phase = PomodoroPhase.focus;
     _remaining = Duration(minutes: _focusMinutes);
     _endAt = DateTime.now().add(_remaining);
@@ -350,6 +376,7 @@ class PomodoroService extends ChangeNotifier {
     _scheduleEndOfPhaseNotification();
     AnalyticsService.instance.track(AnalyticsEvents.pomodoroStarted, {
       'focus_minutes': _focusMinutes,
+      if (taskId != null) 'linked_task': taskId,
     });
     notifyListeners();
     await _persistRunning();
@@ -362,6 +389,8 @@ class PomodoroService extends ChangeNotifier {
     _phase = PomodoroPhase.idle;
     _remaining = Duration(minutes: _focusMinutes);
     _endAt = null;
+    _linkedTaskId = null;
+    _linkedTaskTitle = null;
     notifyListeners();
     await _persistIdle();
   }

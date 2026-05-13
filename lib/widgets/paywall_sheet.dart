@@ -256,7 +256,7 @@ class _PriceCard extends StatelessWidget {
               Text(
                 note,
                 style: theme.textTheme.labelSmall?.copyWith(
-                  color: selected ? palette.bg.withValues(alpha: 0.7) : palette.muted,
+                  color: selected ? palette.bg.withOpacity(0.7) : palette.muted,
                   fontSize: 10,
                 ),
               ),

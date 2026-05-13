@@ -408,6 +408,22 @@ class NoeticaRepository {
     unawaited(NotificationsService.instance.cancelForEntry(id));
   }
 
+  /// Undo a soft-delete by clearing the deleted_at timestamp.
+  Future<void> restoreEntry(String id) async {
+    final now = DateTime.now();
+    await _db.raw.update(
+      'entries',
+      {
+        'deleted_at': null,
+        'updated_at': now.millisecondsSinceEpoch,
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    await _emitEntries();
+    _markDirty();
+  }
+
   // ---------- reflections ----------
 
   /// Persist a reflection for a task. One reflection per task — calling

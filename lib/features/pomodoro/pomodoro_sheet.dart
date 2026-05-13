@@ -105,6 +105,21 @@ class _PomodoroSheetState extends State<PomodoroSheet> {
                     ),
                   ),
                 ),
+                if (_service.linkedTaskTitle != null &&
+                    _service.phase != PomodoroPhase.idle)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4, bottom: 4),
+                    child: Text(
+                      _service.linkedTaskTitle!,
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: palette.muted,
+                      ),
+                    ),
+                  ),
                 const SizedBox(height: 12),
                 if (_service.phase == PomodoroPhase.idle)
                   FilledButton(

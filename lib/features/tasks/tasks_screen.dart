@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models.dart';
 import '../../providers.dart';
+import '../../services/pomodoro_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/body_utils.dart';
 import '../../utils/subtask_utils.dart';
@@ -11,6 +12,7 @@ import '../../widgets/brand_glyph.dart';
 import '../entry/entry_editor_sheet.dart';
 import '../entry/markdown_body_editor.dart';
 import '../home/home_shell.dart';
+import '../pomodoro/pomodoro_sheet.dart';
 import '../reflection/reflection_sheet.dart';
 import '../settings/settings_screen.dart';
 
@@ -910,33 +912,44 @@ class _TaskTile extends ConsumerWidget {
                       ),
                   ],
                   const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 4,
+                  Row(
                     children: [
-                      _Pill(
-                        text: '+${task.xp} XP',
-                        palette: palette,
-                        emphasised: true,
-                      ),
-                      if (subtasks.isNotEmpty)
-                        _Pill(
-                          text: '☑ ${prog.done}/${prog.total}',
-                          palette: palette,
-                          emphasised: prog.done == prog.total,
+                      Expanded(
+                        child: Wrap(
+                          spacing: 6,
+                          runSpacing: 4,
+                          children: [
+                            _Pill(
+                              text: '+${task.xp} XP',
+                              palette: palette,
+                              emphasised: true,
+                            ),
+                            if (subtasks.isNotEmpty)
+                              _Pill(
+                                text: '☑ ${prog.done}/${prog.total}',
+                                palette: palette,
+                                emphasised: prog.done == prog.total,
+                              ),
+                            for (final id in task.axisIds)
+                              if (axesById[id] != null)
+                                _Pill(
+                                  text:
+                                      '${axesById[id]!.symbol}  ${axesById[id]!.name}',
+                                  palette: palette,
+                                ),
+                            if (task.dueAt != null)
+                              _Pill(
+                                text: 'до ${formatTimestamp(task.dueAt!)}',
+                                palette: palette,
+                                warning: overdue,
+                              ),
+                          ],
                         ),
-                      for (final id in task.axisIds)
-                        if (axesById[id] != null)
-                          _Pill(
-                            text:
-                                '${axesById[id]!.symbol}  ${axesById[id]!.name}',
-                            palette: palette,
-                          ),
-                      if (task.dueAt != null)
-                        _Pill(
-                          text: 'до ${formatTimestamp(task.dueAt!)}',
+                      ),
+                      if (!task.isCompleted)
+                        _PomodoroButton(
+                          task: task,
                           palette: palette,
-                          warning: overdue,
                         ),
                     ],
                   ),
@@ -1037,6 +1050,52 @@ class _Checkbox extends StatelessWidget {
             ? Icon(Icons.check, size: 14, color: palette.bg)
             : null,
       ),
+    );
+  }
+}
+
+class _PomodoroButton extends StatelessWidget {
+  const _PomodoroButton({required this.task, required this.palette});
+
+  final Entry task;
+  final NoeticaPalette palette;
+
+  @override
+  Widget build(BuildContext context) {
+    final svc = PomodoroService.instance;
+    final isLinked = svc.linkedTaskId == task.id &&
+        svc.phase != PomodoroPhase.idle;
+    return IconButton(
+      icon: Icon(
+        isLinked ? Icons.timer : Icons.timer_outlined,
+        size: 18,
+        color: isLinked ? palette.fg : palette.muted,
+      ),
+      tooltip: isLinked ? 'Pomodoro запущен' : 'Pomodoro',
+      visualDensity: VisualDensity.compact,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+      onPressed: () async {
+        if (svc.phase == PomodoroPhase.idle) {
+          await svc.startFocus(
+            taskId: task.id,
+            taskTitle: task.title,
+          );
+          if (context.mounted) {
+            ScaffoldMessenger.of(context)
+              ..hideCurrentSnackBar()
+              ..showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Фокус ${svc.focusMinutes} мин: ${task.title}',
+                  ),
+                ),
+              );
+          }
+        } else {
+          if (context.mounted) PomodoroSheet.show(context);
+        }
+      },
     );
   }
 }
