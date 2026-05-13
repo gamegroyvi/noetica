@@ -208,9 +208,7 @@
       <div class="reviews__deco" aria-hidden="true"><span>1</span><span>0</span><span>0</span><span>1</span></div>
       <p class="section-label">Отзывы</p>
       <h2 class="section-title">Что говорят клиенты</h2>
-      <div class="reviews__list" id="reviewsList">
-        <!-- Loaded dynamically from API -->
-      </div>
+
       <div class="reviews__summary">
         <div class="reviews__rating">
           <span class="reviews__score">5.0</span>
@@ -224,7 +222,21 @@
         </div>
         <p>26 положительных отзывов &middot; 0 отрицательных &middot; 45% повторных заказов</p>
       </div>
-      <a href="https://kwork.ru/user/grouvi" target="_blank" rel="noopener" class="reviews__link">Читать все отзывы на Kwork &rarr;</a>
+
+      <div class="carousel carousel--reviews" id="reviewsCarousel">
+        <div class="carousel__track" id="reviewsTrack">
+          <!-- Loaded dynamically -->
+        </div>
+        <button class="carousel__btn carousel__btn--prev" id="reviewsPrev" aria-label="Назад">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <button class="carousel__btn carousel__btn--next" id="reviewsNext" aria-label="Вперёд">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 6 15 12 9 18"/></svg>
+        </button>
+        <div class="carousel__dots" id="reviewsDots"></div>
+      </div>
+
+      <a href="https://kwork.ru/user/grouvi" target="_blank" rel="noopener" class="reviews__link">Все 26 отзывов на Kwork &rarr;</a>
     </div>
   </section>
 

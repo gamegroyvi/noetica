@@ -100,7 +100,152 @@
     code: '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>'
   };
 
+  var starSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>';
+
   function esc(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+  /* ====================================================================
+     UNIVERSAL CAROUSEL ENGINE — touch, mouse drag, arrows, dots, auto
+     ==================================================================== */
+  function Carousel(cfg) {
+    this.track = document.getElementById(cfg.trackId);
+    this.dotsWrap = document.getElementById(cfg.dotsId);
+    this.prevBtn = document.getElementById(cfg.prevId);
+    this.nextBtn = document.getElementById(cfg.nextId);
+    this.index = 0;
+    this.total = 0;
+    this.autoMs = cfg.autoMs || 0;
+    this.autoTimer = null;
+    this._startX = 0;
+    this._currentX = 0;
+    this._dragging = false;
+    this._threshold = 50;
+
+    var self = this;
+
+    if (this.prevBtn) this.prevBtn.addEventListener('click', function () { self.prev(); });
+    if (this.nextBtn) this.nextBtn.addEventListener('click', function () { self.next(); });
+    if (this.dotsWrap) this.dotsWrap.addEventListener('click', function (e) {
+      var dot = e.target.closest('.carousel__dot');
+      if (!dot) return;
+      self.goTo(parseInt(dot.dataset.index, 10));
+    });
+
+    if (this.track) {
+      this.track.addEventListener('touchstart', function (e) { self._onStart(e.touches[0].clientX); }, { passive: true });
+      this.track.addEventListener('touchmove', function (e) { self._onMove(e.touches[0].clientX); }, { passive: true });
+      this.track.addEventListener('touchend', function () { self._onEnd(); });
+
+      this.track.addEventListener('mousedown', function (e) {
+        e.preventDefault();
+        self._onStart(e.clientX);
+        self.track.classList.add('dragging');
+      });
+      document.addEventListener('mousemove', function (e) {
+        if (self._dragging) self._onMove(e.clientX);
+      });
+      document.addEventListener('mouseup', function () {
+        if (self._dragging) {
+          self.track.classList.remove('dragging');
+          self._onEnd();
+        }
+      });
+    }
+  }
+
+  Carousel.prototype._onStart = function (x) {
+    this._dragging = true;
+    this._startX = x;
+    this._currentX = x;
+    this._resetAuto();
+  };
+
+  Carousel.prototype._onMove = function (x) {
+    if (!this._dragging) return;
+    this._currentX = x;
+    var diff = this._currentX - this._startX;
+    var offset = -(this.index * 100) + (diff / this.track.parentElement.offsetWidth * 100);
+    this.track.style.transform = 'translateX(' + offset + '%)';
+  };
+
+  Carousel.prototype._onEnd = function () {
+    if (!this._dragging) return;
+    this._dragging = false;
+    var diff = this._currentX - this._startX;
+    if (Math.abs(diff) > this._threshold) {
+      if (diff < 0) this.next(); else this.prev();
+    } else {
+      this.update();
+    }
+    this._startAuto();
+  };
+
+  Carousel.prototype.goTo = function (i) {
+    this.index = Math.max(0, Math.min(i, this.total - 1));
+    this.update();
+    this._resetAuto();
+    this._startAuto();
+  };
+
+  Carousel.prototype.next = function () {
+    this.index = (this.index + 1) % this.total;
+    this.update();
+  };
+
+  Carousel.prototype.prev = function () {
+    this.index = (this.index - 1 + this.total) % this.total;
+    this.update();
+  };
+
+  Carousel.prototype.update = function () {
+    if (!this.track) return;
+    this.track.style.transform = 'translateX(-' + (this.index * 100) + '%)';
+    var dots = this.dotsWrap ? this.dotsWrap.querySelectorAll('.carousel__dot') : [];
+    for (var i = 0; i < dots.length; i++) {
+      dots[i].classList.toggle('active', i === this.index);
+    }
+  };
+
+  Carousel.prototype.setTotal = function (n) {
+    this.total = n;
+    this.index = 0;
+    if (this.dotsWrap) {
+      var html = '';
+      for (var i = 0; i < n; i++) {
+        html += '<button class="carousel__dot' + (i === 0 ? ' active' : '') + '" data-index="' + i + '"></button>';
+      }
+      this.dotsWrap.innerHTML = html;
+    }
+    this.update();
+    this._startAuto();
+  };
+
+  Carousel.prototype._startAuto = function () {
+    if (!this.autoMs || this.total <= 1) return;
+    var self = this;
+    this.autoTimer = setInterval(function () { self.next(); }, self.autoMs);
+  };
+
+  Carousel.prototype._resetAuto = function () {
+    if (this.autoTimer) { clearInterval(this.autoTimer); this.autoTimer = null; }
+  };
+
+  /* ---------- CREATE CAROUSELS ---------- */
+  var portfolioCarousel = new Carousel({
+    trackId: 'portfolioTrack',
+    dotsId: 'carouselDots',
+    prevId: 'carouselPrev',
+    nextId: 'carouselNext',
+    autoMs: 5000
+  });
+
+  var reviewsCarousel = new Carousel({
+    trackId: 'reviewsTrack',
+    dotsId: 'reviewsDots',
+    prevId: 'reviewsPrev',
+    nextId: 'reviewsNext',
+    autoMs: 7000
+  });
 
   /* ---------- RENDER HELPERS ---------- */
   function renderProjects(data) {
@@ -123,16 +268,9 @@
     initAnimations();
   }
 
-  /* ---------- CAROUSEL ---------- */
-  var carouselIndex = 0;
-  var carouselTotal = 0;
-
   function renderPortfolio(data) {
     var track = document.getElementById('portfolioTrack');
-    var dots = document.getElementById('carouselDots');
     if (!track || !data.length) return;
-    carouselTotal = data.length;
-    carouselIndex = 0;
 
     track.innerHTML = data.map(function (p) {
       return '<div class="carousel__slide">' +
@@ -141,67 +279,30 @@
         '</div>';
     }).join('');
 
-    dots.innerHTML = data.map(function (_, i) {
-      return '<button class="carousel__dot' + (i === 0 ? ' active' : '') + '" data-index="' + i + '"></button>';
-    }).join('');
-
-    updateCarousel();
+    portfolioCarousel.setTotal(data.length);
   }
-
-  function updateCarousel() {
-    var track = document.getElementById('portfolioTrack');
-    var dots = document.querySelectorAll('.carousel__dot');
-    if (!track) return;
-    track.style.transform = 'translateX(-' + (carouselIndex * 100) + '%)';
-    dots.forEach(function (d, i) {
-      d.classList.toggle('active', i === carouselIndex);
-    });
-  }
-
-  function initCarouselControls() {
-    var prev = document.getElementById('carouselPrev');
-    var next = document.getElementById('carouselNext');
-    var dotsWrap = document.getElementById('carouselDots');
-
-    if (prev) prev.addEventListener('click', function () {
-      carouselIndex = (carouselIndex - 1 + carouselTotal) % carouselTotal;
-      updateCarousel();
-    });
-    if (next) next.addEventListener('click', function () {
-      carouselIndex = (carouselIndex + 1) % carouselTotal;
-      updateCarousel();
-    });
-    if (dotsWrap) dotsWrap.addEventListener('click', function (e) {
-      var dot = e.target.closest('.carousel__dot');
-      if (!dot) return;
-      carouselIndex = parseInt(dot.dataset.index, 10);
-      updateCarousel();
-    });
-
-    // Auto-advance every 5s
-    setInterval(function () {
-      if (carouselTotal > 0) {
-        carouselIndex = (carouselIndex + 1) % carouselTotal;
-        updateCarousel();
-      }
-    }, 5000);
-  }
-
-  initCarouselControls();
 
   function renderReviews(data) {
-    var list = document.getElementById('reviewsList');
-    if (!list || !data.length) return;
-    list.innerHTML = data.map(function (r) {
-      return '<blockquote class="review-card" data-anim>' +
+    var track = document.getElementById('reviewsTrack');
+    if (!track || !data.length) return;
+
+    var stars5 = '';
+    for (var s = 0; s < 5; s++) stars5 += starSvg;
+
+    track.innerHTML = data.map(function (r) {
+      return '<div class="carousel__slide">' +
+        '<div class="review-card">' +
+        '<div class="review-card__stars">' + stars5 + '</div>' +
         '<p class="review-card__text">&laquo;' + esc(r.text) + '&raquo;</p>' +
         '<footer class="review-card__footer">' +
         '<strong>' + esc(r.author) + '</strong>' +
         (r.order_title ? '<span>' + esc(r.order_title) + '</span>' : '') +
         '</footer>' +
-        '</blockquote>';
+        '</div>' +
+        '</div>';
     }).join('');
-    initAnimations();
+
+    reviewsCarousel.setTotal(data.length);
   }
 
   /* ---------- LOAD DATA (API with fallback) ---------- */
