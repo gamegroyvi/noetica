@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:noetica/data/models.dart';
 import 'package:noetica/features/tools/manifest/generator_form_view.dart';
+import 'package:noetica/l10n/generated/app_localizations_ru.dart';
 import 'package:noetica/services/builtin_generators.dart';
 import 'package:noetica/services/generator_input.dart';
 
 void main() {
+  final tr = SRu();
   Widget wrap({
     required List<GeneratorInputField> fields,
     required GeneratorFormValues values,
@@ -228,7 +230,7 @@ void main() {
 
   group('menuWeekInputs sanity', () {
     test('menuWeekInputs() returns the documented schema', () {
-      final fs = menuWeekInputs();
+      final fs = menuWeekInputs(tr);
       expect(fs.map((f) => f.id), [
         'goal',
         'servings',

@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/generated/app_localizations.dart';
 import '../../services/analytics_service.dart';
+import '../../services/notifications.dart';
 import '../../services/pomodoro_service.dart';
+import '../../services/weekly_reflection_service.dart';
 import '../../theme/app_theme.dart';
 import '../calendar/calendar_screen.dart';
 import '../dashboard/dashboard_screen.dart';
@@ -359,6 +361,9 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   Widget build(BuildContext context) {
     final palette = context.palette;
     final tr = S.of(context)!;
+    PomodoroService.instance.updateLocale(tr);
+    NotificationsService.instance.updateLocale(tr);
+    WeeklyReflectionService.instance.updateLocale(tr);
     final width = MediaQuery.of(context).size.width;
     final useRail = width >= _kRailMin;
     final destinations = _destinations(tr);

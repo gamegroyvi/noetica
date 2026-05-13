@@ -72,9 +72,11 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
       ((_values['restrictions'] as String?) ?? '').trim();
   String get _extraNotes => ((_values['notes'] as String?) ?? '').trim();
 
-  void _seedValuesFromManifest() {
+  bool _seeded = false;
+
+  void _seedValuesFromManifest(S tr) {
     _values.clear();
-    for (final f in menuWeekInputs()) {
+    for (final f in menuWeekInputs(tr)) {
       _values[f.id] = f.defaultValue;
     }
     // Date default isn't covered by manifest defaults (intentionally
@@ -87,9 +89,17 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_seeded) {
+      _seeded = true;
+      _seedValuesFromManifest(S.of(context)!);
+    }
+  }
+
+  @override
   void initState() {
     super.initState();
-    _seedValuesFromManifest();
     // Best-effort: if the user has already imported a menu in a past
     // session, drop them back into the imported view so they can keep
     // generating recipes for individual dishes. Without this, exiting
@@ -254,7 +264,7 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
       _menuId = null;
       _plan = null;
       _error = null;
-      _seedValuesFromManifest();
+      _seedValuesFromManifest(S.of(context)!);
       _stage = _Stage.form;
     });
   }
@@ -550,7 +560,7 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
             child: Text(_error!, style: TextStyle(color: palette.fg)),
           ),
         GeneratorFormView(
-          fields: menuWeekInputs(),
+          fields: menuWeekInputs(S.of(context)!),
           values: _values,
           axes: axes,
           onChanged: (id, v) => setState(() => _values[id] = v),

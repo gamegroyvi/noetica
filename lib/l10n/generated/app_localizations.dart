@@ -4786,6 +4786,240 @@ abstract class S {
   /// In ru, this message translates to:
   /// **'Выйти'**
   String get trayExit;
+
+  /// No description provided for @genMenuGoal.
+  ///
+  /// In ru, this message translates to:
+  /// **'Цель питания'**
+  String get genMenuGoal;
+
+  /// No description provided for @genMenuClassic.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сбалансированно'**
+  String get genMenuClassic;
+
+  /// No description provided for @genMenuLoseWeight.
+  ///
+  /// In ru, this message translates to:
+  /// **'Похудение'**
+  String get genMenuLoseWeight;
+
+  /// No description provided for @genMenuHealth.
+  ///
+  /// In ru, this message translates to:
+  /// **'Здоровье'**
+  String get genMenuHealth;
+
+  /// No description provided for @genMenuMuscle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Набор мышц'**
+  String get genMenuMuscle;
+
+  /// No description provided for @genMenuEnergy.
+  ///
+  /// In ru, this message translates to:
+  /// **'Энергия / спорт'**
+  String get genMenuEnergy;
+
+  /// No description provided for @genMenuServings.
+  ///
+  /// In ru, this message translates to:
+  /// **'Порций'**
+  String get genMenuServings;
+
+  /// No description provided for @genMenuStart.
+  ///
+  /// In ru, this message translates to:
+  /// **'Старт меню'**
+  String get genMenuStart;
+
+  /// No description provided for @genMenuAxis.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ось роста'**
+  String get genMenuAxis;
+
+  /// No description provided for @genMenuAxisHelp.
+  ///
+  /// In ru, this message translates to:
+  /// **'21 задача добавится к выбранной оси и будет давать XP при отметке «выполнено».'**
+  String get genMenuAxisHelp;
+
+  /// No description provided for @genMenuRestrictions.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ограничения (опционально)'**
+  String get genMenuRestrictions;
+
+  /// No description provided for @genMenuRestrictionsHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'без глютена; без свинины; вегетарианец'**
+  String get genMenuRestrictionsHint;
+
+  /// No description provided for @genMenuNotes.
+  ///
+  /// In ru, this message translates to:
+  /// **'Доп. пожелания (опционально)'**
+  String get genMenuNotes;
+
+  /// No description provided for @genMenuNotesHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'минимум готовки в будни; больше рыбы; быстрые завтраки'**
+  String get genMenuNotesHint;
+
+  /// No description provided for @genHabitIntent.
+  ///
+  /// In ru, this message translates to:
+  /// **'Какую привычку хочешь освоить?'**
+  String get genHabitIntent;
+
+  /// No description provided for @genHabitIntentHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'хочу засыпать раньше · перестать залипать в телефон утром · пить больше воды'**
+  String get genHabitIntentHint;
+
+  /// No description provided for @genHabitDays.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сколько дней'**
+  String get genHabitDays;
+
+  /// No description provided for @genHabitAxis.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ось роста'**
+  String get genHabitAxis;
+
+  /// No description provided for @genHabitAxisHelp.
+  ///
+  /// In ru, this message translates to:
+  /// **'Все мини-задачи получат XP от выполнения и будут расти вместе с этой осью.'**
+  String get genHabitAxisHelp;
+
+  /// No description provided for @genHabitNotes.
+  ///
+  /// In ru, this message translates to:
+  /// **'Доп. пожелания (опционально)'**
+  String get genHabitNotes;
+
+  /// No description provided for @genHabitNotesHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'буду делать утром · уже пробовал, не получалось · хочу без приложений'**
+  String get genHabitNotesHint;
+
+  /// No description provided for @genMenuTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Меню недели'**
+  String get genMenuTitle;
+
+  /// No description provided for @genMenuDesc.
+  ///
+  /// In ru, this message translates to:
+  /// **'7 дней × завтрак / обед / ужин с КБЖУ под твою цель питания.'**
+  String get genMenuDesc;
+
+  /// No description provided for @genMenuBullet1.
+  ///
+  /// In ru, this message translates to:
+  /// **'21 задача на оси «Тело» с дедлайнами'**
+  String get genMenuBullet1;
+
+  /// No description provided for @genMenuBullet2.
+  ///
+  /// In ru, this message translates to:
+  /// **'Список покупок отдельной заметкой-чеклистом'**
+  String get genMenuBullet2;
+
+  /// No description provided for @genMenuBullet3.
+  ///
+  /// In ru, this message translates to:
+  /// **'Полные рецепты подгружаются по тапу'**
+  String get genMenuBullet3;
+
+  /// No description provided for @genTrainingTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'План тренировок'**
+  String get genTrainingTitle;
+
+  /// No description provided for @genTrainingDesc.
+  ///
+  /// In ru, this message translates to:
+  /// **'Программа на 4 недели под цель: сила, выносливость, рекомпозиция.'**
+  String get genTrainingDesc;
+
+  /// No description provided for @genTrainingBullet1.
+  ///
+  /// In ru, this message translates to:
+  /// **'Учитывает доступное оборудование'**
+  String get genTrainingBullet1;
+
+  /// No description provided for @genTrainingBullet2.
+  ///
+  /// In ru, this message translates to:
+  /// **'Каждое занятие — задача с подходами в подзадачах'**
+  String get genTrainingBullet2;
+
+  /// No description provided for @genStudyTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Учебный план'**
+  String get genStudyTitle;
+
+  /// No description provided for @genStudyDesc.
+  ///
+  /// In ru, this message translates to:
+  /// **'Декомпозиция «выучить X» на занятия с заметками-конспектами.'**
+  String get genStudyDesc;
+
+  /// No description provided for @genStudyBullet1.
+  ///
+  /// In ru, this message translates to:
+  /// **'Уроки = задачи на оси «Разум»'**
+  String get genStudyBullet1;
+
+  /// No description provided for @genStudyBullet2.
+  ///
+  /// In ru, this message translates to:
+  /// **'Конспекты — заметки, связанные [[wiki-ссылками]]'**
+  String get genStudyBullet2;
+
+  /// No description provided for @genHabitsTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Микро-привычки'**
+  String get genHabitsTitle;
+
+  /// No description provided for @genHabitsDesc.
+  ///
+  /// In ru, this message translates to:
+  /// **'7-дневный челлендж из коротких ежедневных задач.'**
+  String get genHabitsDesc;
+
+  /// No description provided for @genHabitsBullet1.
+  ///
+  /// In ru, this message translates to:
+  /// **'Каждое действие ≤ 2 минут — реально доходишь'**
+  String get genHabitsBullet1;
+
+  /// No description provided for @genHabitsBullet2.
+  ///
+  /// In ru, this message translates to:
+  /// **'Подбираем под выбранную ось, идут по нарастающей'**
+  String get genHabitsBullet2;
+
+  /// No description provided for @genHabitsBullet3.
+  ///
+  /// In ru, this message translates to:
+  /// **'Появятся в Задачах с дедлайнами по дням'**
+  String get genHabitsBullet3;
 }
 
 class _SDelegate extends LocalizationsDelegate<S> {

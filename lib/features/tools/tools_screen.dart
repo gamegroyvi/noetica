@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/generated/app_localizations.dart';
-import '../../providers.dart';
+import '../../services/builtin_generators.dart';
 import '../../services/generator_manifest.dart';
 import '../../theme/app_theme.dart';
 import '../home/home_shell.dart' show kFloatingTabBarReserve;
@@ -11,7 +11,7 @@ import '../home/home_shell.dart' show kFloatingTabBarReserve;
 /// готовые планы (меню, тренировки, учебные курсы, привычки) и
 /// импортировать их в обычные Entry-и пользователя.
 ///
-/// Каталог рендерится из `generatorRegistryProvider`: today builtins
+/// Каталог рендерится из `buildBuiltinGeneratorRegistry()`: today builtins
 /// only, future phases will compose user / marketplace sources without
 /// touching this widget.
 class ToolsScreen extends ConsumerWidget {
@@ -27,7 +27,7 @@ class ToolsScreen extends ConsumerWidget {
     final palette = context.palette;
     final theme = Theme.of(context);
     final width = MediaQuery.of(context).size.width;
-    final registry = ref.watch(generatorRegistryProvider);
+    final registry = buildBuiltinGeneratorRegistry(S.of(context)!);
     final available = registry
         .list()
         .where((m) => m.status != GeneratorStatus.soon)

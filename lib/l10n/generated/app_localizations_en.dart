@@ -2600,4 +2600,121 @@ class SEn extends S {
 
   @override
   String get trayExit => 'Exit';
+
+  @override
+  String get genMenuGoal => 'Nutrition goal';
+
+  @override
+  String get genMenuClassic => 'Balanced';
+
+  @override
+  String get genMenuLoseWeight => 'Lose weight';
+
+  @override
+  String get genMenuHealth => 'Health';
+
+  @override
+  String get genMenuMuscle => 'Muscle gain';
+
+  @override
+  String get genMenuEnergy => 'Energy / sport';
+
+  @override
+  String get genMenuServings => 'Servings';
+
+  @override
+  String get genMenuStart => 'Menu start';
+
+  @override
+  String get genMenuAxis => 'Growth axis';
+
+  @override
+  String get genMenuAxisHelp => '21 tasks will be added to the chosen axis and grant XP when completed.';
+
+  @override
+  String get genMenuRestrictions => 'Restrictions (optional)';
+
+  @override
+  String get genMenuRestrictionsHint => 'gluten-free; no pork; vegetarian';
+
+  @override
+  String get genMenuNotes => 'Extra wishes (optional)';
+
+  @override
+  String get genMenuNotesHint => 'less cooking on weekdays; more fish; quick breakfasts';
+
+  @override
+  String get genHabitIntent => 'What habit do you want to build?';
+
+  @override
+  String get genHabitIntentHint => 'sleep earlier · less phone in the morning · drink more water';
+
+  @override
+  String get genHabitDays => 'How many days';
+
+  @override
+  String get genHabitAxis => 'Growth axis';
+
+  @override
+  String get genHabitAxisHelp => 'All mini-tasks will earn XP and grow with this axis.';
+
+  @override
+  String get genHabitNotes => 'Extra wishes (optional)';
+
+  @override
+  String get genHabitNotesHint => 'morning routine · tried before, didn\'t stick · no apps needed';
+
+  @override
+  String get genMenuTitle => 'Weekly menu';
+
+  @override
+  String get genMenuDesc => '7 days × breakfast / lunch / dinner with macros for your goal.';
+
+  @override
+  String get genMenuBullet1 => '21 tasks on the Body axis with deadlines';
+
+  @override
+  String get genMenuBullet2 => 'Shopping list as a separate checklist note';
+
+  @override
+  String get genMenuBullet3 => 'Full recipes loaded on tap';
+
+  @override
+  String get genTrainingTitle => 'Training plan';
+
+  @override
+  String get genTrainingDesc => '4-week program for strength, endurance, or recomposition.';
+
+  @override
+  String get genTrainingBullet1 => 'Takes available equipment into account';
+
+  @override
+  String get genTrainingBullet2 => 'Each session is a task with sets as sub-tasks';
+
+  @override
+  String get genStudyTitle => 'Study plan';
+
+  @override
+  String get genStudyDesc => 'Break down \"learn X\" into lessons with note summaries.';
+
+  @override
+  String get genStudyBullet1 => 'Lessons = tasks on the Mind axis';
+
+  @override
+  String get genStudyBullet2 => 'Summaries are notes linked via [[wiki-links]]';
+
+  @override
+  String get genHabitsTitle => 'Micro-habits';
+
+  @override
+  String get genHabitsDesc => '7-day challenge of short daily tasks.';
+
+  @override
+  String get genHabitsBullet1 => 'Each action ≤ 2 min — you actually follow through';
+
+  @override
+  String get genHabitsBullet2 => 'Tailored to your axis, progressively harder';
+
+  @override
+  String get genHabitsBullet3 => 'Appear in Tasks with daily deadlines';
 }

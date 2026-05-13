@@ -47,17 +47,22 @@ class _HabitsGeneratorScreenState extends ConsumerState<HabitsGeneratorScreen> {
   String? get _selectedAxisId => _values['axis_id'] as String?;
   String get _notes => ((_values['notes'] as String?) ?? '').trim();
 
-  void _seedValuesFromManifest() {
+  bool _seeded = false;
+
+  void _seedValuesFromManifest(S tr) {
     _values.clear();
-    for (final f in habitsInputs()) {
+    for (final f in habitsInputs(tr)) {
       _values[f.id] = f.defaultValue;
     }
   }
 
   @override
-  void initState() {
-    super.initState();
-    _seedValuesFromManifest();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_seeded) {
+      _seeded = true;
+      _seedValuesFromManifest(S.of(context)!);
+    }
   }
 
   // ----------------------------------------------------------- generate
@@ -202,7 +207,7 @@ class _HabitsGeneratorScreenState extends ConsumerState<HabitsGeneratorScreen> {
             child: Text(_error!, style: TextStyle(color: palette.fg)),
           ),
         GeneratorFormView(
-          fields: habitsInputs(),
+          fields: habitsInputs(S.of(context)!),
           values: _values,
           axes: axes,
           onChanged: (id, v) => setState(() => _values[id] = v),

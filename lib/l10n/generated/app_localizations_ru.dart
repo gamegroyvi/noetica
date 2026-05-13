@@ -2602,4 +2602,121 @@ class SRu extends S {
 
   @override
   String get trayExit => 'Выйти';
+
+  @override
+  String get genMenuGoal => 'Цель питания';
+
+  @override
+  String get genMenuClassic => 'Сбалансированно';
+
+  @override
+  String get genMenuLoseWeight => 'Похудение';
+
+  @override
+  String get genMenuHealth => 'Здоровье';
+
+  @override
+  String get genMenuMuscle => 'Набор мышц';
+
+  @override
+  String get genMenuEnergy => 'Энергия / спорт';
+
+  @override
+  String get genMenuServings => 'Порций';
+
+  @override
+  String get genMenuStart => 'Старт меню';
+
+  @override
+  String get genMenuAxis => 'Ось роста';
+
+  @override
+  String get genMenuAxisHelp => '21 задача добавится к выбранной оси и будет давать XP при отметке «выполнено».';
+
+  @override
+  String get genMenuRestrictions => 'Ограничения (опционально)';
+
+  @override
+  String get genMenuRestrictionsHint => 'без глютена; без свинины; вегетарианец';
+
+  @override
+  String get genMenuNotes => 'Доп. пожелания (опционально)';
+
+  @override
+  String get genMenuNotesHint => 'минимум готовки в будни; больше рыбы; быстрые завтраки';
+
+  @override
+  String get genHabitIntent => 'Какую привычку хочешь освоить?';
+
+  @override
+  String get genHabitIntentHint => 'хочу засыпать раньше · перестать залипать в телефон утром · пить больше воды';
+
+  @override
+  String get genHabitDays => 'Сколько дней';
+
+  @override
+  String get genHabitAxis => 'Ось роста';
+
+  @override
+  String get genHabitAxisHelp => 'Все мини-задачи получат XP от выполнения и будут расти вместе с этой осью.';
+
+  @override
+  String get genHabitNotes => 'Доп. пожелания (опционально)';
+
+  @override
+  String get genHabitNotesHint => 'буду делать утром · уже пробовал, не получалось · хочу без приложений';
+
+  @override
+  String get genMenuTitle => 'Меню недели';
+
+  @override
+  String get genMenuDesc => '7 дней × завтрак / обед / ужин с КБЖУ под твою цель питания.';
+
+  @override
+  String get genMenuBullet1 => '21 задача на оси «Тело» с дедлайнами';
+
+  @override
+  String get genMenuBullet2 => 'Список покупок отдельной заметкой-чеклистом';
+
+  @override
+  String get genMenuBullet3 => 'Полные рецепты подгружаются по тапу';
+
+  @override
+  String get genTrainingTitle => 'План тренировок';
+
+  @override
+  String get genTrainingDesc => 'Программа на 4 недели под цель: сила, выносливость, рекомпозиция.';
+
+  @override
+  String get genTrainingBullet1 => 'Учитывает доступное оборудование';
+
+  @override
+  String get genTrainingBullet2 => 'Каждое занятие — задача с подходами в подзадачах';
+
+  @override
+  String get genStudyTitle => 'Учебный план';
+
+  @override
+  String get genStudyDesc => 'Декомпозиция «выучить X» на занятия с заметками-конспектами.';
+
+  @override
+  String get genStudyBullet1 => 'Уроки = задачи на оси «Разум»';
+
+  @override
+  String get genStudyBullet2 => 'Конспекты — заметки, связанные [[wiki-ссылками]]';
+
+  @override
+  String get genHabitsTitle => 'Микро-привычки';
+
+  @override
+  String get genHabitsDesc => '7-дневный челлендж из коротких ежедневных задач.';
+
+  @override
+  String get genHabitsBullet1 => 'Каждое действие ≤ 2 минут — реально доходишь';
+
+  @override
+  String get genHabitsBullet2 => 'Подбираем под выбранную ось, идут по нарастающей';
+
+  @override
+  String get genHabitsBullet3 => 'Появятся в Задачах с дедлайнами по дням';
 }

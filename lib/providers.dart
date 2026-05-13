@@ -8,8 +8,6 @@ import 'data/repository.dart';
 import 'services/auth_service.dart';
 import 'services/axes_api.dart';
 import 'services/backend_urls_service.dart';
-import 'services/builtin_generators.dart';
-import 'services/generator_manifest.dart';
 import 'services/levels.dart';
 import 'services/roadmap_api.dart';
 import 'services/sync_service.dart';
@@ -103,12 +101,6 @@ final toolsApiProvider = Provider<ToolsApi>((ref) {
   return ToolsApi(authService: auth, baseUrl: url);
 });
 
-/// Catalog of generators surfaced on the «Ассистент» screen and
-/// elsewhere. Currently a builtin-only registry; the composite (with
-/// user / marketplace sources) lands in a follow-up phase.
-final generatorRegistryProvider = Provider<GeneratorRegistry>((ref) {
-  return buildBuiltinGeneratorRegistry();
-});
 
 final lifetimeXpProvider = FutureProvider<int>((ref) async {
   ref.watch(entriesProvider);

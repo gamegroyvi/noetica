@@ -1,14 +1,16 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:noetica/l10n/generated/app_localizations_ru.dart';
 import 'package:noetica/services/builtin_generators.dart';
 import 'package:noetica/services/generator_input.dart';
 import 'package:noetica/services/generator_manifest.dart';
 import 'package:noetica/services/tools_api.dart';
 
 void main() {
+  final tr = SRu();
+
   group('micro-habits manifest <-> backend wire contract', () {
     test('manifest declares the field ids the screen reads', () {
-      final ids = habitsInputs().map((f) => f.id).toSet();
-      // _generate() / _import() reach into _values via these keys.
+      final ids = habitsInputs(tr).map((f) => f.id).toSet();
       expect(
         ids,
         containsAll(<String>{'intent', 'duration_days', 'axis_id', 'notes'}),
@@ -16,24 +18,21 @@ void main() {
     });
 
     test('duration range stays inside backend tolerance (3..30)', () {
-      final f = habitsInputs().firstWhere((f) => f.id == 'duration_days')
+      final f = habitsInputs(tr).firstWhere((f) => f.id == 'duration_days')
           as GeneratorInputInt;
-      // Backend HabitsRequest.duration_days enforces ge=3 le=30. The
-      // manifest can stay narrower (we ship 3..21 to keep chips
-      // tappable) but must NEVER widen past those bounds.
       expect(f.min, greaterThanOrEqualTo(3));
       expect(f.max, lessThanOrEqualTo(30));
     });
 
     test('intent is required and multiline', () {
-      final f = habitsInputs().firstWhere((f) => f.id == 'intent')
+      final f = habitsInputs(tr).firstWhere((f) => f.id == 'intent')
           as GeneratorInputText;
       expect(f.required, isTrue);
       expect(f.multiline, isTrue);
     });
 
     test('manifest is registered as available with a builder', () {
-      final manifest = defaultBuiltinManifests()
+      final manifest = defaultBuiltinManifests(tr)
           .firstWhere((m) => m.id == 'micro-habits');
       expect(manifest.status, GeneratorStatus.available);
       expect(manifest.builder, isNotNull);

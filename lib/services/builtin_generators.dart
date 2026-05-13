@@ -2,31 +2,28 @@ import 'package:flutter/material.dart';
 
 import '../features/tools/habits/habits_generator_screen.dart';
 import '../features/tools/menu/menu_generator_screen.dart';
+import '../l10n/generated/app_localizations.dart';
 import 'generator_input.dart';
 import 'generator_manifest.dart';
 
-/// Form schema for the «Меню недели» generator. Kept as a top-level
-/// constant so tests can verify the shape and the future authoring
-/// UI can use it as the canonical example of a builtin manifest.
-List<GeneratorInputField> menuWeekInputs() => const [
+/// Form schema for the «Меню недели» generator.
+List<GeneratorInputField> menuWeekInputs(S tr) => [
       GeneratorInputEnum(
         id: 'goal',
-        label: 'Цель питания',
+        label: tr.genMenuGoal,
         required: true,
-        // Wire values match the backend's `MenuGoal` literal — keep in
-        // sync with `lib/services/tools_api.dart#MenuGoal`.
         options: [
-          GeneratorEnumOption(value: 'classic', label: 'Сбалансированно'),
-          GeneratorEnumOption(value: 'lose_weight', label: 'Похудение'),
-          GeneratorEnumOption(value: 'health', label: 'Здоровье'),
-          GeneratorEnumOption(value: 'muscle', label: 'Набор мышц'),
-          GeneratorEnumOption(value: 'energy', label: 'Энергия / спорт'),
+          GeneratorEnumOption(value: 'classic', label: tr.genMenuClassic),
+          GeneratorEnumOption(value: 'lose_weight', label: tr.genMenuLoseWeight),
+          GeneratorEnumOption(value: 'health', label: tr.genMenuHealth),
+          GeneratorEnumOption(value: 'muscle', label: tr.genMenuMuscle),
+          GeneratorEnumOption(value: 'energy', label: tr.genMenuEnergy),
         ],
         initial: 'classic',
       ),
       GeneratorInputInt(
         id: 'servings',
-        label: 'Порций',
+        label: tr.genMenuServings,
         required: true,
         min: 1,
         max: 6,
@@ -35,59 +32,50 @@ List<GeneratorInputField> menuWeekInputs() => const [
       ),
       GeneratorInputDate(
         id: 'start_date',
-        label: 'Старт меню',
+        label: tr.genMenuStart,
         required: true,
         daysBefore: 7,
         daysAfter: 60,
       ),
       GeneratorInputAxisRef(
         id: 'axis_id',
-        label: 'Ось роста',
-        help:
-            '21 задача добавится к выбранной оси и будет давать XP при '
-            'отметке «выполнено».',
+        label: tr.genMenuAxis,
+        help: tr.genMenuAxisHelp,
         preferAxisHint: 'тело',
       ),
       GeneratorInputText(
         id: 'restrictions',
-        label: 'Ограничения (опционально)',
-        placeholder: 'без глютена; без свинины; вегетарианец',
+        label: tr.genMenuRestrictions,
+        placeholder: tr.genMenuRestrictionsHint,
         multiline: true,
         minLines: 1,
         maxLines: 3,
       ),
       GeneratorInputText(
         id: 'notes',
-        label: 'Доп. пожелания (опционально)',
-        placeholder:
-            'минимум готовки в будни; больше рыбы; быстрые завтраки',
+        label: tr.genMenuNotes,
+        placeholder: tr.genMenuNotesHint,
         multiline: true,
         minLines: 2,
         maxLines: 4,
       ),
     ];
 
-/// Form schema for the «Микро-привычки» generator. Same authoring
-/// surface as `menuWeekInputs()` — pure declaration of fields, no
-/// behaviour. The screen wires defaults and reads values by id.
-List<GeneratorInputField> habitsInputs() => const [
+/// Form schema for the «Микро-привычки» generator.
+List<GeneratorInputField> habitsInputs(S tr) => [
       GeneratorInputText(
         id: 'intent',
-        label: 'Какую привычку хочешь освоить?',
+        label: tr.genHabitIntent,
         required: true,
-        placeholder:
-            'хочу засыпать раньше · перестать залипать в телефон утром · '
-            'пить больше воды',
+        placeholder: tr.genHabitIntentHint,
         multiline: true,
         minLines: 2,
         maxLines: 4,
       ),
       GeneratorInputInt(
         id: 'duration_days',
-        label: 'Сколько дней',
+        label: tr.genHabitDays,
         required: true,
-        // Min matches `HabitsRequest.duration_days` ge=3 on the
-        // backend; max matches le=30.
         min: 3,
         max: 21,
         initial: 7,
@@ -95,89 +83,76 @@ List<GeneratorInputField> habitsInputs() => const [
       ),
       GeneratorInputAxisRef(
         id: 'axis_id',
-        label: 'Ось роста',
-        help:
-            'Все мини-задачи получат XP от выполнения и будут расти '
-            'вместе с этой осью.',
+        label: tr.genHabitAxis,
+        help: tr.genHabitAxisHelp,
       ),
       GeneratorInputText(
         id: 'notes',
-        label: 'Доп. пожелания (опционально)',
-        placeholder:
-            'буду делать утром · уже пробовал, не получалось · '
-            'хочу без приложений',
+        label: tr.genHabitNotes,
+        placeholder: tr.genHabitNotesHint,
         multiline: true,
         minLines: 1,
         maxLines: 3,
       ),
     ];
 
-/// All hand-coded generators known to this build. Edit this list when
-/// adding a new builtin tool — the catalog screen, deep-links, and
-/// (eventually) analytics all read from here.
-///
-/// New builtins should land in this list with `status: soon` first
-/// (catalog placeholder), then flip to `available` + a `builder`
-/// in the same PR that ships the actual runtime.
-List<GeneratorManifest> defaultBuiltinManifests() => [
+/// All hand-coded generators known to this build.
+List<GeneratorManifest> defaultBuiltinManifests(S tr) => [
       GeneratorManifest(
         id: 'menu-week',
-        title: 'Меню недели',
-        description:
-            '7 дней × завтрак / обед / ужин с КБЖУ под твою цель питания.',
+        title: tr.genMenuTitle,
+        description: tr.genMenuDesc,
         icon: Icons.restaurant_menu_outlined,
         status: GeneratorStatus.available,
         category: 'health',
-        bullets: const [
-          '21 задача на оси «Тело» с дедлайнами',
-          'Список покупок отдельной заметкой-чеклистом',
-          'Полные рецепты подгружаются по тапу',
+        bullets: [
+          tr.genMenuBullet1,
+          tr.genMenuBullet2,
+          tr.genMenuBullet3,
         ],
-        inputs: menuWeekInputs(),
+        inputs: menuWeekInputs(tr),
         builder: (_) => const MenuGeneratorScreen(),
       ),
-      const GeneratorManifest(
+      GeneratorManifest(
         id: 'training-program',
-        title: 'План тренировок',
-        description:
-            'Программа на 4 недели под цель: сила, выносливость, рекомпозиция.',
+        title: tr.genTrainingTitle,
+        description: tr.genTrainingDesc,
         icon: Icons.fitness_center_outlined,
         status: GeneratorStatus.soon,
         category: 'health',
         bullets: [
-          'Учитывает доступное оборудование',
-          'Каждое занятие — задача с подходами в подзадачах',
+          tr.genTrainingBullet1,
+          tr.genTrainingBullet2,
         ],
       ),
-      const GeneratorManifest(
+      GeneratorManifest(
         id: 'study-plan',
-        title: 'Учебный план',
-        description:
-            'Декомпозиция «выучить X» на занятия с заметками-конспектами.',
+        title: tr.genStudyTitle,
+        description: tr.genStudyDesc,
         icon: Icons.menu_book_outlined,
         status: GeneratorStatus.soon,
         category: 'mind',
         bullets: [
-          'Уроки = задачи на оси «Разум»',
-          'Конспекты — заметки, связанные [[wiki-ссылками]]',
+          tr.genStudyBullet1,
+          tr.genStudyBullet2,
         ],
       ),
       GeneratorManifest(
         id: 'micro-habits',
-        title: 'Микро-привычки',
-        description: '7-дневный челлендж из коротких ежедневных задач.',
+        title: tr.genHabitsTitle,
+        description: tr.genHabitsDesc,
         icon: Icons.eco_outlined,
         status: GeneratorStatus.available,
         category: 'discipline',
-        bullets: const [
-          'Каждое действие ≤ 2 минут — реально доходишь',
-          'Подбираем под выбранную ось, идут по нарастающей',
-          'Появятся в Задачах с дедлайнами по дням',
+        bullets: [
+          tr.genHabitsBullet1,
+          tr.genHabitsBullet2,
+          tr.genHabitsBullet3,
         ],
-        inputs: habitsInputs(),
+        inputs: habitsInputs(tr),
         builder: (_) => const HabitsGeneratorScreen(),
       ),
     ];
 
-BuiltinGeneratorRegistry buildBuiltinGeneratorRegistry() =>
-    BuiltinGeneratorRegistry(defaultBuiltinManifests());
+BuiltinGeneratorRegistry buildBuiltinGeneratorRegistry(S tr) =>
+    BuiltinGeneratorRegistry(defaultBuiltinManifests(tr));
