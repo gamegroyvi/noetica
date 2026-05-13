@@ -123,17 +123,71 @@
     initAnimations();
   }
 
+  /* ---------- CAROUSEL ---------- */
+  var carouselIndex = 0;
+  var carouselTotal = 0;
+
   function renderPortfolio(data) {
-    var grid = document.getElementById('portfolioGrid');
-    if (!grid || !data.length) return;
-    grid.innerHTML = data.map(function (p) {
-      return '<div class="portfolio-item" data-anim>' +
+    var track = document.getElementById('portfolioTrack');
+    var dots = document.getElementById('carouselDots');
+    if (!track || !data.length) return;
+    carouselTotal = data.length;
+    carouselIndex = 0;
+
+    track.innerHTML = data.map(function (p) {
+      return '<div class="carousel__slide">' +
         '<img src="' + esc(p.image_url) + '" alt="' + esc(p.title) + '" loading="lazy" />' +
-        (p.title ? '<p class="portfolio-item__title">' + esc(p.title) + '</p>' : '') +
+        (p.title ? '<span class="carousel__slide-caption">' + esc(p.title) + '</span>' : '') +
         '</div>';
     }).join('');
-    initAnimations();
+
+    dots.innerHTML = data.map(function (_, i) {
+      return '<button class="carousel__dot' + (i === 0 ? ' active' : '') + '" data-index="' + i + '"></button>';
+    }).join('');
+
+    updateCarousel();
   }
+
+  function updateCarousel() {
+    var track = document.getElementById('portfolioTrack');
+    var dots = document.querySelectorAll('.carousel__dot');
+    if (!track) return;
+    track.style.transform = 'translateX(-' + (carouselIndex * 100) + '%)';
+    dots.forEach(function (d, i) {
+      d.classList.toggle('active', i === carouselIndex);
+    });
+  }
+
+  function initCarouselControls() {
+    var prev = document.getElementById('carouselPrev');
+    var next = document.getElementById('carouselNext');
+    var dotsWrap = document.getElementById('carouselDots');
+
+    if (prev) prev.addEventListener('click', function () {
+      carouselIndex = (carouselIndex - 1 + carouselTotal) % carouselTotal;
+      updateCarousel();
+    });
+    if (next) next.addEventListener('click', function () {
+      carouselIndex = (carouselIndex + 1) % carouselTotal;
+      updateCarousel();
+    });
+    if (dotsWrap) dotsWrap.addEventListener('click', function (e) {
+      var dot = e.target.closest('.carousel__dot');
+      if (!dot) return;
+      carouselIndex = parseInt(dot.dataset.index, 10);
+      updateCarousel();
+    });
+
+    // Auto-advance every 5s
+    setInterval(function () {
+      if (carouselTotal > 0) {
+        carouselIndex = (carouselIndex + 1) % carouselTotal;
+        updateCarousel();
+      }
+    }, 5000);
+  }
+
+  initCarouselControls();
 
   function renderReviews(data) {
     var list = document.getElementById('reviewsList');

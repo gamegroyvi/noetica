@@ -112,8 +112,17 @@
 
       <!-- PORTFOLIO -->
       <h2 class="section-title" style="margin-top:80px">Портфолио</h2>
-      <div class="portfolio__grid" id="portfolioGrid">
-        <!-- Loaded dynamically from API -->
+      <div class="carousel" id="portfolioCarousel">
+        <div class="carousel__track" id="portfolioTrack">
+          <!-- Loaded dynamically from API -->
+        </div>
+        <button class="carousel__btn carousel__btn--prev" id="carouselPrev" aria-label="Назад">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <button class="carousel__btn carousel__btn--next" id="carouselNext" aria-label="Вперёд">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 6 15 12 9 18"/></svg>
+        </button>
+        <div class="carousel__dots" id="carouselDots"></div>
       </div>
     </div>
   </section>
