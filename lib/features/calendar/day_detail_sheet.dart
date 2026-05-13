@@ -80,7 +80,7 @@ class _DayDetailSheet extends ConsumerWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        _formatHeadline(day),
+                        _formatHeadline(context, day),
                         style: Theme.of(context)
                             .textTheme
                             .titleMedium
@@ -100,7 +100,7 @@ class _DayDetailSheet extends ConsumerWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  _summaryLine(completed.length, xpSum, dueOpen.length),
+                  _summaryLine(context, completed.length, xpSum, dueOpen.length),
                   style: TextStyle(color: palette.muted, fontSize: 12),
                 ),
                 const SizedBox(height: 10),
@@ -187,7 +187,7 @@ class _DayDetailSheet extends ConsumerWidget {
     );
   }
 
-  String _summaryLine(int done, int xp, int due) {
+  String _summaryLine(BuildContext context, int done, int xp, int due) {
     final parts = <String>[];
     if (done > 0) parts.add(S.of(context)!.daySummaryClosed(done, xp));
     if (due > 0) {
@@ -197,15 +197,7 @@ class _DayDetailSheet extends ConsumerWidget {
     return parts.join(' · ');
   }
 
-  String _plural(int n, String one, String few, String many) {
-    final mod10 = n % 10;
-    final mod100 = n % 100;
-    if (mod10 == 1 && mod100 != 11) return one;
-    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few;
-    return many;
-  }
-
-  String _formatHeadline(DateTime d) {
+  String _formatHeadline(BuildContext context, DateTime d) {
     final months = S.of(context)!.dayMonths.split(',');
     final days = S.of(context)!.dayWeekdays.split(',');
     final now = DateTime.now();

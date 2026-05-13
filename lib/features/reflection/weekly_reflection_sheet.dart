@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../l10n/generated/app_localizations.dart';
 import '../../data/models.dart';
 import '../../data/personal_knowledge_service.dart';
 import '../../services/analytics_service.dart';
@@ -41,32 +42,17 @@ class _WeeklyReflectionSheetState extends State<WeeklyReflectionSheet> {
   final _focusCustom = TextEditingController();
   bool _saving = false;
 
-  static const _winOptions = <String>[
-    'выполнил план',
-    'новые привычки',
-    'продвинулся в проекте',
-    'отдых был',
-    'дисциплина держалась',
-    'разобрался в новой теме',
-    'хорошие отношения',
+  List<String> _winOptions(S tr) => [
+    tr.weeklyWin1, tr.weeklyWin2, tr.weeklyWin3, tr.weeklyWin4,
+    tr.weeklyWin5, tr.weeklyWin6, tr.weeklyWin7,
   ];
-  static const _lossOptions = <String>[
-    'прокрастинация',
-    'усталость',
-    'отвлечения',
-    'не уделил время важному',
-    'выгорание',
-    'болел',
-    'конфликты',
+  List<String> _lossOptions(S tr) => [
+    tr.weeklyLoss1, tr.weeklyLoss2, tr.weeklyLoss3, tr.weeklyLoss4,
+    tr.weeklyLoss5, tr.weeklyLoss6, tr.weeklyLoss7,
   ];
-  static const _focusOptions = <String>[
-    'добить незавершённое',
-    'новая привычка',
-    'фокус на главном',
-    'отдых',
-    'учёба',
-    'спорт',
-    'отношения',
+  List<String> _focusOptions(S tr) => [
+    tr.weeklyFocus1, tr.weeklyFocus2, tr.weeklyFocus3, tr.weeklyFocus4,
+    tr.weeklyFocus5, tr.weeklyFocus6, tr.weeklyFocus7,
   ];
 
   @override
@@ -78,6 +64,7 @@ class _WeeklyReflectionSheetState extends State<WeeklyReflectionSheet> {
   }
 
   Future<void> _submit() async {
+    final tr = S.of(context)!;
     setState(() => _saving = true);
     HapticFeedback.selectionClick();
     try {
@@ -90,13 +77,14 @@ class _WeeklyReflectionSheetState extends State<WeeklyReflectionSheet> {
         losses: losses.toList(),
         focusNext: focus.toList(),
         mood: _mood,
+        tr: tr,
       );
 
       // Append to PersonalKnowledge.recentReflections via the service. We
       // reuse the same plumbing as the per-task reflection (status=normal)
       // so the LLM treats this as one more reflection line in CONTEXT.
       await PersonalKnowledgeService().recordReflection(
-        taskTitle: 'Итог недели',
+        taskTitle: tr.weeklyReflTitle,
         status: ReflectionStatus.normal,
         outcome: summary,
         difficulties: '',
@@ -112,7 +100,7 @@ class _WeeklyReflectionSheetState extends State<WeeklyReflectionSheet> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Не сохранилось: $e')),
+        SnackBar(content: Text(tr.weeklySaveError('$e'))),
       );
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -130,12 +118,13 @@ class _WeeklyReflectionSheetState extends State<WeeklyReflectionSheet> {
     required List<String> losses,
     required List<String> focusNext,
     required int mood,
+    required S tr,
   }) {
     final parts = <String>[];
     if (wins.isNotEmpty) parts.add('+ ${wins.join(", ")}');
     if (losses.isNotEmpty) parts.add('- ${losses.join(", ")}');
     if (focusNext.isNotEmpty) parts.add('→ ${focusNext.join(", ")}');
-    if (mood > 0) parts.add('самочувствие $mood/5');
+    if (mood > 0) parts.add(tr.weeklyMoodSummary(mood));
     return parts.join(' / ');
   }
 
@@ -151,7 +140,7 @@ class _WeeklyReflectionSheetState extends State<WeeklyReflectionSheet> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Итог недели',
+                S.of(context)!.weeklyReflTitle,
                 style: TextStyle(
                   color: palette.fg,
                   fontSize: 20,
@@ -160,13 +149,13 @@ class _WeeklyReflectionSheetState extends State<WeeklyReflectionSheet> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Заглянем коротко: что было, что нет, и куда дальше.',
+                S.of(context)!.weeklyReflSubtitle,
                 style: TextStyle(color: palette.muted, fontSize: 13),
               ),
               const SizedBox(height: 18),
               _Section(
-                label: 'Что получилось',
-                options: _winOptions,
+                label: S.of(context)!.weeklyWinsLabel,
+                options: _winOptions(S.of(context)!),
                 selected: _wins,
                 custom: _winsCustom,
                 onPick: (v) => setState(() => _toggle(_wins, v)),
@@ -174,8 +163,8 @@ class _WeeklyReflectionSheetState extends State<WeeklyReflectionSheet> {
               ),
               const SizedBox(height: 18),
               _Section(
-                label: 'Что не получилось',
-                options: _lossOptions,
+                label: S.of(context)!.weeklyLossesLabel,
+                options: _lossOptions(S.of(context)!),
                 selected: _losses,
                 custom: _lossesCustom,
                 onPick: (v) => setState(() => _toggle(_losses, v)),
@@ -183,8 +172,8 @@ class _WeeklyReflectionSheetState extends State<WeeklyReflectionSheet> {
               ),
               const SizedBox(height: 18),
               _Section(
-                label: 'Куда смотрю на следующую',
-                options: _focusOptions,
+                label: S.of(context)!.weeklyFocusLabel,
+                options: _focusOptions(S.of(context)!),
                 selected: _focusNext,
                 custom: _focusCustom,
                 onPick: (v) => setState(() => _toggle(_focusNext, v)),
@@ -192,7 +181,7 @@ class _WeeklyReflectionSheetState extends State<WeeklyReflectionSheet> {
               ),
               const SizedBox(height: 18),
               Text(
-                'Самочувствие',
+                S.of(context)!.weeklyMoodLabel,
                 style: TextStyle(
                   color: palette.muted,
                   fontSize: 11,
@@ -244,7 +233,7 @@ class _WeeklyReflectionSheetState extends State<WeeklyReflectionSheet> {
                         side: BorderSide(color: palette.line),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
-                      child: const Text('Позже'),
+                      child: Text(S.of(context)!.weeklyLater),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -257,7 +246,7 @@ class _WeeklyReflectionSheetState extends State<WeeklyReflectionSheet> {
                         foregroundColor: palette.bg,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
-                      child: Text(_saving ? '...' : 'Записать'),
+                      child: Text(_saving ? '...' : S.of(context)!.weeklySubmit),
                     ),
                   ),
                 ],
@@ -330,7 +319,7 @@ class _Section extends StatelessWidget {
         TextField(
           controller: custom,
           decoration: InputDecoration(
-            hintText: 'Своё (необязательно)',
+            hintText: S.of(context)!.weeklyCustomHint,
             isDense: true,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),

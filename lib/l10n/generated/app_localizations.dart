@@ -3028,6 +3028,198 @@ abstract class S {
   /// In ru, this message translates to:
   /// **'итого'**
   String get weeklyTotal;
+
+  /// No description provided for @weeklyReflTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Итог недели'**
+  String get weeklyReflTitle;
+
+  /// No description provided for @weeklyReflSubtitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Заглянем коротко: что было, что нет, и куда дальше.'**
+  String get weeklyReflSubtitle;
+
+  /// No description provided for @weeklyWinsLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Что получилось'**
+  String get weeklyWinsLabel;
+
+  /// No description provided for @weeklyLossesLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Что не получилось'**
+  String get weeklyLossesLabel;
+
+  /// No description provided for @weeklyFocusLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Куда смотрю на следующую'**
+  String get weeklyFocusLabel;
+
+  /// No description provided for @weeklyMoodLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Самочувствие'**
+  String get weeklyMoodLabel;
+
+  /// No description provided for @weeklyLater.
+  ///
+  /// In ru, this message translates to:
+  /// **'Позже'**
+  String get weeklyLater;
+
+  /// No description provided for @weeklySubmit.
+  ///
+  /// In ru, this message translates to:
+  /// **'Записать'**
+  String get weeklySubmit;
+
+  /// No description provided for @weeklyCustomHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Своё (необязательно)'**
+  String get weeklyCustomHint;
+
+  /// No description provided for @weeklySaveError.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не сохранилось: {error}'**
+  String weeklySaveError(String error);
+
+  /// No description provided for @weeklyMoodSummary.
+  ///
+  /// In ru, this message translates to:
+  /// **'самочувствие {n}/5'**
+  String weeklyMoodSummary(int n);
+
+  /// No description provided for @weeklyWin1.
+  ///
+  /// In ru, this message translates to:
+  /// **'выполнил план'**
+  String get weeklyWin1;
+
+  /// No description provided for @weeklyWin2.
+  ///
+  /// In ru, this message translates to:
+  /// **'новые привычки'**
+  String get weeklyWin2;
+
+  /// No description provided for @weeklyWin3.
+  ///
+  /// In ru, this message translates to:
+  /// **'продвинулся в проекте'**
+  String get weeklyWin3;
+
+  /// No description provided for @weeklyWin4.
+  ///
+  /// In ru, this message translates to:
+  /// **'отдых был'**
+  String get weeklyWin4;
+
+  /// No description provided for @weeklyWin5.
+  ///
+  /// In ru, this message translates to:
+  /// **'дисциплина держалась'**
+  String get weeklyWin5;
+
+  /// No description provided for @weeklyWin6.
+  ///
+  /// In ru, this message translates to:
+  /// **'разобрался в новой теме'**
+  String get weeklyWin6;
+
+  /// No description provided for @weeklyWin7.
+  ///
+  /// In ru, this message translates to:
+  /// **'хорошие отношения'**
+  String get weeklyWin7;
+
+  /// No description provided for @weeklyLoss1.
+  ///
+  /// In ru, this message translates to:
+  /// **'прокрастинация'**
+  String get weeklyLoss1;
+
+  /// No description provided for @weeklyLoss2.
+  ///
+  /// In ru, this message translates to:
+  /// **'усталость'**
+  String get weeklyLoss2;
+
+  /// No description provided for @weeklyLoss3.
+  ///
+  /// In ru, this message translates to:
+  /// **'отвлечения'**
+  String get weeklyLoss3;
+
+  /// No description provided for @weeklyLoss4.
+  ///
+  /// In ru, this message translates to:
+  /// **'не уделил время важному'**
+  String get weeklyLoss4;
+
+  /// No description provided for @weeklyLoss5.
+  ///
+  /// In ru, this message translates to:
+  /// **'выгорание'**
+  String get weeklyLoss5;
+
+  /// No description provided for @weeklyLoss6.
+  ///
+  /// In ru, this message translates to:
+  /// **'болел'**
+  String get weeklyLoss6;
+
+  /// No description provided for @weeklyLoss7.
+  ///
+  /// In ru, this message translates to:
+  /// **'конфликты'**
+  String get weeklyLoss7;
+
+  /// No description provided for @weeklyFocus1.
+  ///
+  /// In ru, this message translates to:
+  /// **'добить незавершённое'**
+  String get weeklyFocus1;
+
+  /// No description provided for @weeklyFocus2.
+  ///
+  /// In ru, this message translates to:
+  /// **'новая привычка'**
+  String get weeklyFocus2;
+
+  /// No description provided for @weeklyFocus3.
+  ///
+  /// In ru, this message translates to:
+  /// **'фокус на главном'**
+  String get weeklyFocus3;
+
+  /// No description provided for @weeklyFocus4.
+  ///
+  /// In ru, this message translates to:
+  /// **'отдых'**
+  String get weeklyFocus4;
+
+  /// No description provided for @weeklyFocus5.
+  ///
+  /// In ru, this message translates to:
+  /// **'учёба'**
+  String get weeklyFocus5;
+
+  /// No description provided for @weeklyFocus6.
+  ///
+  /// In ru, this message translates to:
+  /// **'спорт'**
+  String get weeklyFocus6;
+
+  /// No description provided for @weeklyFocus7.
+  ///
+  /// In ru, this message translates to:
+  /// **'отношения'**
+  String get weeklyFocus7;
 }
 
 class _SDelegate extends LocalizationsDelegate<S> {

@@ -1667,4 +1667,104 @@ class SRu extends S {
 
   @override
   String get weeklyTotal => 'итого';
+
+  @override
+  String get weeklyReflTitle => 'Итог недели';
+
+  @override
+  String get weeklyReflSubtitle => 'Заглянем коротко: что было, что нет, и куда дальше.';
+
+  @override
+  String get weeklyWinsLabel => 'Что получилось';
+
+  @override
+  String get weeklyLossesLabel => 'Что не получилось';
+
+  @override
+  String get weeklyFocusLabel => 'Куда смотрю на следующую';
+
+  @override
+  String get weeklyMoodLabel => 'Самочувствие';
+
+  @override
+  String get weeklyLater => 'Позже';
+
+  @override
+  String get weeklySubmit => 'Записать';
+
+  @override
+  String get weeklyCustomHint => 'Своё (необязательно)';
+
+  @override
+  String weeklySaveError(String error) {
+    return 'Не сохранилось: $error';
+  }
+
+  @override
+  String weeklyMoodSummary(int n) {
+    return 'самочувствие $n/5';
+  }
+
+  @override
+  String get weeklyWin1 => 'выполнил план';
+
+  @override
+  String get weeklyWin2 => 'новые привычки';
+
+  @override
+  String get weeklyWin3 => 'продвинулся в проекте';
+
+  @override
+  String get weeklyWin4 => 'отдых был';
+
+  @override
+  String get weeklyWin5 => 'дисциплина держалась';
+
+  @override
+  String get weeklyWin6 => 'разобрался в новой теме';
+
+  @override
+  String get weeklyWin7 => 'хорошие отношения';
+
+  @override
+  String get weeklyLoss1 => 'прокрастинация';
+
+  @override
+  String get weeklyLoss2 => 'усталость';
+
+  @override
+  String get weeklyLoss3 => 'отвлечения';
+
+  @override
+  String get weeklyLoss4 => 'не уделил время важному';
+
+  @override
+  String get weeklyLoss5 => 'выгорание';
+
+  @override
+  String get weeklyLoss6 => 'болел';
+
+  @override
+  String get weeklyLoss7 => 'конфликты';
+
+  @override
+  String get weeklyFocus1 => 'добить незавершённое';
+
+  @override
+  String get weeklyFocus2 => 'новая привычка';
+
+  @override
+  String get weeklyFocus3 => 'фокус на главном';
+
+  @override
+  String get weeklyFocus4 => 'отдых';
+
+  @override
+  String get weeklyFocus5 => 'учёба';
+
+  @override
+  String get weeklyFocus6 => 'спорт';
+
+  @override
+  String get weeklyFocus7 => 'отношения';
 }

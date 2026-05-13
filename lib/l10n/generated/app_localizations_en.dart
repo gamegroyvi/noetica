@@ -1665,4 +1665,104 @@ class SEn extends S {
 
   @override
   String get weeklyTotal => 'total';
+
+  @override
+  String get weeklyReflTitle => 'Week summary';
+
+  @override
+  String get weeklyReflSubtitle => 'A quick look: what went well, what didn\'t, and where to next.';
+
+  @override
+  String get weeklyWinsLabel => 'What went well';
+
+  @override
+  String get weeklyLossesLabel => 'What didn\'t work';
+
+  @override
+  String get weeklyFocusLabel => 'Focus for next week';
+
+  @override
+  String get weeklyMoodLabel => 'Well-being';
+
+  @override
+  String get weeklyLater => 'Later';
+
+  @override
+  String get weeklySubmit => 'Save';
+
+  @override
+  String get weeklyCustomHint => 'Custom (optional)';
+
+  @override
+  String weeklySaveError(String error) {
+    return 'Failed to save: $error';
+  }
+
+  @override
+  String weeklyMoodSummary(int n) {
+    return 'well-being $n/5';
+  }
+
+  @override
+  String get weeklyWin1 => 'completed plan';
+
+  @override
+  String get weeklyWin2 => 'new habits';
+
+  @override
+  String get weeklyWin3 => 'project progress';
+
+  @override
+  String get weeklyWin4 => 'had rest';
+
+  @override
+  String get weeklyWin5 => 'discipline held';
+
+  @override
+  String get weeklyWin6 => 'learned new topic';
+
+  @override
+  String get weeklyWin7 => 'good relationships';
+
+  @override
+  String get weeklyLoss1 => 'procrastination';
+
+  @override
+  String get weeklyLoss2 => 'fatigue';
+
+  @override
+  String get weeklyLoss3 => 'distractions';
+
+  @override
+  String get weeklyLoss4 => 'didn\'t prioritize important';
+
+  @override
+  String get weeklyLoss5 => 'burnout';
+
+  @override
+  String get weeklyLoss6 => 'was sick';
+
+  @override
+  String get weeklyLoss7 => 'conflicts';
+
+  @override
+  String get weeklyFocus1 => 'finish unfinished';
+
+  @override
+  String get weeklyFocus2 => 'new habit';
+
+  @override
+  String get weeklyFocus3 => 'focus on main';
+
+  @override
+  String get weeklyFocus4 => 'rest';
+
+  @override
+  String get weeklyFocus5 => 'study';
+
+  @override
+  String get weeklyFocus6 => 'sport';
+
+  @override
+  String get weeklyFocus7 => 'relationships';
 }
