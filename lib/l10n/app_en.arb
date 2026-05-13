@@ -1,0 +1,131 @@
+{
+  "@@locale": "en",
+
+  "appTitle": "NOETICA",
+
+  "tabDashboard": "Now",
+  "tabSelf": "Self",
+  "tabTasks": "Tasks",
+  "tabMore": "More",
+
+  "navJournal": "Journal",
+  "navCalendar": "Calendar",
+  "navKnowledge": "Graph",
+  "navAssistant": "Assistant",
+  "navSettings": "Settings",
+  "navPomodoro": "Pomodoro",
+  "navRoadmap": "AI-Plan",
+
+  "sectionNow": "NOW",
+  "sectionToday": "TODAY",
+  "sectionPulse": "PULSE",
+  "sectionRecent": "RECENT",
+  "sectionOverdue": "OVERDUE",
+  "sectionTomorrow": "TOMORROW",
+  "sectionThisWeek": "THIS WEEK",
+  "sectionLater": "LATER",
+  "sectionDone": "DONE",
+  "sectionHeatmap": "ACTIVITY",
+
+  "filterAll": "All",
+  "filterOpen": "Open",
+  "filterOverdue": "Overdue",
+  "filterDone": "Done",
+
+  "actionSave": "Save",
+  "actionCancel": "Cancel",
+  "actionDelete": "Delete",
+  "actionUndo": "Undo",
+  "actionDone": "Done",
+  "actionAdd": "Add",
+  "actionEdit": "Edit",
+  "actionSearch": "Search",
+  "actionExport": "Export",
+  "actionImport": "Import",
+
+  "taskNew": "New entry",
+  "taskComplete": "Done",
+  "taskSubtasks": "Subtasks",
+  "taskDueDate": "Due date",
+  "taskXp": "XP",
+
+  "editorTitle": "Title",
+  "editorBody": "Body",
+  "editorTags": "Tags",
+  "editorAddTag": "add tag…",
+  "editorAxes": "Axes",
+  "editorBacklinks": "Backlinks",
+  "editorSubtasks": "Subtasks",
+
+  "selfBranches": "Branches",
+  "selfSettings": "Settings",
+  "selfEpoch": "Epoch",
+  "selfLevel": "Level",
+  "selfStreak": "Streak",
+  "selfNewEpoch": "New epoch",
+  "selfDeepen": "Deepen",
+
+  "axisBody": "Body",
+  "axisMind": "Mind",
+  "axisWork": "Work",
+  "axisSocial": "Social",
+  "axisSoul": "Soul",
+
+  "onboardingName": "What's your name?",
+  "onboardingGoals": "What are your goals?",
+  "onboardingInterests": "What interests you?",
+  "onboardingHours": "Hours per week?",
+  "onboardingContinue": "Next",
+  "onboardingFinish": "Start",
+
+  "pomodoroTitle": "Pomodoro",
+  "pomodoroStart": "Start",
+  "pomodoroPause": "Pause",
+  "pomodoroReset": "Reset",
+
+  "settingsTitle": "Settings",
+  "settingsAbout": "About",
+  "settingsAccount": "Account",
+  "settingsExport": "Export data",
+  "settingsImport": "Import data",
+  "settingsTheme": "Theme",
+  "settingsDarkMode": "Dark mode",
+  "settingsLightMode": "Light mode",
+
+  "knowledgeEmpty": "Knowledge base is empty",
+  "knowledgeEmptyHint": "Create your first note or task — they will appear here as graph nodes.",
+  "knowledgeCreateEntry": "Create entry",
+  "knowledgeGoals": "Goals",
+  "knowledgeConstraints": "Constraints",
+  "knowledgeHighlights": "Highlights",
+  "knowledgeReflections": "Reflections",
+  "knowledgePreferences": "Preferences",
+
+  "calendarTitle": "Calendar",
+  "notesTitle": "Journal",
+
+  "deleteConfirm": "Entry deleted",
+  "deleteUndone": "Restored",
+
+  "emptyTasks": "No tasks yet",
+  "emptyNotes": "No notes yet",
+
+  "greetingMorning": "Good morning",
+  "greetingDay": "Good afternoon",
+  "greetingEvening": "Good evening",
+  "greetingNight": "Good night",
+
+  "reflectionHow": "How did it go?",
+  "reflectionEasy": "Easy",
+  "reflectionNormal": "Normal",
+  "reflectionHard": "Hard",
+  "reflectionSkip": "Skip",
+
+  "weeklyReflection": "Weekly reflection",
+  "daysTotalStreak": "{count, plural, =0{0 days} =1{1 day} other{{count} days}}",
+  "@daysTotalStreak": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  }
+}

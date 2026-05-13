@@ -1,0 +1,131 @@
+{
+  "@@locale": "ru",
+
+  "appTitle": "NOETICA",
+
+  "tabDashboard": "Сейчас",
+  "tabSelf": "Я",
+  "tabTasks": "Задачи",
+  "tabMore": "Ещё",
+
+  "navJournal": "Журнал",
+  "navCalendar": "Календарь",
+  "navKnowledge": "Граф",
+  "navAssistant": "Ассистент",
+  "navSettings": "Настройки",
+  "navPomodoro": "Помодоро",
+  "navRoadmap": "AI-План",
+
+  "sectionNow": "СЕЙЧАС",
+  "sectionToday": "СЕГОДНЯ",
+  "sectionPulse": "ПУЛЬС",
+  "sectionRecent": "ПОСЛЕДНЕЕ",
+  "sectionOverdue": "ПРОСРОЧЕНО",
+  "sectionTomorrow": "ЗАВТРА",
+  "sectionThisWeek": "НА ЭТОЙ НЕДЕЛЕ",
+  "sectionLater": "ПОЗЖЕ",
+  "sectionDone": "ГОТОВО",
+  "sectionHeatmap": "АКТИВНОСТЬ",
+
+  "filterAll": "Все",
+  "filterOpen": "Открытые",
+  "filterOverdue": "Просроч.",
+  "filterDone": "Готово",
+
+  "actionSave": "Сохранить",
+  "actionCancel": "Отмена",
+  "actionDelete": "Удалить",
+  "actionUndo": "Отменить",
+  "actionDone": "Готово",
+  "actionAdd": "Добавить",
+  "actionEdit": "Редактировать",
+  "actionSearch": "Поиск",
+  "actionExport": "Экспорт",
+  "actionImport": "Импорт",
+
+  "taskNew": "Новая запись",
+  "taskComplete": "Готово",
+  "taskSubtasks": "Подзадачи",
+  "taskDueDate": "Дедлайн",
+  "taskXp": "XP",
+
+  "editorTitle": "Заголовок",
+  "editorBody": "Текст",
+  "editorTags": "Теги",
+  "editorAddTag": "добавить тег…",
+  "editorAxes": "Оси",
+  "editorBacklinks": "Сюда ссылаются",
+  "editorSubtasks": "Подзадачи",
+
+  "selfBranches": "Ветви",
+  "selfSettings": "Настройки",
+  "selfEpoch": "Эпоха",
+  "selfLevel": "Уровень",
+  "selfStreak": "Стрик",
+  "selfNewEpoch": "Новая эпоха",
+  "selfDeepen": "Углубиться",
+
+  "axisBody": "Тело",
+  "axisMind": "Ум",
+  "axisWork": "Дело",
+  "axisSocial": "Связи",
+  "axisSoul": "Душа",
+
+  "onboardingName": "Как тебя зовут?",
+  "onboardingGoals": "Какие у тебя цели?",
+  "onboardingInterests": "Что тебе интересно?",
+  "onboardingHours": "Сколько часов в неделю?",
+  "onboardingContinue": "Далее",
+  "onboardingFinish": "Начать",
+
+  "pomodoroTitle": "Помодоро",
+  "pomodoroStart": "Старт",
+  "pomodoroPause": "Пауза",
+  "pomodoroReset": "Сброс",
+
+  "settingsTitle": "Настройки",
+  "settingsAbout": "О приложении",
+  "settingsAccount": "Аккаунт",
+  "settingsExport": "Экспорт данных",
+  "settingsImport": "Импорт данных",
+  "settingsTheme": "Тема",
+  "settingsDarkMode": "Тёмная тема",
+  "settingsLightMode": "Светлая тема",
+
+  "knowledgeEmpty": "База знаний пока пуста",
+  "knowledgeEmptyHint": "Создайте первую заметку или задачу — они появятся здесь как узлы графа.",
+  "knowledgeCreateEntry": "Создать запись",
+  "knowledgeGoals": "Цели",
+  "knowledgeConstraints": "Ограничения",
+  "knowledgeHighlights": "Достижения",
+  "knowledgeReflections": "Рефлексии",
+  "knowledgePreferences": "Предпочтения",
+
+  "calendarTitle": "Календарь",
+  "notesTitle": "Журнал",
+
+  "deleteConfirm": "Запись удалена",
+  "deleteUndone": "Восстановлено",
+
+  "emptyTasks": "Задач пока нет",
+  "emptyNotes": "Заметок пока нет",
+
+  "greetingMorning": "Доброе утро",
+  "greetingDay": "Добрый день",
+  "greetingEvening": "Добрый вечер",
+  "greetingNight": "Доброй ночи",
+
+  "reflectionHow": "Как прошло?",
+  "reflectionEasy": "Легко",
+  "reflectionNormal": "Нормально",
+  "reflectionHard": "Сложно",
+  "reflectionSkip": "Пропустить",
+
+  "weeklyReflection": "Недельная рефлексия",
+  "daysTotalStreak": "{count, plural, =0{0 дней} =1{1 день} few{{count} дня} other{{count} дней}}",
+  "@daysTotalStreak": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  }
+}

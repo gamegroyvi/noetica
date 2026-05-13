@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'data/profile.dart';
@@ -29,6 +31,14 @@ class NoeticaApp extends ConsumerWidget {
       themeMode: ThemeMode.dark,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
+      localizationsDelegates: const [
+        S.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: S.supportedLocales,
+      locale: const Locale('ru'),
       home: AnimatedSwitcher(
         duration: const Duration(milliseconds: 240),
         switchInCurve: Curves.easeOutCubic,
