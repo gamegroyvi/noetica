@@ -981,4 +981,104 @@ class SEn extends S {
   String roadmapImportBtn(int n) {
     return 'Import ($n)';
   }
+
+  @override
+  String get pomodoroRunning => 'Pomodoro running';
+
+  @override
+  String pomodoroFocusStarted(int min, String title) {
+    return 'Focus $min min: $title';
+  }
+
+  @override
+  String axisXpForAxis(int xp) {
+    return '+$xp XP';
+  }
+
+  @override
+  String get dashboardXpToday => 'XP TODAY';
+
+  @override
+  String dashboardXpWeek(int xp) {
+    return '$xp this week';
+  }
+
+  @override
+  String dashboardBestAxis(String name, int xp) {
+    return '$name · +$xp XP';
+  }
+
+  @override
+  String get dashboardDescribeGoal => 'Describe your goal';
+
+  @override
+  String dashboardOverdueCount(int n) {
+    return '$n overdue';
+  }
+
+  @override
+  String dashboardTodayCount(int n) {
+    return '$n today';
+  }
+
+  @override
+  String get dashboardThinking => 'Thinking about the plan…';
+
+  @override
+  String get aboutApp => 'About you';
+
+  @override
+  String get knowledgePrefs => 'Preferences';
+
+  @override
+  String get actionClear => 'Clear';
+
+  @override
+  String get roadmapHorizon => 'Horizon';
+
+  @override
+  String get roadmapWeek => 'Week';
+
+  @override
+  String get roadmapMonth => 'Month';
+
+  @override
+  String get roadmapQuarter => 'Quarter';
+
+  @override
+  String get roadmapTaskCount => 'Task count';
+
+  @override
+  String get pomodoroTooltip => 'Pomodoro';
+
+  @override
+  String get pulseStreak => 'STREAK';
+
+  @override
+  String get pulseStartToday => 'start today';
+
+  @override
+  String get pulseQuiet => 'quiet so far';
+
+  @override
+  String get pulseBestAxis => 'BEST AXIS';
+
+  @override
+  String get pulseNoData => 'no data';
+
+  @override
+  String get pulseDeadline => 'DEADLINE';
+
+  @override
+  String get pulseNoDeadline => 'no deadlines';
+
+  @override
+  String pulseDeadlineHours(int h) {
+    return '${h}h';
+  }
+
+  @override
+  String pulseDeadlineDays(int d) {
+    return '${d}d';
+  }
 }

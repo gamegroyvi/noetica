@@ -1864,6 +1864,174 @@ abstract class S {
   /// In ru, this message translates to:
   /// **'Импортировать ({n})'**
   String roadmapImportBtn(int n);
+
+  /// No description provided for @pomodoroRunning.
+  ///
+  /// In ru, this message translates to:
+  /// **'Pomodoro запущен'**
+  String get pomodoroRunning;
+
+  /// No description provided for @pomodoroFocusStarted.
+  ///
+  /// In ru, this message translates to:
+  /// **'Фокус {min} мин: {title}'**
+  String pomodoroFocusStarted(int min, String title);
+
+  /// No description provided for @axisXpForAxis.
+  ///
+  /// In ru, this message translates to:
+  /// **'+{xp} XP'**
+  String axisXpForAxis(int xp);
+
+  /// No description provided for @dashboardXpToday.
+  ///
+  /// In ru, this message translates to:
+  /// **'XP СЕГОДНЯ'**
+  String get dashboardXpToday;
+
+  /// No description provided for @dashboardXpWeek.
+  ///
+  /// In ru, this message translates to:
+  /// **'{xp} за неделю'**
+  String dashboardXpWeek(int xp);
+
+  /// No description provided for @dashboardBestAxis.
+  ///
+  /// In ru, this message translates to:
+  /// **'{name} · +{xp} XP'**
+  String dashboardBestAxis(String name, int xp);
+
+  /// No description provided for @dashboardDescribeGoal.
+  ///
+  /// In ru, this message translates to:
+  /// **'Опиши цель'**
+  String get dashboardDescribeGoal;
+
+  /// No description provided for @dashboardOverdueCount.
+  ///
+  /// In ru, this message translates to:
+  /// **'{n} просрочено'**
+  String dashboardOverdueCount(int n);
+
+  /// No description provided for @dashboardTodayCount.
+  ///
+  /// In ru, this message translates to:
+  /// **'{n} на сегодня'**
+  String dashboardTodayCount(int n);
+
+  /// No description provided for @dashboardThinking.
+  ///
+  /// In ru, this message translates to:
+  /// **'Думаю над планом…'**
+  String get dashboardThinking;
+
+  /// No description provided for @aboutApp.
+  ///
+  /// In ru, this message translates to:
+  /// **'О тебе'**
+  String get aboutApp;
+
+  /// No description provided for @knowledgePrefs.
+  ///
+  /// In ru, this message translates to:
+  /// **'Предпочтения'**
+  String get knowledgePrefs;
+
+  /// No description provided for @actionClear.
+  ///
+  /// In ru, this message translates to:
+  /// **'Очистить'**
+  String get actionClear;
+
+  /// No description provided for @roadmapHorizon.
+  ///
+  /// In ru, this message translates to:
+  /// **'Горизонт'**
+  String get roadmapHorizon;
+
+  /// No description provided for @roadmapWeek.
+  ///
+  /// In ru, this message translates to:
+  /// **'Неделя'**
+  String get roadmapWeek;
+
+  /// No description provided for @roadmapMonth.
+  ///
+  /// In ru, this message translates to:
+  /// **'Месяц'**
+  String get roadmapMonth;
+
+  /// No description provided for @roadmapQuarter.
+  ///
+  /// In ru, this message translates to:
+  /// **'Квартал'**
+  String get roadmapQuarter;
+
+  /// No description provided for @roadmapTaskCount.
+  ///
+  /// In ru, this message translates to:
+  /// **'Кол-во задач'**
+  String get roadmapTaskCount;
+
+  /// No description provided for @pomodoroTooltip.
+  ///
+  /// In ru, this message translates to:
+  /// **'Pomodoro'**
+  String get pomodoroTooltip;
+
+  /// No description provided for @pulseStreak.
+  ///
+  /// In ru, this message translates to:
+  /// **'СТРИК'**
+  String get pulseStreak;
+
+  /// No description provided for @pulseStartToday.
+  ///
+  /// In ru, this message translates to:
+  /// **'начни сегодня'**
+  String get pulseStartToday;
+
+  /// No description provided for @pulseQuiet.
+  ///
+  /// In ru, this message translates to:
+  /// **'пока тихо'**
+  String get pulseQuiet;
+
+  /// No description provided for @pulseBestAxis.
+  ///
+  /// In ru, this message translates to:
+  /// **'ЛУЧШАЯ ОСЬ'**
+  String get pulseBestAxis;
+
+  /// No description provided for @pulseNoData.
+  ///
+  /// In ru, this message translates to:
+  /// **'нет данных'**
+  String get pulseNoData;
+
+  /// No description provided for @pulseDeadline.
+  ///
+  /// In ru, this message translates to:
+  /// **'ДЕДЛАЙН'**
+  String get pulseDeadline;
+
+  /// No description provided for @pulseNoDeadline.
+  ///
+  /// In ru, this message translates to:
+  /// **'нет дедлайнов'**
+  String get pulseNoDeadline;
+
+  /// No description provided for @pulseDeadlineHours.
+  ///
+  /// In ru, this message translates to:
+  /// **'{h}ч'**
+  String pulseDeadlineHours(int h);
+
+  /// No description provided for @pulseDeadlineDays.
+  ///
+  /// In ru, this message translates to:
+  /// **'{d}д'**
+  String pulseDeadlineDays(int d);
 }
 
 class _SDelegate extends LocalizationsDelegate<S> {

@@ -372,9 +372,9 @@ String _greeting(DateTime now, String? name, S tr) {
 String _todaySubtitle(DashboardStats stats, int overdue, int today, S tr) {
   final parts = <String>[];
   if (overdue > 0) {
-    parts.add('$overdue ${plural(overdue, "просрочена", "просрочено", "просрочено")}');
+    parts.add(tr.dashboardOverdueCount(overdue));
   }
-  if (today > 0) parts.add('$today на сегодня');
+  if (today > 0) parts.add(tr.dashboardTodayCount(today));
   if (parts.isEmpty) {
     if (stats.streak > 0) {
       return tr.daysTotalStreak(stats.streak);

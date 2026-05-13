@@ -200,7 +200,7 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
       padding: const EdgeInsets.all(20),
       children: [
         Text(
-          'Опиши цель',
+          S.of(context)!.dashboardDescribeGoal,
           style: Theme.of(context).textTheme.headlineSmall,
         ),
         const SizedBox(height: 6),
@@ -244,25 +244,25 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
                   });
                 },
                 icon: const Icon(Icons.close, size: 14),
-                label: const Text('Очистить'),
+                label: Text(S.of(context)!.actionClear),
               ),
             ],
           ),
         ],
         const SizedBox(height: 20),
-        _Section(label: 'Горизонт', palette: palette),
+        _Section(label: S.of(context)!.roadmapHorizon, palette: palette),
         const SizedBox(height: 8),
         _SegmentedRow(
-          options: const [
-            ('Неделя', 7),
-            ('Месяц', 30),
-            ('Квартал', 90),
+          options: [
+            (S.of(context)!.roadmapWeek, 7),
+            (S.of(context)!.roadmapMonth, 30),
+            (S.of(context)!.roadmapQuarter, 90),
           ],
           value: _horizonDays,
           onChanged: (v) => setState(() => _horizonDays = v),
         ),
         const SizedBox(height: 20),
-        _Section(label: 'Кол-во задач', palette: palette),
+        _Section(label: S.of(context)!.roadmapTaskCount, palette: palette),
         Row(
           children: [
             Expanded(
@@ -320,7 +320,7 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
           ),
           const SizedBox(height: 18),
           Text(
-            'Думаю над планом…',
+            S.of(context)!.dashboardThinking,
             style: Theme.of(context).textTheme.bodyLarge,
           ),
           const SizedBox(height: 6),

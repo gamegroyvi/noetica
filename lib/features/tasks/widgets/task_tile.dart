@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../data/models.dart';
 import '../../../providers.dart';
 import '../../../services/pomodoro_service.dart';
@@ -122,7 +123,7 @@ class TaskTile extends ConsumerWidget {
                                 ),
                             if (task.dueAt != null)
                               TaskPill(
-                                text: 'до ${formatTimestamp(task.dueAt!)}',
+                                text: S.of(context)!.dashboardDueBy(formatTimestamp(task.dueAt!)),
                                 palette: palette,
                                 warning: overdue,
                               ),
@@ -250,7 +251,7 @@ class PomodoroButton extends StatelessWidget {
         size: 18,
         color: isLinked ? palette.fg : palette.muted,
       ),
-      tooltip: isLinked ? 'Pomodoro запущен' : 'Pomodoro',
+      tooltip: isLinked ? S.of(context)!.pomodoroRunning : 'Pomodoro',
       visualDensity: VisualDensity.compact,
       padding: EdgeInsets.zero,
       constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
@@ -266,7 +267,7 @@ class PomodoroButton extends StatelessWidget {
               ..showSnackBar(
                 SnackBar(
                   content: Text(
-                    'Фокус ${svc.focusMinutes} мин: ${task.title}',
+                    S.of(context)!.pomodoroFocusStarted(svc.focusMinutes, task.title),
                   ),
                 ),
               );

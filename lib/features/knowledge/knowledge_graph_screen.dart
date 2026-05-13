@@ -524,7 +524,7 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
           for (final e in prefs.entries) '${e.key}: ${e.value}',
         ];
         _editList(
-          title: 'Предпочтения',
+          title: S.of(context)!.knowledgePrefs,
           hint: S.of(context)!.knowledgePrefHint,
           items: flat,
           apply: (n) {
@@ -624,7 +624,7 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
 
   Future<void> _editSummary(String current) async {
     final next = await _editSheet(
-      title: 'О тебе',
+      title: S.of(context)!.aboutApp,
       hint: S.of(context)!.knowledgeContextHint,
       initial: current,
       maxLines: 4,

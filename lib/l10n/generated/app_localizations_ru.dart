@@ -983,4 +983,104 @@ class SRu extends S {
   String roadmapImportBtn(int n) {
     return 'Импортировать ($n)';
   }
+
+  @override
+  String get pomodoroRunning => 'Pomodoro запущен';
+
+  @override
+  String pomodoroFocusStarted(int min, String title) {
+    return 'Фокус $min мин: $title';
+  }
+
+  @override
+  String axisXpForAxis(int xp) {
+    return '+$xp XP';
+  }
+
+  @override
+  String get dashboardXpToday => 'XP СЕГОДНЯ';
+
+  @override
+  String dashboardXpWeek(int xp) {
+    return '$xp за неделю';
+  }
+
+  @override
+  String dashboardBestAxis(String name, int xp) {
+    return '$name · +$xp XP';
+  }
+
+  @override
+  String get dashboardDescribeGoal => 'Опиши цель';
+
+  @override
+  String dashboardOverdueCount(int n) {
+    return '$n просрочено';
+  }
+
+  @override
+  String dashboardTodayCount(int n) {
+    return '$n на сегодня';
+  }
+
+  @override
+  String get dashboardThinking => 'Думаю над планом…';
+
+  @override
+  String get aboutApp => 'О тебе';
+
+  @override
+  String get knowledgePrefs => 'Предпочтения';
+
+  @override
+  String get actionClear => 'Очистить';
+
+  @override
+  String get roadmapHorizon => 'Горизонт';
+
+  @override
+  String get roadmapWeek => 'Неделя';
+
+  @override
+  String get roadmapMonth => 'Месяц';
+
+  @override
+  String get roadmapQuarter => 'Квартал';
+
+  @override
+  String get roadmapTaskCount => 'Кол-во задач';
+
+  @override
+  String get pomodoroTooltip => 'Pomodoro';
+
+  @override
+  String get pulseStreak => 'СТРИК';
+
+  @override
+  String get pulseStartToday => 'начни сегодня';
+
+  @override
+  String get pulseQuiet => 'пока тихо';
+
+  @override
+  String get pulseBestAxis => 'ЛУЧШАЯ ОСЬ';
+
+  @override
+  String get pulseNoData => 'нет данных';
+
+  @override
+  String get pulseDeadline => 'ДЕДЛАЙН';
+
+  @override
+  String get pulseNoDeadline => 'нет дедлайнов';
+
+  @override
+  String pulseDeadlineHours(int h) {
+    return '$hч';
+  }
+
+  @override
+  String pulseDeadlineDays(int d) {
+    return '$dд';
+  }
 }
