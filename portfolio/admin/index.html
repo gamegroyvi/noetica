@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Админ-панель — Портфолио</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #111; min-height: 100vh; }
+
+    /* Login */
+    .login-wrap { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    .login-card { background: #fff; padding: 40px; border-radius: 12px; box-shadow: 0 2px 20px rgba(0,0,0,.08); width: 360px; }
+    .login-card h1 { font-size: 24px; margin-bottom: 24px; text-align: center; }
+    .login-card input { width: 100%; padding: 12px 16px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; margin-bottom: 16px; }
+    .login-card button { width: 100%; padding: 12px; background: #111; color: #fff; border: none; border-radius: 8px; font-size: 15px; cursor: pointer; }
+    .login-card button:hover { background: #333; }
+    .login-error { color: #e53e3e; font-size: 14px; margin-bottom: 12px; display: none; }
+
+    /* Layout */
+    .app { display: none; }
+    .header { background: #111; color: #fff; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; }
+    .header h1 { font-size: 18px; font-weight: 600; }
+    .header .logout { background: none; border: 1px solid rgba(255,255,255,.3); color: #fff; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+
+    .tabs { display: flex; gap: 0; background: #fff; border-bottom: 1px solid #e5e5e5; }
+    .tab { padding: 16px 24px; cursor: pointer; font-size: 14px; font-weight: 500; border-bottom: 2px solid transparent; color: #666; transition: all .2s; }
+    .tab:hover { color: #111; }
+    .tab.active { color: #111; border-bottom-color: #111; }
+
+    .content { max-width: 1000px; margin: 24px auto; padding: 0 24px; }
+
+    .section { display: none; }
+    .section.active { display: block; }
+
+    /* Cards */
+    .add-btn { background: #111; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; margin-bottom: 20px; }
+    .add-btn:hover { background: #333; }
+
+    .card { background: #fff; border-radius: 10px; padding: 20px; margin-bottom: 16px; border: 1px solid #e5e5e5; }
+    .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .card-title { font-size: 16px; font-weight: 600; }
+    .card-actions { display: flex; gap: 8px; }
+    .card-actions button { padding: 6px 14px; border-radius: 6px; border: 1px solid #ddd; background: #fff; cursor: pointer; font-size: 13px; }
+    .card-actions .edit-btn:hover { background: #f0f0f0; }
+    .card-actions .del-btn { color: #e53e3e; border-color: #fecaca; }
+    .card-actions .del-btn:hover { background: #fef2f2; }
+    .card-actions .vis-btn { font-size: 12px; }
+
+    .card-body p { font-size: 14px; color: #555; margin-bottom: 4px; }
+    .card-meta { font-size: 12px; color: #999; margin-top: 8px; }
+    .card-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    .card-tag { font-size: 11px; padding: 3px 8px; background: #f2f2f2; border-radius: 4px; color: #555; }
+
+    .card-img { width: 120px; height: 80px; object-fit: cover; border-radius: 6px; margin-right: 16px; }
+
+    .card.hidden-card { opacity: 0.5; }
+
+    /* Modal */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 100; align-items: center; justify-content: center; }
+    .modal-overlay.show { display: flex; }
+    .modal { background: #fff; border-radius: 12px; padding: 32px; width: 520px; max-width: 90vw; max-height: 85vh; overflow-y: auto; }
+    .modal h2 { font-size: 20px; margin-bottom: 20px; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; color: #333; }
+    .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; font-family: inherit; }
+    .form-group textarea { min-height: 80px; resize: vertical; }
+    .modal-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px; }
+    .modal-actions button { padding: 10px 24px; border-radius: 8px; font-size: 14px; cursor: pointer; border: none; }
+    .btn-cancel { background: #f2f2f2; color: #333; }
+    .btn-save { background: #111; color: #fff; }
+    .btn-save:hover { background: #333; }
+
+    /* Portfolio grid preview */
+    .portfolio-preview { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+    .portfolio-card { position: relative; border-radius: 8px; overflow: hidden; border: 1px solid #e5e5e5; }
+    .portfolio-card img { width: 100%; height: 150px; object-fit: cover; }
+    .portfolio-card .portfolio-info { padding: 10px; }
+    .portfolio-card .portfolio-info h4 { font-size: 13px; margin-bottom: 4px; }
+    .portfolio-card .portfolio-actions { position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; }
+    .portfolio-card .portfolio-actions button { width: 28px; height: 28px; border-radius: 50%; border: none; background: rgba(255,255,255,.9); cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; }
+  </style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div class="login-wrap" id="loginScreen">
+  <div class="login-card">
+    <h1>🔒 Админ-панель</h1>
+    <p class="login-error" id="loginError">Неверный пароль</p>
+    <input type="password" id="loginPassword" placeholder="Пароль" />
+    <button onclick="doLogin()">Войти</button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div class="app" id="appScreen">
+  <div class="header">
+    <h1>📋 Управление портфолио</h1>
+    <button class="logout" onclick="doLogout()">Выйти</button>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('reviews')">Отзывы</div>
+    <div class="tab" onclick="switchTab('portfolio')">Портфолио</div>
+    <div class="tab" onclick="switchTab('projects')">Проекты</div>
+  </div>
+
+  <div class="content">
+    <!-- REVIEWS -->
+    <div class="section active" id="sec-reviews">
+      <button class="add-btn" onclick="openModal('review')">+ Добавить отзыв</button>
+      <div id="reviewsList"></div>
+    </div>
+
+    <!-- PORTFOLIO -->
+    <div class="section" id="sec-portfolio">
+      <button class="add-btn" onclick="openModal('portfolio')">+ Добавить работу</button>
+      <div class="portfolio-preview" id="portfolioList"></div>
+    </div>
+
+    <!-- PROJECTS -->
+    <div class="section" id="sec-projects">
+      <button class="add-btn" onclick="openModal('project')">+ Добавить проект</button>
+      <div id="projectsList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h2 id="modalTitle">Добавить</h2>
+    <form id="modalForm" onsubmit="saveItem(event)"></form>
+  </div>
+</div>
+
+<script>
+const API = window.location.origin;
+let token = localStorage.getItem('admin_token') || '';
+let editingId = null;
+let editingType = '';
+
+// Check existing token
+if (token) {
+  fetch(API + '/api/admin/reviews', { headers: { Authorization: 'Bearer ' + token } })
+    .then(r => { if (r.ok) showApp(); else showLogin(); })
+    .catch(() => showLogin());
+} else {
+  showLogin();
+}
+
+function showLogin() { document.getElementById('loginScreen').style.display = 'flex'; document.getElementById('appScreen').style.display = 'none'; }
+function showApp() { document.getElementById('loginScreen').style.display = 'none'; document.getElementById('appScreen').style.display = 'block'; loadAll(); }
+
+function doLogin() {
+  const pw = document.getElementById('loginPassword').value;
+  fetch(API + '/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw }) })
+    .then(r => r.json().then(d => ({ ok: r.ok, data: d })))
+    .then(({ ok, data }) => {
+      if (ok) { token = data.token; localStorage.setItem('admin_token', token); showApp(); }
+      else { document.getElementById('loginError').style.display = 'block'; }
+    });
+}
+
+function doLogout() { token = ''; localStorage.removeItem('admin_token'); showLogin(); }
+
+function authHeaders() { return { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }; }
+
+// TAB SWITCHING
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', ['reviews','portfolio','projects'][i] === name));
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('sec-' + name).classList.add('active');
+}
+
+// LOAD DATA
+function loadAll() { loadReviews(); loadPortfolio(); loadProjects(); }
+
+function loadReviews() {
+  fetch(API + '/api/admin/reviews', { headers: authHeaders() }).then(r => r.json()).then(data => {
+    const el = document.getElementById('reviewsList');
+    el.innerHTML = data.map(r => `
+      <div class="card ${r.visible ? '' : 'hidden-card'}">
+        <div class="card-header">
+          <span class="card-title">${esc(r.author)}</span>
+          <div class="card-actions">
+            <button class="vis-btn" onclick="toggleVis('reviews',${r.id},${r.visible ? 0 : 1})">${r.visible ? '👁 Видим' : '🚫 Скрыт'}</button>
+            <button class="edit-btn" onclick="editItem('review',${r.id})">✏️</button>
+            <button class="del-btn" onclick="deleteItem('reviews',${r.id})">🗑</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <p>"${esc(r.text)}"</p>
+        </div>
+        <div class="card-meta">${esc(r.order_title)} · ${r.date}</div>
+      </div>
+    `).join('');
+  });
+}
+
+function loadPortfolio() {
+  fetch(API + '/api/admin/portfolio', { headers: authHeaders() }).then(r => r.json()).then(data => {
+    const el = document.getElementById('portfolioList');
+    el.innerHTML = data.map(p => `
+      <div class="portfolio-card ${p.visible ? '' : 'hidden-card'}">
+        <img src="${esc(p.image_url)}" alt="${esc(p.title)}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 150%22><rect fill=%22%23f0f0f0%22 width=%22200%22 height=%22150%22/><text x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23999%22>No img</text></svg>'" />
+        <div class="portfolio-info">
+          <h4>${esc(p.title)}</h4>
+        </div>
+        <div class="portfolio-actions">
+          <button onclick="editItem('portfolio',${p.id})" title="Редактировать">✏️</button>
+          <button onclick="deleteItem('portfolio',${p.id})" title="Удалить">🗑</button>
+        </div>
+      </div>
+    `).join('');
+  });
+}
+
+function loadProjects() {
+  fetch(API + '/api/admin/projects', { headers: authHeaders() }).then(r => r.json()).then(data => {
+    const el = document.getElementById('projectsList');
+    el.innerHTML = data.map(p => `
+      <div class="card ${p.visible ? '' : 'hidden-card'}">
+        <div class="card-header">
+          <span class="card-title">${esc(p.title)}</span>
+          <div class="card-actions">
+            <button class="vis-btn" onclick="toggleVis('projects',${p.id},${p.visible ? 0 : 1})">${p.visible ? '👁' : '🚫'}</button>
+            <button class="edit-btn" onclick="editItem('project',${p.id})">✏️</button>
+            <button class="del-btn" onclick="deleteItem('projects',${p.id})">🗑</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <p><strong>${esc(p.subtitle)}</strong></p>
+          <p>${esc(p.description)}</p>
+          ${p.link ? '<p><a href="'+esc(p.link)+'" target="_blank">'+esc(p.link)+'</a></p>' : ''}
+        </div>
+        <div class="card-tags">${(p.tags||[]).map(t => '<span class="card-tag">'+esc(t)+'</span>').join('')}</div>
+      </div>
+    `).join('');
+  });
+}
+
+// MODAL
+function openModal(type, data) {
+  editingType = type;
+  editingId = data ? data.id : null;
+  const m = document.getElementById('modal');
+  const title = document.getElementById('modalTitle');
+  const form = document.getElementById('modalForm');
+
+  title.textContent = (editingId ? 'Редактировать' : 'Добавить') + ' ' + { review: 'отзыв', portfolio: 'работу', project: 'проект' }[type];
+
+  if (type === 'review') {
+    form.innerHTML = `
+      <div class="form-group"><label>Автор</label><input name="author" value="${esc(data?.author||'')}" required /></div>
+      <div class="form-group"><label>Текст отзыва</label><textarea name="text" required>${esc(data?.text||'')}</textarea></div>
+      <div class="form-group"><label>Заказ</label><input name="order_title" value="${esc(data?.order_title||'')}" /></div>
+      <div class="form-group"><label>Дата</label><input name="date" type="date" value="${data?.date||''}" /></div>
+      <div class="form-group"><label>Порядок</label><input name="sort_order" type="number" value="${data?.sort_order||0}" /></div>
+      <div class="modal-actions"><button type="button" class="btn-cancel" onclick="closeModal()">Отмена</button><button type="submit" class="btn-save">Сохранить</button></div>
+    `;
+  } else if (type === 'portfolio') {
+    form.innerHTML = `
+      <div class="form-group"><label>Название</label><input name="title" value="${esc(data?.title||'')}" required /></div>
+      <div class="form-group"><label>Описание</label><textarea name="description">${esc(data?.description||'')}</textarea></div>
+      <div class="form-group"><label>URL изображения</label><input name="image_url" value="${esc(data?.image_url||'')}" /></div>
+      <div class="form-group"><label>Ссылка</label><input name="link" value="${esc(data?.link||'')}" /></div>
+      <div class="form-group"><label>Теги (JSON)</label><input name="tags" value='${esc(data?.tags||"[]")}' /></div>
+      <div class="form-group"><label>Порядок</label><input name="sort_order" type="number" value="${data?.sort_order||0}" /></div>
+      <div class="modal-actions"><button type="button" class="btn-cancel" onclick="closeModal()">Отмена</button><button type="submit" class="btn-save">Сохранить</button></div>
+    `;
+  } else if (type === 'project') {
+    const tags = data?.tags ? (Array.isArray(data.tags) ? JSON.stringify(data.tags) : data.tags) : '[]';
+    form.innerHTML = `
+      <div class="form-group"><label>Название</label><input name="title" value="${esc(data?.title||'')}" required /></div>
+      <div class="form-group"><label>Подзаголовок</label><input name="subtitle" value="${esc(data?.subtitle||'')}" /></div>
+      <div class="form-group"><label>Описание</label><textarea name="description">${esc(data?.description||'')}</textarea></div>
+      <div class="form-group"><label>Теги (JSON)</label><input name="tags" value='${esc(tags)}' /></div>
+      <div class="form-group"><label>Ссылка</label><input name="link" value="${esc(data?.link||'')}" /></div>
+      <div class="form-group"><label>Иконка</label><input name="icon" value="${esc(data?.icon||'code')}" /></div>
+      <div class="form-group"><label>Порядок</label><input name="sort_order" type="number" value="${data?.sort_order||0}" /></div>
+      <div class="modal-actions"><button type="button" class="btn-cancel" onclick="closeModal()">Отмена</button><button type="submit" class="btn-save">Сохранить</button></div>
+    `;
+  }
+  m.classList.add('show');
+}
+
+function closeModal() { document.getElementById('modal').classList.remove('show'); }
+
+function saveItem(e) {
+  e.preventDefault();
+  const form = document.getElementById('modalForm');
+  const fd = new FormData(form);
+  const body = {};
+  for (const [k, v] of fd.entries()) body[k] = v;
+  if (body.sort_order) body.sort_order = parseInt(body.sort_order);
+  if (body.rating) body.rating = parseInt(body.rating);
+  if (body.visible !== undefined) body.visible = parseInt(body.visible);
+
+  const typeMap = { review: 'reviews', portfolio: 'portfolio', project: 'projects' };
+  const endpoint = typeMap[editingType];
+  const url = editingId ? `${API}/api/admin/${endpoint}/${editingId}` : `${API}/api/admin/${endpoint}`;
+  const method = editingId ? 'PUT' : 'POST';
+
+  fetch(url, { method, headers: authHeaders(), body: JSON.stringify(body) })
+    .then(r => { if (r.ok) { closeModal(); loadAll(); } else { alert('Ошибка сохранения'); } });
+}
+
+function editItem(type, id) {
+  const typeMap = { review: 'reviews', portfolio: 'portfolio', project: 'projects' };
+  fetch(`${API}/api/admin/${typeMap[type]}`, { headers: authHeaders() })
+    .then(r => r.json())
+    .then(data => {
+      const item = data.find(d => d.id === id);
+      if (item) openModal(type, item);
+    });
+}
+
+function deleteItem(type, id) {
+  if (!confirm('Удалить?')) return;
+  fetch(`${API}/api/admin/${type}/${id}`, { method: 'DELETE', headers: authHeaders() })
+    .then(() => loadAll());
+}
+
+function toggleVis(type, id, vis) {
+  fetch(`${API}/api/admin/${type}`, { headers: authHeaders() })
+    .then(r => r.json())
+    .then(data => {
+      const item = data.find(d => d.id === id);
+      if (!item) return;
+      item.visible = vis;
+      if (item.tags && Array.isArray(item.tags)) item.tags = JSON.stringify(item.tags);
+      return fetch(`${API}/api/admin/${type}/${id}`, { method: 'PUT', headers: authHeaders(), body: JSON.stringify(item) });
+    })
+    .then(() => loadAll());
+}
+
+function esc(s) { if (!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// Close modal on overlay click
+document.getElementById('modal').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
+</script>
+</body>
+</html>

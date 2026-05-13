@@ -557,6 +557,76 @@ section { padding: 100px 0; }
 }
 .reviews__link:hover { opacity: .6; }
 
+/* ---------- REVIEWS LIST ---------- */
+.reviews__list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 32px;
+}
+
+.review-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  background: var(--card-bg);
+  transition: border-color .2s;
+}
+.review-card:hover { border-color: var(--text-muted); }
+
+.review-card__text {
+  font-size: .92rem;
+  font-style: italic;
+  line-height: 1.7;
+  color: var(--text);
+  margin-bottom: 16px;
+}
+
+.review-card__footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: .85rem;
+}
+.review-card__footer strong {
+  font-weight: 700;
+  color: var(--text);
+}
+.review-card__footer span {
+  color: var(--text-muted);
+  font-size: .8rem;
+}
+
+/* ---------- PORTFOLIO GRID ---------- */
+.portfolio__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.portfolio-item {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  transition: border-color .2s;
+}
+.portfolio-item:hover { border-color: var(--text-muted); }
+
+.portfolio-item img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  display: block;
+}
+
+.portfolio-item__title {
+  padding: 10px 14px;
+  font-size: .82rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
 /* ---------- CONTACT ---------- */
 .contact__title {
   font-size: 2.6rem;
@@ -639,6 +709,7 @@ section { padding: 100px 0; }
   .hero__title { font-size: 2.6rem; }
   .about__grid { grid-template-columns: 1fr; gap: 32px; }
   .projects__grid { grid-template-columns: 1fr 1fr; }
+  .portfolio__grid { grid-template-columns: repeat(2, 1fr); }
   .skills__grid { grid-template-columns: repeat(3, 1fr); }
   .contact .container { grid-template-columns: 1fr; gap: 32px; }
   .hero__deco, .about__deco, .projects__deco, .skills__deco, .reviews__deco { display: none; }
@@ -668,6 +739,8 @@ section { padding: 100px 0; }
   .hero__actions { flex-direction: column; align-items: center; }
 
   .projects__grid { grid-template-columns: 1fr; }
+  .portfolio__grid { grid-template-columns: 1fr 1fr; }
+  .reviews__list { grid-template-columns: 1fr; }
   .skills__grid { grid-template-columns: 1fr 1fr; }
   .services__grid { grid-template-columns: 1fr; }
   .service-item { border-right: none; }

@@ -106,71 +106,14 @@
       <p class="section-label">Проекты</p>
       <h2 class="section-title">Избранные работы</h2>
 
-      <div class="projects__grid">
-        <article class="project-card" data-anim>
-          <div class="project-card__img">
-            <div class="project-card__placeholder">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
-            </div>
-          </div>
-          <div class="project-card__body">
-            <h3>Noetica</h3>
-            <div class="project-card__tags">
-              <span>Flutter</span><span>Dart</span><span>FastAPI</span><span>SQLite</span>
-            </div>
-            <p class="project-card__type">Трекер личного развития</p>
-            <p>Приложение «второй мозг» с пентагоном осей роста, XP-системой, AI-коучем и мемуарной лентой.</p>
-            <a href="https://github.com/gamegroyvi/noetica" target="_blank" rel="noopener">GitHub &rarr;</a>
-          </div>
-        </article>
+      <div class="projects__grid" id="projectsGrid">
+        <!-- Loaded dynamically from API -->
+      </div>
 
-        <article class="project-card" data-anim>
-          <div class="project-card__img">
-            <div class="project-card__placeholder">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
-            </div>
-          </div>
-          <div class="project-card__body">
-            <h3>Telegram Mini Apps</h3>
-            <div class="project-card__tags">
-              <span>React</span><span>TypeScript</span><span>Node.js</span><span>TG API</span>
-            </div>
-            <p class="project-card__type">Веб-приложения в Telegram</p>
-            <p>Разработка функциональных Mini Apps: интерфейсы, платежи, интеграции с ботами.</p>
-          </div>
-        </article>
-
-        <article class="project-card" data-anim>
-          <div class="project-card__img">
-            <div class="project-card__placeholder">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-            </div>
-          </div>
-          <div class="project-card__body">
-            <h3>Лендинги и веб-сайты</h3>
-            <div class="project-card__tags">
-              <span>Next.js</span><span>React</span><span>Tailwind</span><span>SCSS</span>
-            </div>
-            <p class="project-card__type">Pixel-perfect вёрстка</p>
-            <p>Адаптивные лендинги, мультиязычные сайты, email-шаблоны. Кроссбраузерность и pixel-perfect.</p>
-          </div>
-        </article>
-
-        <article class="project-card" data-anim>
-          <div class="project-card__img">
-            <div class="project-card__placeholder">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-            </div>
-          </div>
-          <div class="project-card__body">
-            <h3>REST API и бэкенд</h3>
-            <div class="project-card__tags">
-              <span>FastAPI</span><span>Flask</span><span>PostgreSQL</span><span>Express</span>
-            </div>
-            <p class="project-card__type">Серверная разработка</p>
-            <p>Проектирование API, базы данных, авторизация, документация, деплой на Linux/Nginx.</p>
-          </div>
-        </article>
+      <!-- PORTFOLIO -->
+      <h2 class="section-title" style="margin-top:80px">Портфолио</h2>
+      <div class="portfolio__grid" id="portfolioGrid">
+        <!-- Loaded dynamically from API -->
       </div>
     </div>
   </section>
@@ -256,6 +199,9 @@
       <div class="reviews__deco" aria-hidden="true"><span>1</span><span>0</span><span>0</span><span>1</span></div>
       <p class="section-label">Отзывы</p>
       <h2 class="section-title">Что говорят клиенты</h2>
+      <div class="reviews__list" id="reviewsList">
+        <!-- Loaded dynamically from API -->
+      </div>
       <div class="reviews__summary">
         <div class="reviews__rating">
           <span class="reviews__score">5.0</span>
