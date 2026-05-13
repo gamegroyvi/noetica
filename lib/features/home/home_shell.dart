@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/generated/app_localizations.dart';
+import '../../providers.dart';
 import '../../services/analytics_service.dart';
 import '../../services/notifications.dart';
 import '../../services/pomodoro_service.dart';
+import '../../services/tray_service.dart';
 import '../../services/weekly_reflection_service.dart';
 import '../../theme/app_theme.dart';
 import '../calendar/calendar_screen.dart';
@@ -364,6 +366,11 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     PomodoroService.instance.updateLocale(tr);
     NotificationsService.instance.updateLocale(tr);
     WeeklyReflectionService.instance.updateLocale(tr);
+    TrayService.instance.updateLocale(tr);
+    ref.read(roadmapApiProvider).updateLocale(tr);
+    ref.read(axesApiProvider).updateLocale(tr);
+    ref.read(toolsApiProvider).updateLocale(tr);
+    ref.read(backendUrlsServiceProvider).updateLocale(tr);
     final width = MediaQuery.of(context).size.width;
     final useRail = width >= _kRailMin;
     final destinations = _destinations(tr);

@@ -1696,5 +1696,88 @@
   "genHabitsDesc": "7-дневный челлендж из коротких ежедневных задач.",
   "genHabitsBullet1": "Каждое действие ≤ 2 минут — реально доходишь",
   "genHabitsBullet2": "Подбираем под выбранную ось, идут по нарастающей",
-  "genHabitsBullet3": "Появятся в Задачах с дедлайнами по дням"
+  "genHabitsBullet3": "Появятся в Задачах с дедлайнами по дням",
+
+  "reflectionEasy": "Легко",
+  "reflectionNormal": "Норм",
+  "reflectionHard": "Сложно",
+  "reflectionBlocked": "Не пошло",
+
+  "menuGoalLoseWeight": "Похудение",
+  "menuGoalHealth": "Здоровье",
+  "menuGoalMuscle": "Набор мышц",
+  "menuGoalEnergy": "Энергия / спорт",
+  "menuGoalClassic": "Классическое сбалансированное",
+
+  "apiErrNotLoggedIn": "Не выполнен вход в Google. Перезайдите и попробуйте снова.",
+  "apiErrServerUnreachable": "Не удалось связаться с сервером: {details}",
+  "@apiErrServerUnreachable": {
+    "placeholders": { "details": { "type": "String" } }
+  },
+  "apiErrSessionExpired": "Сессия истекла. Зайдите через Google ещё раз.",
+  "apiErrInvalidJson": "Сервер вернул некорректный JSON: {details}",
+  "@apiErrInvalidJson": {
+    "placeholders": { "details": { "type": "String" } }
+  },
+
+  "validationRequired": "Поле обязательно",
+  "validationRange": "Должно быть от {min} до {max}",
+  "@validationRange": {
+    "placeholders": {
+      "min": { "type": "int" },
+      "max": { "type": "int" }
+    }
+  },
+
+  "backendDefault": "По умолчанию",
+  "backendCantDeleteLast": "Нельзя удалить единственный бэкенд. Сначала добавь другой.",
+
+  "trayOpen": "Открыть Noetica",
+  "trayExit": "Выйти",
+
+  "menuRecipePrefix": "Рецепт: {name}",
+  "@menuRecipePrefix": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "menuRecipeNotGenerated": "Рецепт ещё не сгенерирован",
+  "menuSummary": "{goal} · {servings} порций · {range}",
+  "@menuSummary": {
+    "placeholders": {
+      "goal": { "type": "String" },
+      "servings": { "type": "int" },
+      "range": { "type": "String" }
+    }
+  },
+
+  "androidChannelName": "Дедлайны и напоминания",
+  "androidChannelDesc": "Напоминания о приближающихся и просроченных задачах.",
+
+  "interestSport": "Спорт",
+  "interestReading": "Чтение",
+  "interestLanguages": "Изучение языков",
+  "interestProgramming": "Программирование",
+  "interestMusic": "Музыка",
+  "interestDrawing": "Рисование",
+  "interestMeditation": "Медитация",
+  "interestFriendship": "Дружба",
+  "interestFamily": "Семья",
+  "interestFinance": "Финансы",
+  "interestCareer": "Карьера",
+  "interestBusiness": "Предпринимательство",
+  "interestNutrition": "Питание",
+  "interestSleep": "Сон",
+  "interestTravel": "Путешествия",
+  "interestWriting": "Письмо",
+  "interestCrafts": "Ремесла",
+
+  "skillNovice": "Новичок",
+  "skillLearning": "Учусь",
+  "skillConfident": "Уверенно",
+  "skillExpert": "Эксперт",
+
+  "onboardAxisBody": "Тело",
+  "onboardAxisMind": "Ум",
+  "onboardAxisWork": "Дело",
+  "onboardAxisRelations": "Связи",
+  "onboardAxisSoul": "Душа"
 }

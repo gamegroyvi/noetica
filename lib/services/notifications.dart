@@ -25,9 +25,8 @@ const _kNotifCoachEnabledKey = 'noetica.notif.coach.v1';
 const _kNotifDesktopScheduleKey = 'noetica.notif.desktop_schedule.v1';
 
 const _kAndroidChannelId = 'noetica_deadlines';
-const _kAndroidChannelName = 'Дедлайны и напоминания';
-const _kAndroidChannelDescription =
-    'Напоминания о приближающихся и просроченных задачах.';
+const _kAndroidChannelNameFallback = 'Deadlines & reminders';
+const _kAndroidChannelDescFallback = 'Reminders for approaching and overdue tasks.';
 
 /// Three notifications per task, identified by deterministic suffixes so
 /// rescheduling/cancelling is straightforward.
@@ -108,10 +107,10 @@ class NotificationsService {
             AndroidFlutterLocalNotificationsPlugin>();
         if (androidImpl != null) {
           await androidImpl.createNotificationChannel(
-            const AndroidNotificationChannel(
+            AndroidNotificationChannel(
               _kAndroidChannelId,
-              _kAndroidChannelName,
-              description: _kAndroidChannelDescription,
+              _tr?.androidChannelName ?? _kAndroidChannelNameFallback,
+              description: _tr?.androidChannelDesc ?? _kAndroidChannelDescFallback,
               importance: Importance.high,
             ),
           );
@@ -476,8 +475,8 @@ class _MobileBackend implements _Backend {
   static const _details = NotificationDetails(
     android: AndroidNotificationDetails(
       _kAndroidChannelId,
-      _kAndroidChannelName,
-      channelDescription: _kAndroidChannelDescription,
+      _kAndroidChannelNameFallback,
+      channelDescription: _kAndroidChannelDescFallback,
       importance: Importance.high,
       priority: Priority.high,
     ),

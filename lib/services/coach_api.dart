@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import '../l10n/generated/app_localizations.dart';
 import 'api_config.dart';
 import 'auth_service.dart';
 
@@ -77,6 +78,9 @@ class CoachApi {
   CoachApi({AuthService? auth}) : _auth = auth;
   final AuthService? _auth;
 
+  S? _tr;
+  void updateLocale(S tr) => _tr = tr;
+
   Future<MorningPlan> generateMorningPlan({
     required String name,
     required String aspiration,
@@ -125,7 +129,7 @@ class CoachApi {
     final token = _auth?.current?.accessToken;
     if (!kDevSkipAuth && (token == null || token.isEmpty)) {
       throw CoachApiException(
-        'Не выполнен вход в Google. Перезайдите и попробуйте снова.',
+        _tr?.apiErrNotLoggedIn ?? 'Not signed in',
         status: 401,
       );
     }

@@ -326,7 +326,7 @@ class SRu extends S {
   String get reflectionEasy => 'Легко';
 
   @override
-  String get reflectionNormal => 'Нормально';
+  String get reflectionNormal => 'Норм';
 
   @override
   String get reflectionHard => 'Сложно';
@@ -2719,4 +2719,149 @@ class SRu extends S {
 
   @override
   String get genHabitsBullet3 => 'Появятся в Задачах с дедлайнами по дням';
+
+  @override
+  String get reflectionBlocked => 'Не пошло';
+
+  @override
+  String get menuGoalLoseWeight => 'Похудение';
+
+  @override
+  String get menuGoalHealth => 'Здоровье';
+
+  @override
+  String get menuGoalMuscle => 'Набор мышц';
+
+  @override
+  String get menuGoalEnergy => 'Энергия / спорт';
+
+  @override
+  String get menuGoalClassic => 'Классическое сбалансированное';
+
+  @override
+  String get apiErrNotLoggedIn => 'Не выполнен вход в Google. Перезайдите и попробуйте снова.';
+
+  @override
+  String apiErrServerUnreachable(String details) {
+    return 'Не удалось связаться с сервером: $details';
+  }
+
+  @override
+  String get apiErrSessionExpired => 'Сессия истекла. Зайдите через Google ещё раз.';
+
+  @override
+  String apiErrInvalidJson(String details) {
+    return 'Сервер вернул некорректный JSON: $details';
+  }
+
+  @override
+  String get validationRequired => 'Поле обязательно';
+
+  @override
+  String validationRange(int min, int max) {
+    return 'Должно быть от $min до $max';
+  }
+
+  @override
+  String get backendDefault => 'По умолчанию';
+
+  @override
+  String get backendCantDeleteLast => 'Нельзя удалить единственный бэкенд. Сначала добавь другой.';
+
+  @override
+  String menuRecipePrefix(String name) {
+    return 'Рецепт: $name';
+  }
+
+  @override
+  String get menuRecipeNotGenerated => 'Рецепт ещё не сгенерирован';
+
+  @override
+  String menuSummary(String goal, int servings, String range) {
+    return '$goal · $servings порций · $range';
+  }
+
+  @override
+  String get androidChannelName => 'Дедлайны и напоминания';
+
+  @override
+  String get androidChannelDesc => 'Напоминания о приближающихся и просроченных задачах.';
+
+  @override
+  String get interestSport => 'Спорт';
+
+  @override
+  String get interestReading => 'Чтение';
+
+  @override
+  String get interestLanguages => 'Изучение языков';
+
+  @override
+  String get interestProgramming => 'Программирование';
+
+  @override
+  String get interestMusic => 'Музыка';
+
+  @override
+  String get interestDrawing => 'Рисование';
+
+  @override
+  String get interestMeditation => 'Медитация';
+
+  @override
+  String get interestFriendship => 'Дружба';
+
+  @override
+  String get interestFamily => 'Семья';
+
+  @override
+  String get interestFinance => 'Финансы';
+
+  @override
+  String get interestCareer => 'Карьера';
+
+  @override
+  String get interestBusiness => 'Предпринимательство';
+
+  @override
+  String get interestNutrition => 'Питание';
+
+  @override
+  String get interestSleep => 'Сон';
+
+  @override
+  String get interestTravel => 'Путешествия';
+
+  @override
+  String get interestWriting => 'Письмо';
+
+  @override
+  String get interestCrafts => 'Ремесла';
+
+  @override
+  String get skillNovice => 'Новичок';
+
+  @override
+  String get skillLearning => 'Учусь';
+
+  @override
+  String get skillConfident => 'Уверенно';
+
+  @override
+  String get skillExpert => 'Эксперт';
+
+  @override
+  String get onboardAxisBody => 'Тело';
+
+  @override
+  String get onboardAxisMind => 'Ум';
+
+  @override
+  String get onboardAxisWork => 'Дело';
+
+  @override
+  String get onboardAxisRelations => 'Связи';
+
+  @override
+  String get onboardAxisSoul => 'Душа';
 }

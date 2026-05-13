@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../l10n/generated/app_localizations.dart';
+
 /// Declarative input field for a generator manifest.
 ///
 /// Each subclass corresponds to one piece of UI a manifest can request
@@ -174,20 +176,21 @@ class FieldValidation {
 
 FieldValidation validateGeneratorField(
   GeneratorInputField field,
-  Object? value,
-) {
+  Object? value, {
+  S? tr,
+}) {
   if (field.required) {
     if (value == null) {
-      return const FieldValidation.error('Поле обязательно');
+      return FieldValidation.error(tr?.validationRequired ?? 'Required');
     }
     if (value is String && value.trim().isEmpty) {
-      return const FieldValidation.error('Поле обязательно');
+      return FieldValidation.error(tr?.validationRequired ?? 'Required');
     }
   }
   if (value is int && field is GeneratorInputInt) {
     if (value < field.min || value > field.max) {
       return FieldValidation.error(
-        'Должно быть от ${field.min} до ${field.max}',
+        tr?.validationRange(field.min, field.max) ?? 'Must be ${field.min}–${field.max}',
       );
     }
   }

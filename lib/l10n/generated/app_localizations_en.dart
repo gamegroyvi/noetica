@@ -2717,4 +2717,149 @@ class SEn extends S {
 
   @override
   String get genHabitsBullet3 => 'Appear in Tasks with daily deadlines';
+
+  @override
+  String get reflectionBlocked => 'Stuck';
+
+  @override
+  String get menuGoalLoseWeight => 'Weight loss';
+
+  @override
+  String get menuGoalHealth => 'Health';
+
+  @override
+  String get menuGoalMuscle => 'Muscle gain';
+
+  @override
+  String get menuGoalEnergy => 'Energy / sport';
+
+  @override
+  String get menuGoalClassic => 'Classic balanced';
+
+  @override
+  String get apiErrNotLoggedIn => 'Not signed in to Google. Please sign in and try again.';
+
+  @override
+  String apiErrServerUnreachable(String details) {
+    return 'Could not reach the server: $details';
+  }
+
+  @override
+  String get apiErrSessionExpired => 'Session expired. Please sign in with Google again.';
+
+  @override
+  String apiErrInvalidJson(String details) {
+    return 'Server returned invalid JSON: $details';
+  }
+
+  @override
+  String get validationRequired => 'Field is required';
+
+  @override
+  String validationRange(int min, int max) {
+    return 'Must be between $min and $max';
+  }
+
+  @override
+  String get backendDefault => 'Default';
+
+  @override
+  String get backendCantDeleteLast => 'Cannot delete the only backend. Add another one first.';
+
+  @override
+  String menuRecipePrefix(String name) {
+    return 'Recipe: $name';
+  }
+
+  @override
+  String get menuRecipeNotGenerated => 'Recipe not yet generated';
+
+  @override
+  String menuSummary(String goal, int servings, String range) {
+    return '$goal · $servings servings · $range';
+  }
+
+  @override
+  String get androidChannelName => 'Deadlines and reminders';
+
+  @override
+  String get androidChannelDesc => 'Reminders for approaching and overdue tasks.';
+
+  @override
+  String get interestSport => 'Sports';
+
+  @override
+  String get interestReading => 'Reading';
+
+  @override
+  String get interestLanguages => 'Language learning';
+
+  @override
+  String get interestProgramming => 'Programming';
+
+  @override
+  String get interestMusic => 'Music';
+
+  @override
+  String get interestDrawing => 'Drawing';
+
+  @override
+  String get interestMeditation => 'Meditation';
+
+  @override
+  String get interestFriendship => 'Friendship';
+
+  @override
+  String get interestFamily => 'Family';
+
+  @override
+  String get interestFinance => 'Finance';
+
+  @override
+  String get interestCareer => 'Career';
+
+  @override
+  String get interestBusiness => 'Entrepreneurship';
+
+  @override
+  String get interestNutrition => 'Nutrition';
+
+  @override
+  String get interestSleep => 'Sleep';
+
+  @override
+  String get interestTravel => 'Travel';
+
+  @override
+  String get interestWriting => 'Writing';
+
+  @override
+  String get interestCrafts => 'Crafts';
+
+  @override
+  String get skillNovice => 'Novice';
+
+  @override
+  String get skillLearning => 'Learning';
+
+  @override
+  String get skillConfident => 'Confident';
+
+  @override
+  String get skillExpert => 'Expert';
+
+  @override
+  String get onboardAxisBody => 'Body';
+
+  @override
+  String get onboardAxisMind => 'Mind';
+
+  @override
+  String get onboardAxisWork => 'Work';
+
+  @override
+  String get onboardAxisRelations => 'Relationships';
+
+  @override
+  String get onboardAxisSoul => 'Soul';
 }

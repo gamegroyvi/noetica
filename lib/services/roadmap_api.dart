@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 
 import '../data/models.dart';
 import '../data/profile.dart';
+import '../l10n/generated/app_localizations.dart';
 import 'api_config.dart';
 import 'auth_service.dart';
 
@@ -91,6 +92,9 @@ class RoadmapApi {
   final http.Client _client;
   final AuthService? _auth;
 
+  S? _tr;
+  void updateLocale(S tr) => _tr = tr;
+
   static String _resolveBaseUrl() => kDefaultBackendUrl;
 
   String get baseUrl => _baseUrl;
@@ -135,7 +139,7 @@ class RoadmapApi {
     final token = _auth?.current?.accessToken;
     if (!kDevSkipAuth && (token == null || token.isEmpty)) {
       throw RoadmapApiException(
-        'Не выполнен вход в Google. Перезайдите и попробуйте снова.',
+        _tr?.apiErrNotLoggedIn ?? 'Not signed in',
         status: 401,
       );
     }
@@ -153,7 +157,7 @@ class RoadmapApi {
           )
           .timeout(const Duration(seconds: 60));
     } catch (e) {
-      throw RoadmapApiException('Не удалось связаться с сервером: $e');
+      throw RoadmapApiException(_tr?.apiErrServerUnreachable('$e') ?? 'Server unreachable: $e');
     }
 
     if (response.statusCode >= 400) {
@@ -170,7 +174,7 @@ class RoadmapApi {
         // we switch Fly apps.
         unawaited(_auth?.handleUnauthorized() ?? Future.value());
         throw RoadmapApiException(
-          'Сессия истекла. Зайдите через Google ещё раз.',
+          _tr?.apiErrSessionExpired ?? 'Session expired',
           status: 401,
         );
       }
@@ -181,7 +185,7 @@ class RoadmapApi {
     try {
       json = jsonDecode(response.body) as Map<String, dynamic>;
     } catch (e) {
-      throw RoadmapApiException('Сервер вернул некорректный JSON: $e');
+      throw RoadmapApiException(_tr?.apiErrInvalidJson('$e') ?? 'Invalid JSON: $e');
     }
 
     final now = DateTime.now();

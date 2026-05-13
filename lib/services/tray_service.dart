@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../l10n/generated/app_localizations.dart';
 import '../platform/desktop_check.dart';
 
 /// Wires up Windows/Linux/macOS system tray:
@@ -17,6 +18,9 @@ class TrayService with TrayListener, WindowListener {
   static final TrayService instance = TrayService._();
 
   bool _ready = false;
+
+  S? _tr;
+  void updateLocale(S tr) => _tr = tr;
 
   bool get isDesktop => isDesktopPlatform();
 
@@ -38,9 +42,9 @@ class TrayService with TrayListener, WindowListener {
       await trayManager.setToolTip('Noetica');
       await trayManager.setContextMenu(
         Menu(items: [
-          MenuItem(key: 'open', label: 'Открыть Noetica'),
+          MenuItem(key: 'open', label: _tr?.trayOpen ?? 'Open Noetica'),
           MenuItem.separator(),
-          MenuItem(key: 'exit', label: 'Выйти'),
+          MenuItem(key: 'exit', label: _tr?.trayExit ?? 'Exit'),
         ]),
       );
       trayManager.addListener(this);

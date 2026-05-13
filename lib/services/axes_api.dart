@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 
 import '../data/models.dart';
 import '../data/profile.dart';
+import '../l10n/generated/app_localizations.dart';
 import 'api_config.dart';
 import 'auth_service.dart';
 
@@ -55,6 +56,9 @@ class AxesApi {
   final http.Client _client;
   final AuthService? _auth;
 
+  S? _tr;
+  void updateLocale(S tr) => _tr = tr;
+
   static String _resolveBaseUrl() => kDefaultBackendUrl;
 
   Future<AxesGenerationResult> generate({
@@ -92,7 +96,7 @@ class AxesApi {
     final token = _auth?.current?.accessToken;
     if (!kDevSkipAuth && (token == null || token.isEmpty)) {
       throw AxesApiException(
-        'Не выполнен вход в Google. Перезайдите и попробуйте снова.',
+        _tr?.apiErrNotLoggedIn ?? 'Not signed in',
         status: 401,
       );
     }
@@ -110,7 +114,7 @@ class AxesApi {
           )
           .timeout(const Duration(seconds: 60));
     } catch (e) {
-      throw AxesApiException('Не удалось связаться с сервером: $e');
+      throw AxesApiException(_tr?.apiErrServerUnreachable('$e') ?? 'Server unreachable: $e');
     }
 
     if (response.statusCode >= 400) {
@@ -127,7 +131,7 @@ class AxesApi {
         // letting the user stare at "Gemini doesn't work".
         unawaited(_auth?.handleUnauthorized() ?? Future.value());
         throw AxesApiException(
-          'Сессия истекла. Зайдите через Google ещё раз.',
+          _tr?.apiErrSessionExpired ?? 'Session expired',
           status: 401,
         );
       }
@@ -138,7 +142,7 @@ class AxesApi {
     try {
       json = jsonDecode(response.body) as Map<String, dynamic>;
     } catch (e) {
-      throw AxesApiException('Сервер вернул некорректный JSON: $e');
+      throw AxesApiException(_tr?.apiErrInvalidJson('$e') ?? 'Invalid JSON: $e');
     }
 
     final axes = <AxisDraft>[];

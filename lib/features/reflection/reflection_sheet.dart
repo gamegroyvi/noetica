@@ -202,7 +202,7 @@ class _ReflectionSheetState extends ConsumerState<_ReflectionSheet> {
                 children: [
                   for (final s in ReflectionStatus.values)
                     ChoiceChip(
-                      label: Text(s.label),
+                      label: Text(s.localizedLabel(S.of(context)!)),
                       selected: _status == s,
                       onSelected: (_) => setState(() => _status = s),
                     ),

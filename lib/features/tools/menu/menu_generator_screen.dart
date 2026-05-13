@@ -392,7 +392,7 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
       final shopping = StringBuffer();
       shopping.writeln('# ${tr.menuShoppingHeader}');
       shopping.writeln();
-      shopping.writeln(tr.menuGoalServings(_goal.label, _servings));
+      shopping.writeln(tr.menuGoalServings(_goal.localizedLabel(tr), _servings));
       shopping.writeln();
       plan.shoppingList.forEach((category, items) {
         shopping.writeln('## $category');
@@ -660,7 +660,7 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${_goal.label} · $_servings порций · ${_humanRange()}',
+                      S.of(context)!.menuSummary(_goal.localizedLabel(S.of(context)!), _servings, _humanRange()),
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),

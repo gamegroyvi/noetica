@@ -16,12 +16,12 @@ class _AxisDraft {
   String description;
 }
 
-const _fallbackPresets = <Map<String, String>>[
-  {'name': 'Тело', 'symbol': '◐'},
-  {'name': 'Ум', 'symbol': '◇'},
-  {'name': 'Дело', 'symbol': '■'},
-  {'name': 'Связи', 'symbol': '◯'},
-  {'name': 'Душа', 'symbol': '✦'},
+List<Map<String, String>> _fallbackPresets(S tr) => [
+  {'name': tr.onboardAxisBody, 'symbol': '◐'},
+  {'name': tr.onboardAxisMind, 'symbol': '◇'},
+  {'name': tr.onboardAxisWork, 'symbol': '■'},
+  {'name': tr.onboardAxisRelations, 'symbol': '◯'},
+  {'name': tr.onboardAxisSoul, 'symbol': '✦'},
 ];
 
 class OnboardingScreen extends ConsumerStatefulWidget {
@@ -47,11 +47,16 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   String? _generationError;
   String _model = '';
 
+  bool _seeded = false;
+
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_seeded) return;
+    _seeded = true;
     if (widget.seedInterests.isEmpty) {
-      _drafts.addAll(_fallbackPresets
+      final presets = _fallbackPresets(S.of(context)!);
+      _drafts.addAll(presets
           .map((p) => _AxisDraft(name: p['name']!, symbol: p['symbol']!)));
     } else {
       WidgetsBinding.instance.addPostFrameCallback((_) => _generateAxes());
@@ -82,7 +87,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 description: a.description,
               )));
         if (_drafts.length < 3) {
-          for (final p in _fallbackPresets) {
+          final presets = _fallbackPresets(S.of(context)!);
+          for (final p in presets) {
             if (_drafts.length >= 3) break;
             if (_drafts.any(
                 (d) => d.name.toLowerCase() == p['name']!.toLowerCase())) {
@@ -98,7 +104,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       setState(() {
         _generationError = e.toString();
         if (_drafts.isEmpty) {
-          _drafts.addAll(_fallbackPresets
+          final presets = _fallbackPresets(S.of(context)!);
+          _drafts.addAll(presets
               .map((p) => _AxisDraft(name: p['name']!, symbol: p['symbol']!)));
         }
       });

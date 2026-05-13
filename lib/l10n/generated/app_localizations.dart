@@ -728,7 +728,7 @@ abstract class S {
   /// No description provided for @reflectionNormal.
   ///
   /// In ru, this message translates to:
-  /// **'Нормально'**
+  /// **'Норм'**
   String get reflectionNormal;
 
   /// No description provided for @reflectionHard.
@@ -5020,6 +5020,276 @@ abstract class S {
   /// In ru, this message translates to:
   /// **'Появятся в Задачах с дедлайнами по дням'**
   String get genHabitsBullet3;
+
+  /// No description provided for @reflectionBlocked.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не пошло'**
+  String get reflectionBlocked;
+
+  /// No description provided for @menuGoalLoseWeight.
+  ///
+  /// In ru, this message translates to:
+  /// **'Похудение'**
+  String get menuGoalLoseWeight;
+
+  /// No description provided for @menuGoalHealth.
+  ///
+  /// In ru, this message translates to:
+  /// **'Здоровье'**
+  String get menuGoalHealth;
+
+  /// No description provided for @menuGoalMuscle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Набор мышц'**
+  String get menuGoalMuscle;
+
+  /// No description provided for @menuGoalEnergy.
+  ///
+  /// In ru, this message translates to:
+  /// **'Энергия / спорт'**
+  String get menuGoalEnergy;
+
+  /// No description provided for @menuGoalClassic.
+  ///
+  /// In ru, this message translates to:
+  /// **'Классическое сбалансированное'**
+  String get menuGoalClassic;
+
+  /// No description provided for @apiErrNotLoggedIn.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не выполнен вход в Google. Перезайдите и попробуйте снова.'**
+  String get apiErrNotLoggedIn;
+
+  /// No description provided for @apiErrServerUnreachable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось связаться с сервером: {details}'**
+  String apiErrServerUnreachable(String details);
+
+  /// No description provided for @apiErrSessionExpired.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сессия истекла. Зайдите через Google ещё раз.'**
+  String get apiErrSessionExpired;
+
+  /// No description provided for @apiErrInvalidJson.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сервер вернул некорректный JSON: {details}'**
+  String apiErrInvalidJson(String details);
+
+  /// No description provided for @validationRequired.
+  ///
+  /// In ru, this message translates to:
+  /// **'Поле обязательно'**
+  String get validationRequired;
+
+  /// No description provided for @validationRange.
+  ///
+  /// In ru, this message translates to:
+  /// **'Должно быть от {min} до {max}'**
+  String validationRange(int min, int max);
+
+  /// No description provided for @backendDefault.
+  ///
+  /// In ru, this message translates to:
+  /// **'По умолчанию'**
+  String get backendDefault;
+
+  /// No description provided for @backendCantDeleteLast.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нельзя удалить единственный бэкенд. Сначала добавь другой.'**
+  String get backendCantDeleteLast;
+
+  /// No description provided for @menuRecipePrefix.
+  ///
+  /// In ru, this message translates to:
+  /// **'Рецепт: {name}'**
+  String menuRecipePrefix(String name);
+
+  /// No description provided for @menuRecipeNotGenerated.
+  ///
+  /// In ru, this message translates to:
+  /// **'Рецепт ещё не сгенерирован'**
+  String get menuRecipeNotGenerated;
+
+  /// No description provided for @menuSummary.
+  ///
+  /// In ru, this message translates to:
+  /// **'{goal} · {servings} порций · {range}'**
+  String menuSummary(String goal, int servings, String range);
+
+  /// No description provided for @androidChannelName.
+  ///
+  /// In ru, this message translates to:
+  /// **'Дедлайны и напоминания'**
+  String get androidChannelName;
+
+  /// No description provided for @androidChannelDesc.
+  ///
+  /// In ru, this message translates to:
+  /// **'Напоминания о приближающихся и просроченных задачах.'**
+  String get androidChannelDesc;
+
+  /// No description provided for @interestSport.
+  ///
+  /// In ru, this message translates to:
+  /// **'Спорт'**
+  String get interestSport;
+
+  /// No description provided for @interestReading.
+  ///
+  /// In ru, this message translates to:
+  /// **'Чтение'**
+  String get interestReading;
+
+  /// No description provided for @interestLanguages.
+  ///
+  /// In ru, this message translates to:
+  /// **'Изучение языков'**
+  String get interestLanguages;
+
+  /// No description provided for @interestProgramming.
+  ///
+  /// In ru, this message translates to:
+  /// **'Программирование'**
+  String get interestProgramming;
+
+  /// No description provided for @interestMusic.
+  ///
+  /// In ru, this message translates to:
+  /// **'Музыка'**
+  String get interestMusic;
+
+  /// No description provided for @interestDrawing.
+  ///
+  /// In ru, this message translates to:
+  /// **'Рисование'**
+  String get interestDrawing;
+
+  /// No description provided for @interestMeditation.
+  ///
+  /// In ru, this message translates to:
+  /// **'Медитация'**
+  String get interestMeditation;
+
+  /// No description provided for @interestFriendship.
+  ///
+  /// In ru, this message translates to:
+  /// **'Дружба'**
+  String get interestFriendship;
+
+  /// No description provided for @interestFamily.
+  ///
+  /// In ru, this message translates to:
+  /// **'Семья'**
+  String get interestFamily;
+
+  /// No description provided for @interestFinance.
+  ///
+  /// In ru, this message translates to:
+  /// **'Финансы'**
+  String get interestFinance;
+
+  /// No description provided for @interestCareer.
+  ///
+  /// In ru, this message translates to:
+  /// **'Карьера'**
+  String get interestCareer;
+
+  /// No description provided for @interestBusiness.
+  ///
+  /// In ru, this message translates to:
+  /// **'Предпринимательство'**
+  String get interestBusiness;
+
+  /// No description provided for @interestNutrition.
+  ///
+  /// In ru, this message translates to:
+  /// **'Питание'**
+  String get interestNutrition;
+
+  /// No description provided for @interestSleep.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сон'**
+  String get interestSleep;
+
+  /// No description provided for @interestTravel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Путешествия'**
+  String get interestTravel;
+
+  /// No description provided for @interestWriting.
+  ///
+  /// In ru, this message translates to:
+  /// **'Письмо'**
+  String get interestWriting;
+
+  /// No description provided for @interestCrafts.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ремесла'**
+  String get interestCrafts;
+
+  /// No description provided for @skillNovice.
+  ///
+  /// In ru, this message translates to:
+  /// **'Новичок'**
+  String get skillNovice;
+
+  /// No description provided for @skillLearning.
+  ///
+  /// In ru, this message translates to:
+  /// **'Учусь'**
+  String get skillLearning;
+
+  /// No description provided for @skillConfident.
+  ///
+  /// In ru, this message translates to:
+  /// **'Уверенно'**
+  String get skillConfident;
+
+  /// No description provided for @skillExpert.
+  ///
+  /// In ru, this message translates to:
+  /// **'Эксперт'**
+  String get skillExpert;
+
+  /// No description provided for @onboardAxisBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Тело'**
+  String get onboardAxisBody;
+
+  /// No description provided for @onboardAxisMind.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ум'**
+  String get onboardAxisMind;
+
+  /// No description provided for @onboardAxisWork.
+  ///
+  /// In ru, this message translates to:
+  /// **'Дело'**
+  String get onboardAxisWork;
+
+  /// No description provided for @onboardAxisRelations.
+  ///
+  /// In ru, this message translates to:
+  /// **'Связи'**
+  String get onboardAxisRelations;
+
+  /// No description provided for @onboardAxisSoul.
+  ///
+  /// In ru, this message translates to:
+  /// **'Душа'**
+  String get onboardAxisSoul;
 }
 
 class _SDelegate extends LocalizationsDelegate<S> {

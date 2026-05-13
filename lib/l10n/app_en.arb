@@ -1696,5 +1696,88 @@
   "genHabitsDesc": "7-day challenge of short daily tasks.",
   "genHabitsBullet1": "Each action ≤ 2 min — you actually follow through",
   "genHabitsBullet2": "Tailored to your axis, progressively harder",
-  "genHabitsBullet3": "Appear in Tasks with daily deadlines"
+  "genHabitsBullet3": "Appear in Tasks with daily deadlines",
+
+  "reflectionEasy": "Easy",
+  "reflectionNormal": "Normal",
+  "reflectionHard": "Hard",
+  "reflectionBlocked": "Stuck",
+
+  "menuGoalLoseWeight": "Weight loss",
+  "menuGoalHealth": "Health",
+  "menuGoalMuscle": "Muscle gain",
+  "menuGoalEnergy": "Energy / sport",
+  "menuGoalClassic": "Classic balanced",
+
+  "apiErrNotLoggedIn": "Not signed in to Google. Please sign in and try again.",
+  "apiErrServerUnreachable": "Could not reach the server: {details}",
+  "@apiErrServerUnreachable": {
+    "placeholders": { "details": { "type": "String" } }
+  },
+  "apiErrSessionExpired": "Session expired. Please sign in with Google again.",
+  "apiErrInvalidJson": "Server returned invalid JSON: {details}",
+  "@apiErrInvalidJson": {
+    "placeholders": { "details": { "type": "String" } }
+  },
+
+  "validationRequired": "Field is required",
+  "validationRange": "Must be between {min} and {max}",
+  "@validationRange": {
+    "placeholders": {
+      "min": { "type": "int" },
+      "max": { "type": "int" }
+    }
+  },
+
+  "backendDefault": "Default",
+  "backendCantDeleteLast": "Cannot delete the only backend. Add another one first.",
+
+  "trayOpen": "Open Noetica",
+  "trayExit": "Exit",
+
+  "menuRecipePrefix": "Recipe: {name}",
+  "@menuRecipePrefix": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "menuRecipeNotGenerated": "Recipe not yet generated",
+  "menuSummary": "{goal} · {servings} servings · {range}",
+  "@menuSummary": {
+    "placeholders": {
+      "goal": { "type": "String" },
+      "servings": { "type": "int" },
+      "range": { "type": "String" }
+    }
+  },
+
+  "androidChannelName": "Deadlines and reminders",
+  "androidChannelDesc": "Reminders for approaching and overdue tasks.",
+
+  "interestSport": "Sports",
+  "interestReading": "Reading",
+  "interestLanguages": "Language learning",
+  "interestProgramming": "Programming",
+  "interestMusic": "Music",
+  "interestDrawing": "Drawing",
+  "interestMeditation": "Meditation",
+  "interestFriendship": "Friendship",
+  "interestFamily": "Family",
+  "interestFinance": "Finance",
+  "interestCareer": "Career",
+  "interestBusiness": "Entrepreneurship",
+  "interestNutrition": "Nutrition",
+  "interestSleep": "Sleep",
+  "interestTravel": "Travel",
+  "interestWriting": "Writing",
+  "interestCrafts": "Crafts",
+
+  "skillNovice": "Novice",
+  "skillLearning": "Learning",
+  "skillConfident": "Confident",
+  "skillExpert": "Expert",
+
+  "onboardAxisBody": "Body",
+  "onboardAxisMind": "Mind",
+  "onboardAxisWork": "Work",
+  "onboardAxisRelations": "Relationships",
+  "onboardAxisSoul": "Soul"
 }

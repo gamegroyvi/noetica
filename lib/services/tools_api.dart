@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import '../l10n/generated/app_localizations.dart';
 import 'api_config.dart';
 import 'auth_service.dart';
 
@@ -132,15 +133,29 @@ class MenuPlan {
 /// server-side; sending anything else returns 422 before hitting the
 /// LLM.
 enum MenuGoal {
-  loseWeight('lose_weight', 'Похудение'),
-  health('health', 'Здоровье'),
-  muscle('muscle', 'Набор мышц'),
-  energy('energy', 'Энергия / спорт'),
-  classic('classic', 'Классическое сбалансированное');
+  loseWeight('lose_weight'),
+  health('health'),
+  muscle('muscle'),
+  energy('energy'),
+  classic('classic');
 
-  const MenuGoal(this.wire, this.label);
+  const MenuGoal(this.wire);
   final String wire;
-  final String label;
+
+  String localizedLabel(S tr) {
+    switch (this) {
+      case MenuGoal.loseWeight:
+        return tr.menuGoalLoseWeight;
+      case MenuGoal.health:
+        return tr.menuGoalHealth;
+      case MenuGoal.muscle:
+        return tr.menuGoalMuscle;
+      case MenuGoal.energy:
+        return tr.menuGoalEnergy;
+      case MenuGoal.classic:
+        return tr.menuGoalClassic;
+    }
+  }
 
   static MenuGoal fromWire(String value) {
     for (final g in MenuGoal.values) {
@@ -233,6 +248,9 @@ class ToolsApi {
   final Duration _generateTimeout;
   final Duration _recipeTimeout;
 
+  S? _tr;
+  void updateLocale(S tr) => _tr = tr;
+
   String get baseUrl => _baseUrl;
 
   Future<MenuPlan> generateMenu({
@@ -294,7 +312,7 @@ class ToolsApi {
     final token = _auth?.current?.accessToken;
     if (!kDevSkipAuth && (token == null || token.isEmpty)) {
       throw ToolsApiException(
-        'Не выполнен вход в Google. Перезайдите и попробуйте снова.',
+        _tr?.apiErrNotLoggedIn ?? 'Not signed in',
         status: 401,
       );
     }
@@ -312,7 +330,7 @@ class ToolsApi {
           )
           .timeout(timeout);
     } catch (e) {
-      throw ToolsApiException('Не удалось связаться с сервером: $e');
+      throw ToolsApiException(_tr?.apiErrServerUnreachable('$e') ?? 'Server unreachable: $e');
     }
     if (response.statusCode >= 400) {
       String message = response.body;
@@ -325,7 +343,7 @@ class ToolsApi {
       if (response.statusCode == 401) {
         unawaited(_auth?.handleUnauthorized() ?? Future.value());
         throw ToolsApiException(
-          'Сессия истекла. Зайдите через Google ещё раз.',
+          _tr?.apiErrSessionExpired ?? 'Session expired',
           status: 401,
         );
       }
@@ -335,7 +353,7 @@ class ToolsApi {
     try {
       json = jsonDecode(response.body) as Map<String, Object?>;
     } catch (e) {
-      throw ToolsApiException('Сервер вернул некорректный JSON: $e');
+      throw ToolsApiException(_tr?.apiErrInvalidJson('$e') ?? 'Invalid JSON: $e');
     }
     return json;
   }
