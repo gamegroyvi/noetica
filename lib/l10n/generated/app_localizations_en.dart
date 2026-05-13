@@ -346,4 +346,267 @@ class SEn extends S {
     );
     return '$_temp0';
   }
+
+  @override
+  String get sortSmart => 'Smart';
+
+  @override
+  String get sortDueAsc => 'Due ↑';
+
+  @override
+  String get sortCreatedDesc => 'Recent';
+
+  @override
+  String get sortXpDesc => 'Heaviest first';
+
+  @override
+  String get tooltipSort => 'Sort';
+
+  @override
+  String get tooltipSettings => 'Settings';
+
+  @override
+  String get noDate => 'No date';
+
+  @override
+  String get allAxes => 'All axes';
+
+  @override
+  String get noAxis => 'No axis';
+
+  @override
+  String get expandPlans => 'Expand plans';
+
+  @override
+  String get collapsePlans => 'Collapse plans';
+
+  @override
+  String get weeklyMenu => 'Weekly menu';
+
+  @override
+  String tasksInPlan(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'tasks',
+      one: 'task',
+    );
+    return '$count $_temp0 in plan';
+  }
+
+  @override
+  String plansCount(int count) {
+    return 'Plans ($count)';
+  }
+
+  @override
+  String get emptyFilterTitle => 'Nothing matches the filter';
+
+  @override
+  String get emptyFilterHint => 'Reset filters or change sort order to see other tasks.';
+
+  @override
+  String get emptyTasksTitle => 'No tasks';
+
+  @override
+  String get emptyTasksHint => 'Create a task via \"+\". Link it to axes — completion earns points on the pentagon.';
+
+  @override
+  String get sectionAccount => 'Account';
+
+  @override
+  String get sectionProfile => 'Profile';
+
+  @override
+  String get sectionAxes => 'Growth axes';
+
+  @override
+  String get sectionNotifications => 'Notifications';
+
+  @override
+  String get sectionBackend => 'Backend';
+
+  @override
+  String get sectionData => 'Data';
+
+  @override
+  String get sectionAbout => 'About';
+
+  @override
+  String get sectionDeveloper => '⚙ Developer';
+
+  @override
+  String get settingsLogout => 'Log out';
+
+  @override
+  String get settingsSyncNow => 'Sync now';
+
+  @override
+  String get settingsSyncHint => 'Pull data from cloud and push local changes';
+
+  @override
+  String get settingsNotLoggedIn => 'Not logged in';
+
+  @override
+  String get settingsNotLoggedInHint => 'Restart the app to log in.';
+
+  @override
+  String get settingsNoName => 'No name';
+
+  @override
+  String get settingsNoGoal => 'No goal set';
+
+  @override
+  String get settingsRegenAxes => 'Regenerate axes';
+
+  @override
+  String get settingsRegenAxesNoInterests => 'Add interests in profile so AI can generate axes';
+
+  @override
+  String settingsRegenAxesHint(int count) {
+    return 'AI will rebuild axes from $count interests';
+  }
+
+  @override
+  String get settingsNotificationsUnsupported => 'Notifications not supported here';
+
+  @override
+  String get settingsLocalNotifications => 'Local notifications';
+
+  @override
+  String get settingsLocalNotificationsHint => '1 day before, morning, and 1 hour after deadline';
+
+  @override
+  String get settingsMorningReminder => 'Morning reminder';
+
+  @override
+  String get settingsCoachReminders => 'AI coach reminders';
+
+  @override
+  String get settingsCoachRemindersHint => 'Morning plan and evening review';
+
+  @override
+  String get settingsEveningReview => 'Evening review';
+
+  @override
+  String get settingsExportJson => 'Export to JSON';
+
+  @override
+  String get settingsExportJsonHint => 'Save profile, axes and entries to file';
+
+  @override
+  String get settingsImportJson => 'Import from JSON';
+
+  @override
+  String get settingsImportJsonHint => 'Restore data from clipboard';
+
+  @override
+  String get settingsEraseAll => 'Erase all data';
+
+  @override
+  String get settingsEraseAllHint => 'Return to onboarding screen';
+
+  @override
+  String get settingsSourceCode => 'Source code';
+
+  @override
+  String get settingsVersion => 'v0.1.0 — minimalist growth tracker';
+
+  @override
+  String get dialogImportTitle => 'Import data';
+
+  @override
+  String get dialogImportBody => 'Paste export JSON from clipboard. Existing data will be merged (entry ID used for deduplication).';
+
+  @override
+  String get dialogPasteClipboard => 'Paste from clipboard';
+
+  @override
+  String get dialogEraseTitle => 'Erase all data?';
+
+  @override
+  String get dialogEraseBody => 'Profile, axes, tasks, notes and settings will be deleted. This action is irreversible.';
+
+  @override
+  String get dialogErase => 'Erase';
+
+  @override
+  String get dialogLogoutTitle => 'Log out?';
+
+  @override
+  String get dialogLogoutBody => 'Local data will remain on device. To sync again, log in with the same Google account.';
+
+  @override
+  String snackExportSaved(String path) {
+    return 'Saved: $path';
+  }
+
+  @override
+  String get snackCopy => 'Copy';
+
+  @override
+  String snackExportError(String error) {
+    return 'Export failed: $error';
+  }
+
+  @override
+  String get snackClipboardEmpty => 'Clipboard is empty.';
+
+  @override
+  String snackImportSuccess(int count) {
+    return 'Imported $count entries.';
+  }
+
+  @override
+  String snackImportError(String error) {
+    return 'Import failed: $error';
+  }
+
+  @override
+  String snackEraseError(String error) {
+    return 'Erase failed: $error';
+  }
+
+  @override
+  String get snackSyncing => 'Syncing…';
+
+  @override
+  String get snackSyncDone => 'Done. Data pulled from cloud.';
+
+  @override
+  String snackSyncError(String error) {
+    return 'Failed: $error';
+  }
+
+  @override
+  String snackLogoutError(String error) {
+    return 'Logout failed: $error';
+  }
+
+  @override
+  String get loadingBackends => 'Loading…';
+
+  @override
+  String get loadingBackendsHint => 'Loading backend list…';
+
+  @override
+  String get reflectionDidNotGo => 'Didn\'t work';
+
+  @override
+  String get reflectionDifficult => 'Hard';
+
+  @override
+  String get reflectionOk => 'OK';
+
+  @override
+  String get reflectionEasyShort => 'Easy';
+
+  @override
+  String get entryKindTask => 'Task';
+
+  @override
+  String get entryKindNote => 'Note';
+
+  @override
+  String get entryKindHabit => 'Habit';
 }

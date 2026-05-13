@@ -42,11 +42,11 @@ extension on _StatusFilter {
 enum _SortMode { smart, dueAsc, createdDesc, xpDesc }
 
 extension on _SortMode {
-  String get label => switch (this) {
-        _SortMode.smart => 'Умная',
-        _SortMode.dueAsc => 'Срок ↑',
-        _SortMode.createdDesc => 'Свежие',
-        _SortMode.xpDesc => 'Тяжёлые сверху',
+  String localLabel(S tr) => switch (this) {
+        _SortMode.smart => tr.sortSmart,
+        _SortMode.dueAsc => tr.sortDueAsc,
+        _SortMode.createdDesc => tr.sortCreatedDesc,
+        _SortMode.xpDesc => tr.sortXpDesc,
       };
 }
 
@@ -121,7 +121,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
         title: Text(tr.tabTasks),
         actions: [
           PopupMenuButton<_SortMode>(
-            tooltip: 'Сортировка',
+            tooltip: tr.tooltipSort,
             icon: const Icon(Icons.sort),
             onSelected: (m) => setState(() => _sort = m),
             itemBuilder: (_) => [
@@ -129,13 +129,13 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                 CheckedPopupMenuItem(
                   value: m,
                   checked: m == _sort,
-                  child: Text(m.label),
+                  child: Text(m.localLabel(tr)),
                 ),
             ],
           ),
           if (isMobile)
             IconButton(
-              tooltip: 'Настройки',
+              tooltip: tr.tooltipSettings,
               icon: const Icon(Icons.settings_outlined),
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
@@ -301,7 +301,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
       return Padding(
         padding: const EdgeInsets.fromLTRB(0, 12, 0, 4),
         child: Text(
-          'Планы (${item.count})',
+          S.of(context)!.plansCount(item.count),
           style: Theme.of(context).textTheme.labelMedium?.copyWith(
                 color: palette.muted,
                 letterSpacing: 0.6,
@@ -388,13 +388,22 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
   }
 
   String _formatDay(DateTime d) {
-    if (d.millisecondsSinceEpoch == 0) return 'Без даты';
-    const days = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+    if (d.millisecondsSinceEpoch == 0) return S.of(context)!.noDate;
+    final loc = Localizations.localeOf(context).languageCode;
+    if (loc == 'ru') {
+      const days = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+      const months = [
+        'янв', 'фев', 'мар', 'апр', 'май', 'июн',
+        'июл', 'авг', 'сен', 'окт', 'ноя', 'дек',
+      ];
+      return '${days[d.weekday - 1]}, ${d.day} ${months[d.month - 1]}';
+    }
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const months = [
-      'янв', 'фев', 'мар', 'апр', 'май', 'июн',
-      'июл', 'авг', 'сен', 'окт', 'ноя', 'дек',
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
     ];
-    return '${days[d.weekday - 1]}, ${d.day} ${months[d.month - 1]}';
+    return '${days[d.weekday - 1]}, ${months[d.month - 1]} ${d.day}';
   }
 
   // -------------------------------------------------------------- sort
@@ -567,7 +576,7 @@ class _FilterBar extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(right: 6),
                 child: ChoiceChip(
-                  label: const Text('Все оси'),
+                  label: Text(S.of(context)!.allAxes),
                   selected: axisId == null && !noAxisOnly,
                   onSelected: (_) => onAxis(null),
                 ),
@@ -575,7 +584,7 @@ class _FilterBar extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(right: 6),
                 child: FilterChip(
-                  label: const Text('Без оси'),
+                  label: Text(S.of(context)!.noAxis),
                   selected: noAxisOnly,
                   onSelected: onNoAxisOnly,
                 ),
@@ -600,7 +609,7 @@ class _FilterBar extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(right: 6),
                 child: FilterChip(
-                  label: Text(expandPlans ? 'Развернуть планы' : 'Свернуть планы'),
+                  label: Text(expandPlans ? S.of(context)!.expandPlans : S.of(context)!.collapsePlans),
                   selected: expandPlans,
                   avatar: Icon(
                     expandPlans
@@ -722,7 +731,7 @@ class _PlanFolderTile extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Меню недели',
+                    S.of(context)!.weeklyMenu,
                     style: Theme.of(context)
                         .textTheme
                         .bodyLarge
@@ -760,7 +769,7 @@ class _PlanFolderTile extends StatelessWidget {
                   const SizedBox(width: 12),
                 ],
                 Text(
-                  '${folder.total} ${_ruTask(folder.total)} в плане',
+                  S.of(context)!.tasksInPlan(folder.total),
                   style:
                       TextStyle(color: palette.muted, fontSize: 12),
                 ),
@@ -773,15 +782,6 @@ class _PlanFolderTile extends StatelessWidget {
   }
 }
 
-String _ruTask(int n) {
-  final n100 = n.abs() % 100;
-  final n10 = n100 % 10;
-  if (n100 >= 11 && n100 <= 14) return 'задач';
-  if (n10 == 1) return 'задача';
-  if (n10 >= 2 && n10 <= 4) return 'задачи';
-  return 'задач';
-}
-
 // ---------------------------------------------------------------- empty state
 
 class _EmptyState extends StatelessWidget {
@@ -791,10 +791,9 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final title = hasAnyTasks ? 'Под фильтр ничего не попало' : 'Задач нет';
-    final body = hasAnyTasks
-        ? 'Сбрось фильтры или поменяй сортировку, чтобы увидеть остальные задачи.'
-        : 'Создай задачу через «+». Привяжи её к осям — выполнение начислит очки в пентаграмму.';
+    final tr = S.of(context)!;
+    final title = hasAnyTasks ? tr.emptyFilterTitle : tr.emptyTasksTitle;
+    final body = hasAnyTasks ? tr.emptyFilterHint : tr.emptyTasksHint;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),

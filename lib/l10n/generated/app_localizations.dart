@@ -754,6 +754,480 @@ abstract class S {
   /// In ru, this message translates to:
   /// **'{count, plural, =0{0 дней} =1{1 день} few{{count} дня} other{{count} дней}}'**
   String daysTotalStreak(int count);
+
+  /// No description provided for @sortSmart.
+  ///
+  /// In ru, this message translates to:
+  /// **'Умная'**
+  String get sortSmart;
+
+  /// No description provided for @sortDueAsc.
+  ///
+  /// In ru, this message translates to:
+  /// **'Срок ↑'**
+  String get sortDueAsc;
+
+  /// No description provided for @sortCreatedDesc.
+  ///
+  /// In ru, this message translates to:
+  /// **'Свежие'**
+  String get sortCreatedDesc;
+
+  /// No description provided for @sortXpDesc.
+  ///
+  /// In ru, this message translates to:
+  /// **'Тяжёлые сверху'**
+  String get sortXpDesc;
+
+  /// No description provided for @tooltipSort.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сортировка'**
+  String get tooltipSort;
+
+  /// No description provided for @tooltipSettings.
+  ///
+  /// In ru, this message translates to:
+  /// **'Настройки'**
+  String get tooltipSettings;
+
+  /// No description provided for @noDate.
+  ///
+  /// In ru, this message translates to:
+  /// **'Без даты'**
+  String get noDate;
+
+  /// No description provided for @allAxes.
+  ///
+  /// In ru, this message translates to:
+  /// **'Все оси'**
+  String get allAxes;
+
+  /// No description provided for @noAxis.
+  ///
+  /// In ru, this message translates to:
+  /// **'Без оси'**
+  String get noAxis;
+
+  /// No description provided for @expandPlans.
+  ///
+  /// In ru, this message translates to:
+  /// **'Развернуть планы'**
+  String get expandPlans;
+
+  /// No description provided for @collapsePlans.
+  ///
+  /// In ru, this message translates to:
+  /// **'Свернуть планы'**
+  String get collapsePlans;
+
+  /// No description provided for @weeklyMenu.
+  ///
+  /// In ru, this message translates to:
+  /// **'Меню недели'**
+  String get weeklyMenu;
+
+  /// No description provided for @tasksInPlan.
+  ///
+  /// In ru, this message translates to:
+  /// **'{count} {count, plural, =1{задача} few{задачи} other{задач}} в плане'**
+  String tasksInPlan(int count);
+
+  /// No description provided for @plansCount.
+  ///
+  /// In ru, this message translates to:
+  /// **'Планы ({count})'**
+  String plansCount(int count);
+
+  /// No description provided for @emptyFilterTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Под фильтр ничего не попало'**
+  String get emptyFilterTitle;
+
+  /// No description provided for @emptyFilterHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сбрось фильтры или поменяй сортировку, чтобы увидеть остальные задачи.'**
+  String get emptyFilterHint;
+
+  /// No description provided for @emptyTasksTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Задач нет'**
+  String get emptyTasksTitle;
+
+  /// No description provided for @emptyTasksHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Создай задачу через «+». Привяжи её к осям — выполнение начислит очки в пентаграмму.'**
+  String get emptyTasksHint;
+
+  /// No description provided for @sectionAccount.
+  ///
+  /// In ru, this message translates to:
+  /// **'Аккаунт'**
+  String get sectionAccount;
+
+  /// No description provided for @sectionProfile.
+  ///
+  /// In ru, this message translates to:
+  /// **'Профиль'**
+  String get sectionProfile;
+
+  /// No description provided for @sectionAxes.
+  ///
+  /// In ru, this message translates to:
+  /// **'Оси роста'**
+  String get sectionAxes;
+
+  /// No description provided for @sectionNotifications.
+  ///
+  /// In ru, this message translates to:
+  /// **'Уведомления'**
+  String get sectionNotifications;
+
+  /// No description provided for @sectionBackend.
+  ///
+  /// In ru, this message translates to:
+  /// **'Бэкенд'**
+  String get sectionBackend;
+
+  /// No description provided for @sectionData.
+  ///
+  /// In ru, this message translates to:
+  /// **'Данные'**
+  String get sectionData;
+
+  /// No description provided for @sectionAbout.
+  ///
+  /// In ru, this message translates to:
+  /// **'О приложении'**
+  String get sectionAbout;
+
+  /// No description provided for @sectionDeveloper.
+  ///
+  /// In ru, this message translates to:
+  /// **'⚙ Разработчик'**
+  String get sectionDeveloper;
+
+  /// No description provided for @settingsLogout.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выйти'**
+  String get settingsLogout;
+
+  /// No description provided for @settingsSyncNow.
+  ///
+  /// In ru, this message translates to:
+  /// **'Синхронизировать сейчас'**
+  String get settingsSyncNow;
+
+  /// No description provided for @settingsSyncHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Стянуть данные с облака и отправить локальные изменения'**
+  String get settingsSyncHint;
+
+  /// No description provided for @settingsNotLoggedIn.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не выполнен вход'**
+  String get settingsNotLoggedIn;
+
+  /// No description provided for @settingsNotLoggedInHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Перезапустите приложение, чтобы войти.'**
+  String get settingsNotLoggedInHint;
+
+  /// No description provided for @settingsNoName.
+  ///
+  /// In ru, this message translates to:
+  /// **'Без имени'**
+  String get settingsNoName;
+
+  /// No description provided for @settingsNoGoal.
+  ///
+  /// In ru, this message translates to:
+  /// **'Цель не указана'**
+  String get settingsNoGoal;
+
+  /// No description provided for @settingsRegenAxes.
+  ///
+  /// In ru, this message translates to:
+  /// **'Перегенерировать оси'**
+  String get settingsRegenAxes;
+
+  /// No description provided for @settingsRegenAxesNoInterests.
+  ///
+  /// In ru, this message translates to:
+  /// **'Добавь интересы в профиле, чтобы AI собрал оси'**
+  String get settingsRegenAxesNoInterests;
+
+  /// No description provided for @settingsRegenAxesHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'AI пересоберёт оси по {count} интересам'**
+  String settingsRegenAxesHint(int count);
+
+  /// No description provided for @settingsNotificationsUnsupported.
+  ///
+  /// In ru, this message translates to:
+  /// **'Уведомления здесь не поддерживаются'**
+  String get settingsNotificationsUnsupported;
+
+  /// No description provided for @settingsLocalNotifications.
+  ///
+  /// In ru, this message translates to:
+  /// **'Локальные уведомления'**
+  String get settingsLocalNotifications;
+
+  /// No description provided for @settingsLocalNotificationsHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'За 1 день, утром, и через час после дедлайна'**
+  String get settingsLocalNotificationsHint;
+
+  /// No description provided for @settingsMorningReminder.
+  ///
+  /// In ru, this message translates to:
+  /// **'Утреннее напоминание'**
+  String get settingsMorningReminder;
+
+  /// No description provided for @settingsCoachReminders.
+  ///
+  /// In ru, this message translates to:
+  /// **'AI-коуч напоминания'**
+  String get settingsCoachReminders;
+
+  /// No description provided for @settingsCoachRemindersHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Утренний план и вечерний разбор'**
+  String get settingsCoachRemindersHint;
+
+  /// No description provided for @settingsEveningReview.
+  ///
+  /// In ru, this message translates to:
+  /// **'Вечерний разбор'**
+  String get settingsEveningReview;
+
+  /// No description provided for @settingsExportJson.
+  ///
+  /// In ru, this message translates to:
+  /// **'Экспорт в JSON'**
+  String get settingsExportJson;
+
+  /// No description provided for @settingsExportJsonHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сохранить профиль, оси и записи в файл'**
+  String get settingsExportJsonHint;
+
+  /// No description provided for @settingsImportJson.
+  ///
+  /// In ru, this message translates to:
+  /// **'Импорт из JSON'**
+  String get settingsImportJson;
+
+  /// No description provided for @settingsImportJsonHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Восстановить данные из буфера обмена'**
+  String get settingsImportJsonHint;
+
+  /// No description provided for @settingsEraseAll.
+  ///
+  /// In ru, this message translates to:
+  /// **'Стереть все данные'**
+  String get settingsEraseAll;
+
+  /// No description provided for @settingsEraseAllHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Возврат к экрану онбординга'**
+  String get settingsEraseAllHint;
+
+  /// No description provided for @settingsSourceCode.
+  ///
+  /// In ru, this message translates to:
+  /// **'Исходный код'**
+  String get settingsSourceCode;
+
+  /// No description provided for @settingsVersion.
+  ///
+  /// In ru, this message translates to:
+  /// **'v0.1.0 — minimalist growth tracker'**
+  String get settingsVersion;
+
+  /// No description provided for @dialogImportTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Импорт данных'**
+  String get dialogImportTitle;
+
+  /// No description provided for @dialogImportBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Вставьте JSON экспорта из буфера обмена. Существующие данные объединятся с импортом (entry ID используется для дедупликации).'**
+  String get dialogImportBody;
+
+  /// No description provided for @dialogPasteClipboard.
+  ///
+  /// In ru, this message translates to:
+  /// **'Вставить из буфера'**
+  String get dialogPasteClipboard;
+
+  /// No description provided for @dialogEraseTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Стереть все данные?'**
+  String get dialogEraseTitle;
+
+  /// No description provided for @dialogEraseBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удалятся профиль, оси, задачи, заметки и настройки. Действие необратимо.'**
+  String get dialogEraseBody;
+
+  /// No description provided for @dialogErase.
+  ///
+  /// In ru, this message translates to:
+  /// **'Стереть'**
+  String get dialogErase;
+
+  /// No description provided for @dialogLogoutTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выйти из аккаунта?'**
+  String get dialogLogoutTitle;
+
+  /// No description provided for @dialogLogoutBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Локальные данные останутся на устройстве. Чтобы они снова синхронизировались, войдите тем же Google-аккаунтом.'**
+  String get dialogLogoutBody;
+
+  /// No description provided for @snackExportSaved.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сохранён: {path}'**
+  String snackExportSaved(String path);
+
+  /// No description provided for @snackCopy.
+  ///
+  /// In ru, this message translates to:
+  /// **'Копировать'**
+  String get snackCopy;
+
+  /// No description provided for @snackExportError.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось экспортировать: {error}'**
+  String snackExportError(String error);
+
+  /// No description provided for @snackClipboardEmpty.
+  ///
+  /// In ru, this message translates to:
+  /// **'Буфер обмена пуст.'**
+  String get snackClipboardEmpty;
+
+  /// No description provided for @snackImportSuccess.
+  ///
+  /// In ru, this message translates to:
+  /// **'Импортировано {count} записей.'**
+  String snackImportSuccess(int count);
+
+  /// No description provided for @snackImportError.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось импортировать: {error}'**
+  String snackImportError(String error);
+
+  /// No description provided for @snackEraseError.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось стереть: {error}'**
+  String snackEraseError(String error);
+
+  /// No description provided for @snackSyncing.
+  ///
+  /// In ru, this message translates to:
+  /// **'Синхронизация…'**
+  String get snackSyncing;
+
+  /// No description provided for @snackSyncDone.
+  ///
+  /// In ru, this message translates to:
+  /// **'Готово. Данные подтянуты с облака.'**
+  String get snackSyncDone;
+
+  /// No description provided for @snackSyncError.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось: {error}'**
+  String snackSyncError(String error);
+
+  /// No description provided for @snackLogoutError.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось выйти: {error}'**
+  String snackLogoutError(String error);
+
+  /// No description provided for @loadingBackends.
+  ///
+  /// In ru, this message translates to:
+  /// **'Загрузка…'**
+  String get loadingBackends;
+
+  /// No description provided for @loadingBackendsHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Подгружаем список бэкендов…'**
+  String get loadingBackendsHint;
+
+  /// No description provided for @reflectionDidNotGo.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не пошло'**
+  String get reflectionDidNotGo;
+
+  /// No description provided for @reflectionDifficult.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сложно'**
+  String get reflectionDifficult;
+
+  /// No description provided for @reflectionOk.
+  ///
+  /// In ru, this message translates to:
+  /// **'Норм'**
+  String get reflectionOk;
+
+  /// No description provided for @reflectionEasyShort.
+  ///
+  /// In ru, this message translates to:
+  /// **'Легко'**
+  String get reflectionEasyShort;
+
+  /// No description provided for @entryKindTask.
+  ///
+  /// In ru, this message translates to:
+  /// **'Задача'**
+  String get entryKindTask;
+
+  /// No description provided for @entryKindNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Заметка'**
+  String get entryKindNote;
+
+  /// No description provided for @entryKindHabit.
+  ///
+  /// In ru, this message translates to:
+  /// **'Привычка'**
+  String get entryKindHabit;
 }
 
 class _SDelegate extends LocalizationsDelegate<S> {

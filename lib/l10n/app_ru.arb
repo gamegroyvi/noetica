@@ -134,5 +134,140 @@
     "placeholders": {
       "count": {"type": "int"}
     }
-  }
+  },
+
+  "sortSmart": "Умная",
+  "sortDueAsc": "Срок ↑",
+  "sortCreatedDesc": "Свежие",
+  "sortXpDesc": "Тяжёлые сверху",
+  "tooltipSort": "Сортировка",
+  "tooltipSettings": "Настройки",
+  "noDate": "Без даты",
+  "allAxes": "Все оси",
+  "noAxis": "Без оси",
+  "expandPlans": "Развернуть планы",
+  "collapsePlans": "Свернуть планы",
+  "weeklyMenu": "Меню недели",
+  "tasksInPlan": "{count} {count, plural, =1{задача} few{задачи} other{задач}} в плане",
+  "@tasksInPlan": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "plansCount": "Планы ({count})",
+  "@plansCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "emptyFilterTitle": "Под фильтр ничего не попало",
+  "emptyFilterHint": "Сбрось фильтры или поменяй сортировку, чтобы увидеть остальные задачи.",
+  "emptyTasksTitle": "Задач нет",
+  "emptyTasksHint": "Создай задачу через «+». Привяжи её к осям — выполнение начислит очки в пентаграмму.",
+
+  "sectionAccount": "Аккаунт",
+  "sectionProfile": "Профиль",
+  "sectionAxes": "Оси роста",
+  "sectionNotifications": "Уведомления",
+  "sectionBackend": "Бэкенд",
+  "sectionData": "Данные",
+  "sectionAbout": "О приложении",
+  "sectionDeveloper": "⚙ Разработчик",
+  "settingsLogout": "Выйти",
+  "settingsSyncNow": "Синхронизировать сейчас",
+  "settingsSyncHint": "Стянуть данные с облака и отправить локальные изменения",
+  "settingsNotLoggedIn": "Не выполнен вход",
+  "settingsNotLoggedInHint": "Перезапустите приложение, чтобы войти.",
+  "settingsNoName": "Без имени",
+  "settingsNoGoal": "Цель не указана",
+  "settingsRegenAxes": "Перегенерировать оси",
+  "settingsRegenAxesNoInterests": "Добавь интересы в профиле, чтобы AI собрал оси",
+  "settingsRegenAxesHint": "AI пересоберёт оси по {count} интересам",
+  "@settingsRegenAxesHint": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "settingsNotificationsUnsupported": "Уведомления здесь не поддерживаются",
+  "settingsLocalNotifications": "Локальные уведомления",
+  "settingsLocalNotificationsHint": "За 1 день, утром, и через час после дедлайна",
+  "settingsMorningReminder": "Утреннее напоминание",
+  "settingsCoachReminders": "AI-коуч напоминания",
+  "settingsCoachRemindersHint": "Утренний план и вечерний разбор",
+  "settingsEveningReview": "Вечерний разбор",
+  "settingsExportJson": "Экспорт в JSON",
+  "settingsExportJsonHint": "Сохранить профиль, оси и записи в файл",
+  "settingsImportJson": "Импорт из JSON",
+  "settingsImportJsonHint": "Восстановить данные из буфера обмена",
+  "settingsEraseAll": "Стереть все данные",
+  "settingsEraseAllHint": "Возврат к экрану онбординга",
+  "settingsSourceCode": "Исходный код",
+  "settingsVersion": "v0.1.0 — minimalist growth tracker",
+
+  "dialogImportTitle": "Импорт данных",
+  "dialogImportBody": "Вставьте JSON экспорта из буфера обмена. Существующие данные объединятся с импортом (entry ID используется для дедупликации).",
+  "dialogPasteClipboard": "Вставить из буфера",
+  "dialogEraseTitle": "Стереть все данные?",
+  "dialogEraseBody": "Удалятся профиль, оси, задачи, заметки и настройки. Действие необратимо.",
+  "dialogErase": "Стереть",
+  "dialogLogoutTitle": "Выйти из аккаунта?",
+  "dialogLogoutBody": "Локальные данные останутся на устройстве. Чтобы они снова синхронизировались, войдите тем же Google-аккаунтом.",
+
+  "snackExportSaved": "Сохранён: {path}",
+  "@snackExportSaved": {
+    "placeholders": {
+      "path": {"type": "String"}
+    }
+  },
+  "snackCopy": "Копировать",
+  "snackExportError": "Не удалось экспортировать: {error}",
+  "@snackExportError": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "snackClipboardEmpty": "Буфер обмена пуст.",
+  "snackImportSuccess": "Импортировано {count} записей.",
+  "@snackImportSuccess": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "snackImportError": "Не удалось импортировать: {error}",
+  "@snackImportError": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "snackEraseError": "Не удалось стереть: {error}",
+  "@snackEraseError": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "snackSyncing": "Синхронизация…",
+  "snackSyncDone": "Готово. Данные подтянуты с облака.",
+  "snackSyncError": "Не удалось: {error}",
+  "@snackSyncError": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "snackLogoutError": "Не удалось выйти: {error}",
+  "@snackLogoutError": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "loadingBackends": "Загрузка…",
+  "loadingBackendsHint": "Подгружаем список бэкендов…",
+
+  "reflectionDidNotGo": "Не пошло",
+  "reflectionDifficult": "Сложно",
+  "reflectionOk": "Норм",
+  "reflectionEasyShort": "Легко",
+
+  "entryKindTask": "Задача",
+  "entryKindNote": "Заметка",
+  "entryKindHabit": "Привычка"
 }

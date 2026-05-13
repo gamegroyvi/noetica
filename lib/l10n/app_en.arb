@@ -134,5 +134,140 @@
     "placeholders": {
       "count": {"type": "int"}
     }
-  }
+  },
+
+  "sortSmart": "Smart",
+  "sortDueAsc": "Due \u2191",
+  "sortCreatedDesc": "Recent",
+  "sortXpDesc": "Heaviest first",
+  "tooltipSort": "Sort",
+  "tooltipSettings": "Settings",
+  "noDate": "No date",
+  "allAxes": "All axes",
+  "noAxis": "No axis",
+  "expandPlans": "Expand plans",
+  "collapsePlans": "Collapse plans",
+  "weeklyMenu": "Weekly menu",
+  "tasksInPlan": "{count} {count, plural, =1{task} other{tasks}} in plan",
+  "@tasksInPlan": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "plansCount": "Plans ({count})",
+  "@plansCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "emptyFilterTitle": "Nothing matches the filter",
+  "emptyFilterHint": "Reset filters or change sort order to see other tasks.",
+  "emptyTasksTitle": "No tasks",
+  "emptyTasksHint": "Create a task via \"+\". Link it to axes \u2014 completion earns points on the pentagon.",
+
+  "sectionAccount": "Account",
+  "sectionProfile": "Profile",
+  "sectionAxes": "Growth axes",
+  "sectionNotifications": "Notifications",
+  "sectionBackend": "Backend",
+  "sectionData": "Data",
+  "sectionAbout": "About",
+  "sectionDeveloper": "\u2699 Developer",
+  "settingsLogout": "Log out",
+  "settingsSyncNow": "Sync now",
+  "settingsSyncHint": "Pull data from cloud and push local changes",
+  "settingsNotLoggedIn": "Not logged in",
+  "settingsNotLoggedInHint": "Restart the app to log in.",
+  "settingsNoName": "No name",
+  "settingsNoGoal": "No goal set",
+  "settingsRegenAxes": "Regenerate axes",
+  "settingsRegenAxesNoInterests": "Add interests in profile so AI can generate axes",
+  "settingsRegenAxesHint": "AI will rebuild axes from {count} interests",
+  "@settingsRegenAxesHint": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "settingsNotificationsUnsupported": "Notifications not supported here",
+  "settingsLocalNotifications": "Local notifications",
+  "settingsLocalNotificationsHint": "1 day before, morning, and 1 hour after deadline",
+  "settingsMorningReminder": "Morning reminder",
+  "settingsCoachReminders": "AI coach reminders",
+  "settingsCoachRemindersHint": "Morning plan and evening review",
+  "settingsEveningReview": "Evening review",
+  "settingsExportJson": "Export to JSON",
+  "settingsExportJsonHint": "Save profile, axes and entries to file",
+  "settingsImportJson": "Import from JSON",
+  "settingsImportJsonHint": "Restore data from clipboard",
+  "settingsEraseAll": "Erase all data",
+  "settingsEraseAllHint": "Return to onboarding screen",
+  "settingsSourceCode": "Source code",
+  "settingsVersion": "v0.1.0 \u2014 minimalist growth tracker",
+
+  "dialogImportTitle": "Import data",
+  "dialogImportBody": "Paste export JSON from clipboard. Existing data will be merged (entry ID used for deduplication).",
+  "dialogPasteClipboard": "Paste from clipboard",
+  "dialogEraseTitle": "Erase all data?",
+  "dialogEraseBody": "Profile, axes, tasks, notes and settings will be deleted. This action is irreversible.",
+  "dialogErase": "Erase",
+  "dialogLogoutTitle": "Log out?",
+  "dialogLogoutBody": "Local data will remain on device. To sync again, log in with the same Google account.",
+
+  "snackExportSaved": "Saved: {path}",
+  "@snackExportSaved": {
+    "placeholders": {
+      "path": {"type": "String"}
+    }
+  },
+  "snackCopy": "Copy",
+  "snackExportError": "Export failed: {error}",
+  "@snackExportError": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "snackClipboardEmpty": "Clipboard is empty.",
+  "snackImportSuccess": "Imported {count} entries.",
+  "@snackImportSuccess": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "snackImportError": "Import failed: {error}",
+  "@snackImportError": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "snackEraseError": "Erase failed: {error}",
+  "@snackEraseError": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "snackSyncing": "Syncing\u2026",
+  "snackSyncDone": "Done. Data pulled from cloud.",
+  "snackSyncError": "Failed: {error}",
+  "@snackSyncError": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "snackLogoutError": "Logout failed: {error}",
+  "@snackLogoutError": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "loadingBackends": "Loading\u2026",
+  "loadingBackendsHint": "Loading backend list\u2026",
+
+  "reflectionDidNotGo": "Didn't work",
+  "reflectionDifficult": "Hard",
+  "reflectionOk": "OK",
+  "reflectionEasyShort": "Easy",
+
+  "entryKindTask": "Task",
+  "entryKindNote": "Note",
+  "entryKindHabit": "Habit"
 }

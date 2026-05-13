@@ -347,4 +347,268 @@ class SRu extends S {
     );
     return '$_temp0';
   }
+
+  @override
+  String get sortSmart => 'Умная';
+
+  @override
+  String get sortDueAsc => 'Срок ↑';
+
+  @override
+  String get sortCreatedDesc => 'Свежие';
+
+  @override
+  String get sortXpDesc => 'Тяжёлые сверху';
+
+  @override
+  String get tooltipSort => 'Сортировка';
+
+  @override
+  String get tooltipSettings => 'Настройки';
+
+  @override
+  String get noDate => 'Без даты';
+
+  @override
+  String get allAxes => 'Все оси';
+
+  @override
+  String get noAxis => 'Без оси';
+
+  @override
+  String get expandPlans => 'Развернуть планы';
+
+  @override
+  String get collapsePlans => 'Свернуть планы';
+
+  @override
+  String get weeklyMenu => 'Меню недели';
+
+  @override
+  String tasksInPlan(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'задач',
+      few: 'задачи',
+      one: 'задача',
+    );
+    return '$count $_temp0 в плане';
+  }
+
+  @override
+  String plansCount(int count) {
+    return 'Планы ($count)';
+  }
+
+  @override
+  String get emptyFilterTitle => 'Под фильтр ничего не попало';
+
+  @override
+  String get emptyFilterHint => 'Сбрось фильтры или поменяй сортировку, чтобы увидеть остальные задачи.';
+
+  @override
+  String get emptyTasksTitle => 'Задач нет';
+
+  @override
+  String get emptyTasksHint => 'Создай задачу через «+». Привяжи её к осям — выполнение начислит очки в пентаграмму.';
+
+  @override
+  String get sectionAccount => 'Аккаунт';
+
+  @override
+  String get sectionProfile => 'Профиль';
+
+  @override
+  String get sectionAxes => 'Оси роста';
+
+  @override
+  String get sectionNotifications => 'Уведомления';
+
+  @override
+  String get sectionBackend => 'Бэкенд';
+
+  @override
+  String get sectionData => 'Данные';
+
+  @override
+  String get sectionAbout => 'О приложении';
+
+  @override
+  String get sectionDeveloper => '⚙ Разработчик';
+
+  @override
+  String get settingsLogout => 'Выйти';
+
+  @override
+  String get settingsSyncNow => 'Синхронизировать сейчас';
+
+  @override
+  String get settingsSyncHint => 'Стянуть данные с облака и отправить локальные изменения';
+
+  @override
+  String get settingsNotLoggedIn => 'Не выполнен вход';
+
+  @override
+  String get settingsNotLoggedInHint => 'Перезапустите приложение, чтобы войти.';
+
+  @override
+  String get settingsNoName => 'Без имени';
+
+  @override
+  String get settingsNoGoal => 'Цель не указана';
+
+  @override
+  String get settingsRegenAxes => 'Перегенерировать оси';
+
+  @override
+  String get settingsRegenAxesNoInterests => 'Добавь интересы в профиле, чтобы AI собрал оси';
+
+  @override
+  String settingsRegenAxesHint(int count) {
+    return 'AI пересоберёт оси по $count интересам';
+  }
+
+  @override
+  String get settingsNotificationsUnsupported => 'Уведомления здесь не поддерживаются';
+
+  @override
+  String get settingsLocalNotifications => 'Локальные уведомления';
+
+  @override
+  String get settingsLocalNotificationsHint => 'За 1 день, утром, и через час после дедлайна';
+
+  @override
+  String get settingsMorningReminder => 'Утреннее напоминание';
+
+  @override
+  String get settingsCoachReminders => 'AI-коуч напоминания';
+
+  @override
+  String get settingsCoachRemindersHint => 'Утренний план и вечерний разбор';
+
+  @override
+  String get settingsEveningReview => 'Вечерний разбор';
+
+  @override
+  String get settingsExportJson => 'Экспорт в JSON';
+
+  @override
+  String get settingsExportJsonHint => 'Сохранить профиль, оси и записи в файл';
+
+  @override
+  String get settingsImportJson => 'Импорт из JSON';
+
+  @override
+  String get settingsImportJsonHint => 'Восстановить данные из буфера обмена';
+
+  @override
+  String get settingsEraseAll => 'Стереть все данные';
+
+  @override
+  String get settingsEraseAllHint => 'Возврат к экрану онбординга';
+
+  @override
+  String get settingsSourceCode => 'Исходный код';
+
+  @override
+  String get settingsVersion => 'v0.1.0 — minimalist growth tracker';
+
+  @override
+  String get dialogImportTitle => 'Импорт данных';
+
+  @override
+  String get dialogImportBody => 'Вставьте JSON экспорта из буфера обмена. Существующие данные объединятся с импортом (entry ID используется для дедупликации).';
+
+  @override
+  String get dialogPasteClipboard => 'Вставить из буфера';
+
+  @override
+  String get dialogEraseTitle => 'Стереть все данные?';
+
+  @override
+  String get dialogEraseBody => 'Удалятся профиль, оси, задачи, заметки и настройки. Действие необратимо.';
+
+  @override
+  String get dialogErase => 'Стереть';
+
+  @override
+  String get dialogLogoutTitle => 'Выйти из аккаунта?';
+
+  @override
+  String get dialogLogoutBody => 'Локальные данные останутся на устройстве. Чтобы они снова синхронизировались, войдите тем же Google-аккаунтом.';
+
+  @override
+  String snackExportSaved(String path) {
+    return 'Сохранён: $path';
+  }
+
+  @override
+  String get snackCopy => 'Копировать';
+
+  @override
+  String snackExportError(String error) {
+    return 'Не удалось экспортировать: $error';
+  }
+
+  @override
+  String get snackClipboardEmpty => 'Буфер обмена пуст.';
+
+  @override
+  String snackImportSuccess(int count) {
+    return 'Импортировано $count записей.';
+  }
+
+  @override
+  String snackImportError(String error) {
+    return 'Не удалось импортировать: $error';
+  }
+
+  @override
+  String snackEraseError(String error) {
+    return 'Не удалось стереть: $error';
+  }
+
+  @override
+  String get snackSyncing => 'Синхронизация…';
+
+  @override
+  String get snackSyncDone => 'Готово. Данные подтянуты с облака.';
+
+  @override
+  String snackSyncError(String error) {
+    return 'Не удалось: $error';
+  }
+
+  @override
+  String snackLogoutError(String error) {
+    return 'Не удалось выйти: $error';
+  }
+
+  @override
+  String get loadingBackends => 'Загрузка…';
+
+  @override
+  String get loadingBackendsHint => 'Подгружаем список бэкендов…';
+
+  @override
+  String get reflectionDidNotGo => 'Не пошло';
+
+  @override
+  String get reflectionDifficult => 'Сложно';
+
+  @override
+  String get reflectionOk => 'Норм';
+
+  @override
+  String get reflectionEasyShort => 'Легко';
+
+  @override
+  String get entryKindTask => 'Задача';
+
+  @override
+  String get entryKindNote => 'Заметка';
+
+  @override
+  String get entryKindHabit => 'Привычка';
 }
