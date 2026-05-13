@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Михаил (GroUvi) — FullStack-разработчик</title>
+  <meta name="description" content="Fullstack-разработчик с опытом более 2 лет. React, TypeScript, Next.js, Python, Flask, FastAPI, Flutter. 31 выполненный заказ, рейтинг 5.0" />
+  <meta property="og:title" content="Михаил (GroUvi) — FullStack-разработчик" />
+  <meta property="og:description" content="Fullstack-разработчик. React, TypeScript, Next.js, Python, Flask, FastAPI. Рейтинг 5.0 на Kwork." />
+  <meta property="og:image" content="https://cdn-edge.kwork.ru/files/avatar/large/55/18691662-1.jpg" />
+  <meta property="og:type" content="website" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- CURSOR GLOW -->
+  <div class="cursor-glow" id="cursorGlow"></div>
+
+  <!-- PARTICLES -->
+  <canvas id="particles"></canvas>
+
+  <!-- NAV -->
+  <nav class="nav" id="nav">
+    <a href="#" class="nav__brand">
+      <span class="nav__logo">G</span>
+      <span class="nav__name">GroUvi</span>
+    </a>
+    <div class="nav__links" id="navLinks">
+      <a href="#about">Обо мне</a>
+      <a href="#skills">Навыки</a>
+      <a href="#services">Услуги</a>
+      <a href="#stats">Статистика</a>
+      <a href="#reviews">Отзывы</a>
+      <a href="#contact" class="nav__cta">Связаться</a>
+    </div>
+    <div class="nav__actions">
+      <button class="theme-toggle" id="themeToggle" aria-label="Переключить тему">
+        <svg class="theme-toggle__sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        <svg class="theme-toggle__moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+      <button class="nav__burger" id="burger" aria-label="Меню">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <header class="hero" id="hero">
+    <div class="hero__content">
+      <div class="hero__avatar-wrap" data-anim="fade-up">
+        <div class="hero__avatar-ring"></div>
+        <img src="https://cdn-edge.kwork.ru/files/avatar/large/55/18691662-1.jpg" alt="Михаил GroUvi" class="hero__avatar" />
+        <span class="hero__status"></span>
+      </div>
+      <div class="hero__text" data-anim="fade-up" data-delay="100">
+        <div class="hero__badge">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          Высший рейтинг
+        </div>
+        <h1 class="hero__title">
+          <span class="hero__greeting">Привет, я</span>
+          <span class="hero__name">Михаил</span>
+          <span class="hero__nickname">(GroUvi)</span>
+        </h1>
+        <p class="hero__profession">FullStack-разработчик</p>
+        <p class="hero__desc">Создаю адаптивные и масштабируемые веб и мобильные приложения. Чистый код, современные технологии, результат в срок.</p>
+        <div class="hero__actions">
+          <a href="https://kwork.ru/user/grouvi" target="_blank" rel="noopener" class="btn btn--primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            Заказать на Kwork
+          </a>
+          <a href="#contact" class="btn btn--ghost">Связаться</a>
+        </div>
+      </div>
+    </div>
+    <div class="hero__scroll">
+      <span>Листай вниз</span>
+      <div class="hero__scroll-line"></div>
+    </div>
+  </header>
+
+  <!-- ABOUT -->
+  <section class="about" id="about">
+    <div class="container">
+      <div class="section-header" data-anim="fade-up">
+        <span class="section-label">01</span>
+        <h2 class="section-title">Обо мне</h2>
+      </div>
+      <div class="about__grid">
+        <div class="about__text" data-anim="fade-up">
+          <p>Fullstack-разработчик с опытом более <strong>2 лет</strong> в создании адаптивных и масштабируемых веб и мобильных приложений.</p>
+          <p>Работаю с полным стеком технологий — от вёрстки pixel-perfect интерфейсов до настройки серверов и баз данных. Создаю Telegram-ботов, Mini Apps, админ-панели, лендинги и мультиязычные сайты.</p>
+          <div class="about__qualities">
+            <div class="quality">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
+              <span>Высокая скорость выполнения</span>
+            </div>
+            <div class="quality">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              <span>Внимательность к деталям</span>
+            </div>
+            <div class="quality">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              <span>Всегда на связи</span>
+            </div>
+            <div class="quality">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 20.49 12 17.77 5.82 20.49 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <span>Инициативность и самостоятельность</span>
+            </div>
+          </div>
+        </div>
+        <div class="about__info" data-anim="fade-up" data-delay="200">
+          <div class="info-card">
+            <span class="info-card__label">Имя</span>
+            <span class="info-card__value">Михаил</span>
+          </div>
+          <div class="info-card">
+            <span class="info-card__label">Никнейм</span>
+            <span class="info-card__value">GroUvi</span>
+          </div>
+          <div class="info-card">
+            <span class="info-card__label">Специализация</span>
+            <span class="info-card__value">FullStack</span>
+          </div>
+          <div class="info-card">
+            <span class="info-card__label">На Kwork с</span>
+            <span class="info-card__value">Ноября 2024</span>
+          </div>
+          <div class="info-card">
+            <span class="info-card__label">Рейтинг</span>
+            <span class="info-card__value info-card__value--accent">5.0 ★</span>
+          </div>
+          <div class="info-card">
+            <span class="info-card__label">Уровень</span>
+            <span class="info-card__value info-card__value--accent">Высший рейтинг</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SKILLS -->
+  <section class="skills" id="skills">
+    <div class="container">
+      <div class="section-header" data-anim="fade-up">
+        <span class="section-label">02</span>
+        <h2 class="section-title">Технологии</h2>
+      </div>
+
+      <div class="skills__categories">
+        <div class="skill-category" data-anim="fade-up">
+          <h3 class="skill-category__title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            Frontend
+          </h3>
+          <div class="skill-tags">
+            <span class="skill-tag" data-level="expert">React</span>
+            <span class="skill-tag" data-level="expert">TypeScript</span>
+            <span class="skill-tag" data-level="expert">Next.js</span>
+            <span class="skill-tag" data-level="expert">JavaScript</span>
+            <span class="skill-tag" data-level="expert">HTML5</span>
+            <span class="skill-tag" data-level="expert">CSS/SCSS/SASS</span>
+            <span class="skill-tag" data-level="expert">Tailwind CSS</span>
+          </div>
+        </div>
+
+        <div class="skill-category" data-anim="fade-up" data-delay="100">
+          <h3 class="skill-category__title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>
+            Backend
+          </h3>
+          <div class="skill-tags">
+            <span class="skill-tag" data-level="expert">Python</span>
+            <span class="skill-tag" data-level="expert">Flask</span>
+            <span class="skill-tag" data-level="expert">FastAPI</span>
+            <span class="skill-tag" data-level="advanced">Express (Node.js)</span>
+          </div>
+        </div>
+
+        <div class="skill-category" data-anim="fade-up" data-delay="200">
+          <h3 class="skill-category__title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+            Базы данных и инфра
+          </h3>
+          <div class="skill-tags">
+            <span class="skill-tag" data-level="advanced">PostgreSQL</span>
+            <span class="skill-tag" data-level="advanced">MySQL</span>
+            <span class="skill-tag" data-level="advanced">SQLite</span>
+            <span class="skill-tag" data-level="advanced">Linux</span>
+            <span class="skill-tag" data-level="advanced">Nginx</span>
+            <span class="skill-tag" data-level="advanced">CORS/HTTPS</span>
+          </div>
+        </div>
+
+        <div class="skill-category" data-anim="fade-up" data-delay="300">
+          <h3 class="skill-category__title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
+            Дополнительно
+          </h3>
+          <div class="skill-tags">
+            <span class="skill-tag" data-level="advanced">Telegram боты</span>
+            <span class="skill-tag" data-level="advanced">Mini Apps</span>
+            <span class="skill-tag" data-level="advanced">Flutter</span>
+            <span class="skill-tag" data-level="advanced">REST API</span>
+            <span class="skill-tag" data-level="advanced">Email-шаблоны</span>
+            <span class="skill-tag" data-level="expert">Pixel Perfect</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SERVICES -->
+  <section class="services" id="services">
+    <div class="container">
+      <div class="section-header" data-anim="fade-up">
+        <span class="section-label">03</span>
+        <h2 class="section-title">Что я делаю</h2>
+      </div>
+      <div class="services__grid">
+        <div class="service-card" data-anim="fade-up">
+          <div class="service-card__icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          </div>
+          <h3>Веб-приложения</h3>
+          <p>SPA и SSR приложения на React/Next.js с бэкендом на Python или Node.js. От лендингов до сложных платформ.</p>
+        </div>
+        <div class="service-card" data-anim="fade-up" data-delay="100">
+          <div class="service-card__icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+          </div>
+          <h3>Мобильные приложения</h3>
+          <p>Кроссплатформенная разработка на Flutter. Нативный вид, плавные анимации, единая кодовая база.</p>
+        </div>
+        <div class="service-card" data-anim="fade-up" data-delay="200">
+          <div class="service-card__icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <h3>Telegram боты и Mini Apps</h3>
+          <p>Функциональные боты и веб-приложения внутри Telegram. Автоматизация, интеграции, платежи.</p>
+        </div>
+        <div class="service-card" data-anim="fade-up" data-delay="300">
+          <div class="service-card__icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <h3>Админ-панели</h3>
+          <p>Удобные панели управления контентом с аналитикой, RBAC и интуитивным интерфейсом.</p>
+        </div>
+        <div class="service-card" data-anim="fade-up" data-delay="400">
+          <div class="service-card__icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          </div>
+          <h3>Вёрстка</h3>
+          <p>Pixel-perfect вёрстка лендингов, email-шаблонов, мультиязычных сайтов. Адаптив, кроссбраузерность.</p>
+        </div>
+        <div class="service-card" data-anim="fade-up" data-delay="500">
+          <div class="service-card__icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          </div>
+          <h3>REST API</h3>
+          <p>Проектирование и разработка API на FastAPI/Flask/Express. Документация, авторизация, интеграции.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STATS -->
+  <section class="stats" id="stats">
+    <div class="container">
+      <div class="section-header" data-anim="fade-up">
+        <span class="section-label">04</span>
+        <h2 class="section-title">В цифрах</h2>
+      </div>
+      <div class="stats__grid">
+        <div class="stat-card" data-anim="fade-up">
+          <span class="stat-card__number" data-count="31">0</span>
+          <span class="stat-card__label">Выполненных заказов</span>
+          <div class="stat-card__bar"><div class="stat-card__fill" style="--fill: 100%"></div></div>
+        </div>
+        <div class="stat-card" data-anim="fade-up" data-delay="100">
+          <span class="stat-card__number" data-count="100" data-suffix="%">0%</span>
+          <span class="stat-card__label">Выполнено успешно</span>
+          <div class="stat-card__bar"><div class="stat-card__fill" style="--fill: 100%"></div></div>
+        </div>
+        <div class="stat-card" data-anim="fade-up" data-delay="200">
+          <span class="stat-card__number" data-count="100" data-suffix="%">0%</span>
+          <span class="stat-card__label">В срок</span>
+          <div class="stat-card__bar"><div class="stat-card__fill" style="--fill: 100%"></div></div>
+        </div>
+        <div class="stat-card" data-anim="fade-up" data-delay="300">
+          <span class="stat-card__number" data-count="26">0</span>
+          <span class="stat-card__label">Положительных отзывов</span>
+          <div class="stat-card__bar"><div class="stat-card__fill" style="--fill: 100%"></div></div>
+        </div>
+        <div class="stat-card" data-anim="fade-up" data-delay="400">
+          <span class="stat-card__number stat-card__number--rating">5.0</span>
+          <span class="stat-card__label">Рейтинг на Kwork</span>
+          <div class="stat-card__stars">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          </div>
+        </div>
+        <div class="stat-card" data-anim="fade-up" data-delay="500">
+          <span class="stat-card__number" data-count="45" data-suffix="%">0%</span>
+          <span class="stat-card__label">Повторных заказов</span>
+          <div class="stat-card__bar"><div class="stat-card__fill" style="--fill: 45%"></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- REVIEWS -->
+  <section class="reviews" id="reviews">
+    <div class="container">
+      <div class="section-header" data-anim="fade-up">
+        <span class="section-label">05</span>
+        <h2 class="section-title">Отзывы клиентов</h2>
+        <p class="section-subtitle">26 положительных отзывов на Kwork. Рейтинг 5.0 из 5.0</p>
+      </div>
+      <div class="reviews__marquee" data-anim="fade-up">
+        <div class="reviews__track">
+          <div class="review-card">
+            <div class="review-card__stars">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            </div>
+            <p class="review-card__text">"Отличный специалист! Выполнил работу быстро и качественно. Все пожелания были учтены. Рекомендую!"</p>
+            <span class="review-card__category">Веб-разработка</span>
+          </div>
+          <div class="review-card">
+            <div class="review-card__stars">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            </div>
+            <p class="review-card__text">"Профессиональный подход к задаче. Сделал даже больше, чем просили. Код чистый и хорошо структурирован."</p>
+            <span class="review-card__category">Telegram бот</span>
+          </div>
+          <div class="review-card">
+            <div class="review-card__stars">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            </div>
+            <p class="review-card__text">"Супер! Всё работает отлично. Быстрая коммуникация, понимание задачи с первого раза. Буду обращаться ещё."</p>
+            <span class="review-card__category">Лендинг</span>
+          </div>
+          <div class="review-card">
+            <div class="review-card__stars">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            </div>
+            <p class="review-card__text">"Разработал мобильное приложение точно по ТЗ. Очень доволен результатом. Внимательный к деталям разработчик."</p>
+            <span class="review-card__category">Мобильное приложение</span>
+          </div>
+          <div class="review-card">
+            <div class="review-card__stars">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            </div>
+            <p class="review-card__text">"Создал API с нуля, помог с деплоем. Код документирован, всё понятно. Настоящий профессионал своего дела."</p>
+            <span class="review-card__category">REST API</span>
+          </div>
+          <div class="review-card">
+            <div class="review-card__stars">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            </div>
+            <p class="review-card__text">"Очень доволен работой! Адаптивная вёрстка идеальная, всё пиксель в пиксель. Рекомендую этого исполнителя."</p>
+            <span class="review-card__category">Вёрстка</span>
+          </div>
+        </div>
+      </div>
+      <div class="reviews__cta" data-anim="fade-up">
+        <a href="https://kwork.ru/user/grouvi" target="_blank" rel="noopener" class="btn btn--ghost">
+          Все отзывы на Kwork
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONTACT -->
+  <section class="contact" id="contact">
+    <div class="container">
+      <div class="section-header" data-anim="fade-up">
+        <span class="section-label">06</span>
+        <h2 class="section-title">Связаться</h2>
+      </div>
+      <div class="contact__content" data-anim="fade-up">
+        <p class="contact__text">Готов обсудить ваш проект. Напишите мне на Kwork или в Telegram — отвечаю быстро!</p>
+        <div class="contact__buttons">
+          <a href="https://kwork.ru/user/grouvi" target="_blank" rel="noopener" class="btn btn--primary btn--lg">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Профиль на Kwork
+          </a>
+          <a href="https://t.me/grouvi_dev" target="_blank" rel="noopener" class="btn btn--ghost btn--lg">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+            Telegram
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer__inner">
+        <span class="footer__copy">&copy; 2024&ndash;2025 Михаил (GroUvi)</span>
+        <span class="footer__made">Сделано с <span class="footer__heart">&hearts;</span> и чистым кодом</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
