@@ -85,7 +85,7 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                       // Strip ALL borders from the inner field — the
                       // outer DecoratedBox draws the only visible frame.
                       decoration: InputDecoration(
-                        hintText: 'Быстрая заметка…',
+                        hintText: S.of(context)!.notesQuickHint,
                         hintStyle: TextStyle(color: palette.muted),
                         border: InputBorder.none,
                         enabledBorder: InputBorder.none,
@@ -121,7 +121,7 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
               decoration: InputDecoration(
                 prefixIcon:
                     Icon(Icons.search, size: 18, color: palette.muted),
-                hintText: 'Поиск',
+                hintText: S.of(context)!.notesSearchHint,
                 isDense: true,
                 contentPadding:
                     const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
@@ -151,15 +151,15 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                         children: [
                           Text(
                             _query.isEmpty
-                                ? 'Заметок пока нет'
-                                : 'Ничего не найдено',
+                                ? S.of(context)!.notesEmpty
+                                : S.of(context)!.notesNotFound,
                             style: Theme.of(context).textTheme.titleMedium,
                           ),
                           const SizedBox(height: 6),
                           Text(
                             _query.isEmpty
-                                ? 'Запиши мысль одной строкой выше или открой полный редактор кнопкой «+».'
-                                : 'Попробуй другой запрос.',
+                                ? S.of(context)!.notesEmptyHint
+                                : S.of(context)!.notesNotFoundHint,
                             textAlign: TextAlign.center,
                             style: Theme.of(context)
                                 .textTheme

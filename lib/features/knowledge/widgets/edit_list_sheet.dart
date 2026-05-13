@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../theme/app_theme.dart';
 
 /// Return type for the edit list sheet.
@@ -102,7 +103,7 @@ class _EditListSheetState extends State<EditListSheet> {
                 ),
                 if (_controllers.length < widget.maxItems)
                   IconButton(
-                    tooltip: 'Добавить',
+                    tooltip: S.of(context)!.editListAddItem,
                     icon: Icon(Icons.add, color: palette.fg),
                     onPressed: _add,
                   ),
@@ -110,7 +111,7 @@ class _EditListSheetState extends State<EditListSheet> {
                   onPressed: _save,
                   icon: Icon(Icons.check, color: palette.fg, size: 18),
                   label: Text(
-                    'Готово',
+                    S.of(context)!.axesDone,
                     style: TextStyle(color: palette.fg),
                   ),
                 ),
@@ -192,7 +193,7 @@ class _EmptyListCta extends StatelessWidget {
         onPressed: onAdd,
         icon: Icon(Icons.add, color: palette.fg),
         label: Text(
-          'Добавить первую запись',
+          S.of(context)!.editListAddFirst,
           style: TextStyle(color: palette.fg),
         ),
       ),

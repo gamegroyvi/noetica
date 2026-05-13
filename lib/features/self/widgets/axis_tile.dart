@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../data/models.dart';
 import '../../../services/levels.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../theme/app_theme.dart';
 
 /// A single axis row showing symbol, name, level/epoch badges,
@@ -91,7 +92,7 @@ class AxisTile extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
-                                'Э${epochFromXp(ls.totalXp)}',
+                                S.of(context)!.axisEpochPrefix('${epochFromXp(ls.totalXp)}'),
                                 style: TextStyle(
                                   color: palette.bg,
                                   fontSize: 10,

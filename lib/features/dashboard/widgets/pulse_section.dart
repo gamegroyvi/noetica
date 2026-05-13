@@ -33,7 +33,7 @@ class PulseSection extends StatelessWidget {
             : S.of(context)!.pulseDeadlineDays(dl.difference(DateTime.now()).inDays));
     final dlHint = dl == null
         ? S.of(context)!.pulseNoDeadline
-        : 'до ${formatTimestamp(dl)}';
+        : S.of(context)!.pulseDeadline(formatTimestamp(dl));
     final bestAxis =
         stats.bestAxis != null ? axesById[stats.bestAxis!] : null;
     final xpWeekHint = stats.totalXpWeek > 0
@@ -46,7 +46,7 @@ class PulseSection extends StatelessWidget {
       label: S.of(context)!.pulseStreak,
       hint: stats.streak == 0
           ? S.of(context)!.pulseStartToday
-          : plural(stats.streak, 'день', 'дня', 'дней'),
+          : plural(stats.streak, S.of(context)!.pulseStreakDay(stats.streak), S.of(context)!.pulseStreakDays(stats.streak), S.of(context)!.pulseStreakDaysMany(stats.streak)),
       footer: SizedBox(
         height: 24,
         child: _WeekBars(perDay: stats.perDay, palette: palette),
@@ -69,7 +69,7 @@ class PulseSection extends StatelessWidget {
     final deadlineCard = _StatCard(
       palette: palette,
       value: dlValue,
-      label: S.of(context)!.pulseDeadline,
+      label: S.of(context)!.pulseDeadlineLabel,
       hint: dlHint,
       onTap: onTapDeadline,
     );

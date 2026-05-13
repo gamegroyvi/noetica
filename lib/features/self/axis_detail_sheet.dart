@@ -111,7 +111,7 @@ class _AxisDetailSheet extends ConsumerWidget {
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      'Э${epochFromXp(ls.totalXp)}',
+                      S.of(context)!.axisEpochPrefix('\${epochFromXp(ls.totalXp)}'),
                       style: TextStyle(
                         color: palette.bg,
                         fontWeight: FontWeight.w700,
@@ -126,7 +126,7 @@ class _AxisDetailSheet extends ConsumerWidget {
             Row(
               children: [
                 _Stat(
-                  label: 'СОСТОЯНИЕ',
+                  label: S.of(context)!.axisState,
                   value: '${score.value.round()} / 100',
                   palette: palette,
                 ),
@@ -171,7 +171,7 @@ class _AxisDetailSheet extends ConsumerWidget {
             ],
             const SizedBox(height: 24),
             Text(
-              'ВЫПОЛНЕНО ПО ОСИ',
+              S.of(context)!.axisCompletedByAxis,
               style: TextStyle(
                 color: palette.muted,
                 fontSize: 11,
@@ -184,7 +184,7 @@ class _AxisDetailSheet extends ConsumerWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 child: Text(
-                  'Здесь появятся выполненные задачи, привязанные к этой оси.',
+                  S.of(context)!.axisNoTasks,
                   style: TextStyle(color: palette.muted),
                 ),
               )

@@ -125,7 +125,7 @@ class NowFocusCard extends ConsumerWidget {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                'Активных задач нет — отдохни или создай новую.',
+                S.of(context)!.dashNoActiveTasks,
                 style: TextStyle(color: palette.fg, fontSize: 14),
               ),
             ),
@@ -202,7 +202,7 @@ class NowFocusCard extends ConsumerWidget {
                     onPressed: () =>
                         toggleTaskWithReflection(context, ref, t),
                     icon: const Icon(Icons.check_rounded, size: 18),
-                    label: const Text('Готово'),
+                    label: Text(S.of(context)!.dashDone),
                     style: FilledButton.styleFrom(
                       padding:
                           const EdgeInsets.symmetric(vertical: 10),
@@ -216,7 +216,7 @@ class NowFocusCard extends ConsumerWidget {
                   child: OutlinedButton.icon(
                     onPressed: () => _snoozeTask(context, ref, t),
                     icon: const Icon(Icons.schedule_rounded, size: 18),
-                    label: const Text('Отложить'),
+                    label: Text(S.of(context)!.dashPostpone),
                     style: OutlinedButton.styleFrom(
                       padding:
                           const EdgeInsets.symmetric(vertical: 10),
@@ -227,7 +227,7 @@ class NowFocusCard extends ConsumerWidget {
                 ),
                 const SizedBox(width: 4),
                 IconButton(
-                  tooltip: 'Запустить таймер фокуса',
+                  tooltip: S.of(context)!.dashFocusTimer,
                   onPressed: () => PomodoroSheet.show(context),
                   icon: const Icon(Icons.timer_outlined, size: 18),
                   color: palette.muted,
@@ -270,7 +270,7 @@ class NowFocusCard extends ConsumerWidget {
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    'ОТЛОЖИТЬ НА',
+                    S.of(context)!.dashPostponeBy,
                     style: TextStyle(
                       color: palette.muted,
                       fontSize: 11,
@@ -632,7 +632,7 @@ class OnboardingHints extends StatelessWidget {
           child: TextButton.icon(
             onPressed: onOpenSelf,
             icon: const Icon(Icons.radar_outlined, size: 16),
-            label: const Text('Посмотреть свою пентаграмму'),
+            label: Text(S.of(context)!.dashViewPentagram),
             style: TextButton.styleFrom(
               foregroundColor: palette.muted,
             ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../theme/app_theme.dart';
 import '../graph_models.dart';
 
@@ -22,7 +23,7 @@ class GraphEmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (title, hint, primaryLabel, primaryAction, showReset) =
-        _copyForFilter();
+        _copyForFilter(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -63,7 +64,7 @@ class GraphEmptyState extends StatelessWidget {
                   OutlinedButton.icon(
                     onPressed: onResetFilter,
                     icon: const Icon(Icons.tune, size: 16),
-                    label: const Text('Сбросить фильтр'),
+                    label: Text(S.of(context)!.graphResetFilter),
                   ),
               ],
             ),
@@ -73,52 +74,53 @@ class GraphEmptyState extends StatelessWidget {
     );
   }
 
-  (String, String, String, VoidCallback?, bool) _copyForFilter() {
+  (String, String, String, VoidCallback?, bool) _copyForFilter(BuildContext context) {
+    final tr = S.of(context)!;
     switch (filter) {
       case GraphFilterMode.all:
         return (
-          'База знаний пока пуста',
-          'Создайте первую заметку или задачу — они появятся здесь как узлы графа.',
-          'Создать запись',
+          tr.graphEmptyAllTitle,
+          tr.graphEmptyAllBody,
+          tr.graphEmptyAllAction,
           onCreateEntry,
           false,
         );
       case GraphFilterMode.notes:
         return (
-          'Заметок пока нет',
-          'Заметки будут видны как отдельные узлы. Связи появляются автоматически, когда в теле есть [[ссылка]] на другую заметку.',
-          'Создать заметку',
+          tr.graphEmptyNotesTitle,
+          tr.graphEmptyNotesBody,
+          tr.graphEmptyNotesAction,
           onCreateEntry,
           true,
         );
       case GraphFilterMode.tasks:
         return (
-          'Задач в графе нет',
-          'Создайте задачу через «+» или сгенерируйте план задач из вашей цели.',
-          'Создать запись',
+          tr.graphEmptyTasksTitle,
+          tr.graphEmptyTasksBody,
+          tr.graphEmptyAllAction,
           onCreateEntry,
           true,
         );
       case GraphFilterMode.bookmarks:
         return (
-          'Закладок пока нет',
-          'Долгое нажатие на узел графа добавит его в закладки.',
+          tr.graphEmptyBookmarksTitle,
+          tr.graphEmptyBookmarksBody,
           '',
           null,
           true,
         );
       case GraphFilterMode.daily:
         return (
-          'Дневник пуст',
-          'Тапните иконку календаря в шапке, чтобы создать запись на сегодня.',
+          tr.graphEmptyDailyTitle,
+          tr.graphEmptyDailyBody,
           '',
           null,
           true,
         );
       case GraphFilterMode.knowledge:
         return (
-          'Знания о себе пусты',
-          'Заполните цели, ограничения и достижения через тапы по веткам графа — это даст AI больше контекста для генерации планов.',
+          tr.graphEmptyKnowledgeTitle,
+          tr.graphEmptyKnowledgeBody,
           '',
           null,
           true,

@@ -263,7 +263,7 @@ class PositionedNode extends StatelessWidget {
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                    node.isCentre ? 'я' : node.label,
+                    node.label,
                     textAlign: TextAlign.center,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,

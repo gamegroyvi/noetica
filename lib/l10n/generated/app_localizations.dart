@@ -512,7 +512,7 @@ abstract class S {
   /// No description provided for @onboardingInterests.
   ///
   /// In ru, this message translates to:
-  /// **'Что тебе интересно?'**
+  /// **'Интересы'**
   String get onboardingInterests;
 
   /// No description provided for @onboardingHours.
@@ -584,7 +584,7 @@ abstract class S {
   /// No description provided for @settingsImport.
   ///
   /// In ru, this message translates to:
-  /// **'Импорт данных'**
+  /// **'Импорт из буфера'**
   String get settingsImport;
 
   /// No description provided for @settingsTheme.
@@ -1856,7 +1856,7 @@ abstract class S {
   /// No description provided for @roadmapGenerating.
   ///
   /// In ru, this message translates to:
-  /// **'Это занимает 5–15 секунд'**
+  /// **'Генерируем план…'**
   String get roadmapGenerating;
 
   /// No description provided for @roadmapImportBtn.
@@ -2012,8 +2012,8 @@ abstract class S {
   /// No description provided for @pulseDeadline.
   ///
   /// In ru, this message translates to:
-  /// **'ДЕДЛАЙН'**
-  String get pulseDeadline;
+  /// **'до {date}'**
+  String pulseDeadline(String date);
 
   /// No description provided for @pulseNoDeadline.
   ///
@@ -2066,8 +2066,8 @@ abstract class S {
   /// No description provided for @onboardHoursWeek.
   ///
   /// In ru, this message translates to:
-  /// **'{h} ч/нед'**
-  String onboardHoursWeek(int h);
+  /// **'ч/нед'**
+  String get onboardHoursWeek;
 
   /// No description provided for @onboardWeeklyTime.
   ///
@@ -2486,7 +2486,7 @@ abstract class S {
   /// No description provided for @menuIngredients.
   ///
   /// In ru, this message translates to:
-  /// **'Ингредиенты'**
+  /// **'ИНГРЕДИЕНТЫ'**
   String get menuIngredients;
 
   /// No description provided for @menuFullRecipe.
@@ -3400,6 +3400,1038 @@ abstract class S {
   /// In ru, this message translates to:
   /// **'Системный «дзынь» и хаптик при смене фазы (уведомление приходит в любом случае)'**
   String get pomodoroSoundVibroSub;
+
+  /// No description provided for @graphCentreLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'я'**
+  String get graphCentreLabel;
+
+  /// No description provided for @graphGoalsHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Что хочешь достичь'**
+  String get graphGoalsHint;
+
+  /// No description provided for @graphConstraintsHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Что мешает или ограничивает'**
+  String get graphConstraintsHint;
+
+  /// No description provided for @graphHighlightsHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Что уже получилось'**
+  String get graphHighlightsHint;
+
+  /// No description provided for @graphReflectionsHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Заметки о пройденном'**
+  String get graphReflectionsHint;
+
+  /// No description provided for @graphDelete.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удалить'**
+  String get graphDelete;
+
+  /// No description provided for @graphSearchHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Поиск по базе знаний…'**
+  String get graphSearchHint;
+
+  /// No description provided for @graphKnowledgeBase.
+  ///
+  /// In ru, this message translates to:
+  /// **'База знаний'**
+  String get graphKnowledgeBase;
+
+  /// No description provided for @graphSearchTooltip.
+  ///
+  /// In ru, this message translates to:
+  /// **'Поиск'**
+  String get graphSearchTooltip;
+
+  /// No description provided for @graphDailyTooltip.
+  ///
+  /// In ru, this message translates to:
+  /// **'Дневник'**
+  String get graphDailyTooltip;
+
+  /// No description provided for @graphShowRecipes.
+  ///
+  /// In ru, this message translates to:
+  /// **'Показывать рецепты'**
+  String get graphShowRecipes;
+
+  /// No description provided for @graphHideRecipes.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скрывать рецепты'**
+  String get graphHideRecipes;
+
+  /// No description provided for @graphGlobalTooltip.
+  ///
+  /// In ru, this message translates to:
+  /// **'Глобальный граф'**
+  String get graphGlobalTooltip;
+
+  /// No description provided for @graphNewNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Новая заметка'**
+  String get graphNewNote;
+
+  /// No description provided for @graphResetView.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сбросить вид'**
+  String get graphResetView;
+
+  /// No description provided for @graphShuffle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Перемешать'**
+  String get graphShuffle;
+
+  /// No description provided for @graphEmptyTitle1.
+  ///
+  /// In ru, this message translates to:
+  /// **'Записывай'**
+  String get graphEmptyTitle1;
+
+  /// No description provided for @graphEmptyBody1.
+  ///
+  /// In ru, this message translates to:
+  /// **'Заметки, задачи, дневник — всё становится узлами графа.'**
+  String get graphEmptyBody1;
+
+  /// No description provided for @graphEmptyTitle2.
+  ///
+  /// In ru, this message translates to:
+  /// **'Связывай'**
+  String get graphEmptyTitle2;
+
+  /// No description provided for @graphEmptyBody2.
+  ///
+  /// In ru, this message translates to:
+  /// **'Упоминай [[заголовок]] в тексте — Noetica построит ребро.'**
+  String get graphEmptyBody2;
+
+  /// No description provided for @graphEmptyTitle3.
+  ///
+  /// In ru, this message translates to:
+  /// **'Изучай'**
+  String get graphEmptyTitle3;
+
+  /// No description provided for @graphEmptyBody3.
+  ///
+  /// In ru, this message translates to:
+  /// **'Граф покажет, какие темы пересекаются и где пусто.'**
+  String get graphEmptyBody3;
+
+  /// No description provided for @graphEmptyTitle4.
+  ///
+  /// In ru, this message translates to:
+  /// **'О себе'**
+  String get graphEmptyTitle4;
+
+  /// No description provided for @graphEmptyBody4.
+  ///
+  /// In ru, this message translates to:
+  /// **'Цели, ограничения, достижения — эти ветки помогут AI.'**
+  String get graphEmptyBody4;
+
+  /// No description provided for @graphEmptyTitle5.
+  ///
+  /// In ru, this message translates to:
+  /// **'Первая запись'**
+  String get graphEmptyTitle5;
+
+  /// No description provided for @graphEmptyBody5.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нажми +, чтобы создать заметку и увидеть граф в действии.'**
+  String get graphEmptyBody5;
+
+  /// No description provided for @graphEmptyTitle6.
+  ///
+  /// In ru, this message translates to:
+  /// **'Теги'**
+  String get graphEmptyTitle6;
+
+  /// No description provided for @graphEmptyBody6.
+  ///
+  /// In ru, this message translates to:
+  /// **'Добавляй теги к записям — они тоже станут узлами.'**
+  String get graphEmptyBody6;
+
+  /// No description provided for @graphResetFilter.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сбросить фильтр'**
+  String get graphResetFilter;
+
+  /// No description provided for @graphEmptyAllTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'База знаний пока пуста'**
+  String get graphEmptyAllTitle;
+
+  /// No description provided for @graphEmptyAllBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Создайте первую заметку или задачу — они появятся здесь как узлы графа.'**
+  String get graphEmptyAllBody;
+
+  /// No description provided for @graphEmptyAllAction.
+  ///
+  /// In ru, this message translates to:
+  /// **'Создать запись'**
+  String get graphEmptyAllAction;
+
+  /// No description provided for @graphEmptyNotesTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Заметок пока нет'**
+  String get graphEmptyNotesTitle;
+
+  /// No description provided for @graphEmptyNotesBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Заметки будут видны как отдельные узлы. Связи появляются автоматически, когда в теле есть [[ссылка]] на другую заметку.'**
+  String get graphEmptyNotesBody;
+
+  /// No description provided for @graphEmptyNotesAction.
+  ///
+  /// In ru, this message translates to:
+  /// **'Создать заметку'**
+  String get graphEmptyNotesAction;
+
+  /// No description provided for @graphEmptyTasksTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Задач в графе нет'**
+  String get graphEmptyTasksTitle;
+
+  /// No description provided for @graphEmptyTasksBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Создайте задачу через «+» или сгенерируйте план задач из вашей цели.'**
+  String get graphEmptyTasksBody;
+
+  /// No description provided for @graphEmptyBookmarksTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Закладок пока нет'**
+  String get graphEmptyBookmarksTitle;
+
+  /// No description provided for @graphEmptyBookmarksBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Долгое нажатие на узел графа добавит его в закладки.'**
+  String get graphEmptyBookmarksBody;
+
+  /// No description provided for @graphEmptyDailyTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Дневник пуст'**
+  String get graphEmptyDailyTitle;
+
+  /// No description provided for @graphEmptyDailyBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Тапните иконку календаря в шапке, чтобы создать запись на сегодня.'**
+  String get graphEmptyDailyBody;
+
+  /// No description provided for @graphEmptyKnowledgeTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Знания о себе пусты'**
+  String get graphEmptyKnowledgeTitle;
+
+  /// No description provided for @graphEmptyKnowledgeBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Заполните цели, ограничения и достижения через тапы по веткам графа — это даст AI больше контекста для генерации планов.'**
+  String get graphEmptyKnowledgeBody;
+
+  /// No description provided for @editListAdd.
+  ///
+  /// In ru, this message translates to:
+  /// **'Добавить'**
+  String get editListAdd;
+
+  /// No description provided for @editListRemove.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удалить'**
+  String get editListRemove;
+
+  /// No description provided for @editListSave.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сохранить'**
+  String get editListSave;
+
+  /// No description provided for @graphConnections.
+  ///
+  /// In ru, this message translates to:
+  /// **'связей'**
+  String get graphConnections;
+
+  /// No description provided for @selfBranchesTooltip.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ветви'**
+  String get selfBranchesTooltip;
+
+  /// No description provided for @selfSettingsTooltip.
+  ///
+  /// In ru, this message translates to:
+  /// **'Настройки'**
+  String get selfSettingsTooltip;
+
+  /// No description provided for @selfTreeBranches.
+  ///
+  /// In ru, this message translates to:
+  /// **'ДРЕВО · ВЕТКИ'**
+  String get selfTreeBranches;
+
+  /// No description provided for @selfGeneratePlan.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сгенерировать план'**
+  String get selfGeneratePlan;
+
+  /// No description provided for @selfScoreExplain.
+  ///
+  /// In ru, this message translates to:
+  /// **'Очки начисляются за выполнение задач, привязанных к осям. Со временем затухают — пентаграмма отражает тебя за последний месяц.'**
+  String get selfScoreExplain;
+
+  /// No description provided for @selfEpochArchive.
+  ///
+  /// In ru, this message translates to:
+  /// **'ЭПОХА {n} · АРХИВ'**
+  String selfEpochArchive(int n);
+
+  /// No description provided for @selfArchiveReadonly.
+  ///
+  /// In ru, this message translates to:
+  /// **'Древо этой эпохи на момент перехода. Только просмотр.'**
+  String get selfArchiveReadonly;
+
+  /// No description provided for @selfArchiveEmpty.
+  ///
+  /// In ru, this message translates to:
+  /// **'Архив этой эпохи пустой — она завершилась до того, как мы начали записывать историю. Будущие переходы сохранятся целиком.'**
+  String get selfArchiveEmpty;
+
+  /// No description provided for @selfArchiveBranches.
+  ///
+  /// In ru, this message translates to:
+  /// **'ВЕТВИ ТОЙ ЭПОХИ'**
+  String get selfArchiveBranches;
+
+  /// No description provided for @selfEpochLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'ЭПОХА'**
+  String get selfEpochLabel;
+
+  /// No description provided for @selfEpochShort.
+  ///
+  /// In ru, this message translates to:
+  /// **'Э{epoch}'**
+  String selfEpochShort(String epoch);
+
+  /// No description provided for @selfEpochTierShort.
+  ///
+  /// In ru, this message translates to:
+  /// **'Э{epoch}.{tier}'**
+  String selfEpochTierShort(String epoch, String tier);
+
+  /// No description provided for @selfLevelLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'УРОВЕНЬ'**
+  String get selfLevelLabel;
+
+  /// No description provided for @selfStreakLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'СТРИК'**
+  String get selfStreakLabel;
+
+  /// No description provided for @selfStreakDays.
+  ///
+  /// In ru, this message translates to:
+  /// **'{n} д.'**
+  String selfStreakDays(int n);
+
+  /// No description provided for @selfReadyTransition.
+  ///
+  /// In ru, this message translates to:
+  /// **'Готов к переходу — тапни, чтобы открыть'**
+  String get selfReadyTransition;
+
+  /// No description provided for @selfStreakBroken.
+  ///
+  /// In ru, this message translates to:
+  /// **'Стрик прервался. Закрой одну задачу сегодня — начнём заново.'**
+  String get selfStreakBroken;
+
+  /// No description provided for @axisEpochPrefix.
+  ///
+  /// In ru, this message translates to:
+  /// **'Э{n}'**
+  String axisEpochPrefix(String n);
+
+  /// No description provided for @axisState.
+  ///
+  /// In ru, this message translates to:
+  /// **'СОСТОЯНИЕ'**
+  String get axisState;
+
+  /// No description provided for @axisCompletedByAxis.
+  ///
+  /// In ru, this message translates to:
+  /// **'ВЫПОЛНЕНО ПО ОСИ'**
+  String get axisCompletedByAxis;
+
+  /// No description provided for @axisNoTasks.
+  ///
+  /// In ru, this message translates to:
+  /// **'Здесь появятся выполненные задачи, привязанные к этой оси.'**
+  String get axisNoTasks;
+
+  /// No description provided for @axesOnboardingFirst.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сначала пройди онбординг.'**
+  String get axesOnboardingFirst;
+
+  /// No description provided for @axesYes.
+  ///
+  /// In ru, this message translates to:
+  /// **'Да'**
+  String get axesYes;
+
+  /// No description provided for @axesAxis.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ось'**
+  String get axesAxis;
+
+  /// No description provided for @axesDone.
+  ///
+  /// In ru, this message translates to:
+  /// **'Готово'**
+  String get axesDone;
+
+  /// No description provided for @dashNoActiveTasks.
+  ///
+  /// In ru, this message translates to:
+  /// **'Активных задач нет — отдохни или создай новую.'**
+  String get dashNoActiveTasks;
+
+  /// No description provided for @dashDone.
+  ///
+  /// In ru, this message translates to:
+  /// **'Готово'**
+  String get dashDone;
+
+  /// No description provided for @dashPostpone.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отложить'**
+  String get dashPostpone;
+
+  /// No description provided for @dashFocusTimer.
+  ///
+  /// In ru, this message translates to:
+  /// **'Запустить таймер фокуса'**
+  String get dashFocusTimer;
+
+  /// No description provided for @dashPostponeBy.
+  ///
+  /// In ru, this message translates to:
+  /// **'ОТЛОЖИТЬ НА'**
+  String get dashPostponeBy;
+
+  /// No description provided for @dashViewPentagram.
+  ///
+  /// In ru, this message translates to:
+  /// **'Посмотреть свою пентаграмму'**
+  String get dashViewPentagram;
+
+  /// No description provided for @heatmapWeekdays.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пн,,Ср,,Пт,,'**
+  String get heatmapWeekdays;
+
+  /// No description provided for @heatmapMonths.
+  ///
+  /// In ru, this message translates to:
+  /// **'янв,фев,мар,апр,май,июн,июл,авг,сен,окт,ноя,дек'**
+  String get heatmapMonths;
+
+  /// No description provided for @heatmapEmptyYear.
+  ///
+  /// In ru, this message translates to:
+  /// **'в {year} году пока пусто'**
+  String heatmapEmptyYear(int year);
+
+  /// No description provided for @heatmapYearSummary.
+  ///
+  /// In ru, this message translates to:
+  /// **'{total} закрыто в {year} — тапни день'**
+  String heatmapYearSummary(String total, int year);
+
+  /// No description provided for @heatmapLess.
+  ///
+  /// In ru, this message translates to:
+  /// **'меньше'**
+  String get heatmapLess;
+
+  /// No description provided for @heatmapMore.
+  ///
+  /// In ru, this message translates to:
+  /// **'больше'**
+  String get heatmapMore;
+
+  /// No description provided for @miniTreeEmpty.
+  ///
+  /// In ru, this message translates to:
+  /// **'Древо появится после первой ветви'**
+  String get miniTreeEmpty;
+
+  /// No description provided for @miniTreeXp.
+  ///
+  /// In ru, this message translates to:
+  /// **'всего {xp} XP · тап — древо целиком'**
+  String miniTreeXp(int xp);
+
+  /// No description provided for @pulseStreakDay.
+  ///
+  /// In ru, this message translates to:
+  /// **'{n} день'**
+  String pulseStreakDay(int n);
+
+  /// No description provided for @pulseStreakDays.
+  ///
+  /// In ru, this message translates to:
+  /// **'{n} дня'**
+  String pulseStreakDays(int n);
+
+  /// No description provided for @pulseStreakDaysMany.
+  ///
+  /// In ru, this message translates to:
+  /// **'{n} дней'**
+  String pulseStreakDaysMany(int n);
+
+  /// No description provided for @notesQuickHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Быстрая заметка…'**
+  String get notesQuickHint;
+
+  /// No description provided for @notesSearchHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Поиск'**
+  String get notesSearchHint;
+
+  /// No description provided for @notesNotFound.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ничего не найдено'**
+  String get notesNotFound;
+
+  /// No description provided for @notesEmptyHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Запиши мысль одной строкой выше или открой полный редактор кнопкой «+».'**
+  String get notesEmptyHint;
+
+  /// No description provided for @notesNotFoundHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Попробуй другой запрос.'**
+  String get notesNotFoundHint;
+
+  /// No description provided for @calMonths.
+  ///
+  /// In ru, this message translates to:
+  /// **'Январь,Февраль,Март,Апрель,Май,Июнь,Июль,Август,Сентябрь,Октябрь,Ноябрь,Декабрь'**
+  String get calMonths;
+
+  /// No description provided for @calWeekdays.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пн,Вт,Ср,Чт,Пт,Сб,Вс'**
+  String get calWeekdays;
+
+  /// No description provided for @calToday.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сегодня'**
+  String get calToday;
+
+  /// No description provided for @calPlanDay.
+  ///
+  /// In ru, this message translates to:
+  /// **'Запланировать на этот день'**
+  String get calPlanDay;
+
+  /// No description provided for @calNothingRecorded.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ничего не записано.'**
+  String get calNothingRecorded;
+
+  /// No description provided for @calMonthsShort.
+  ///
+  /// In ru, this message translates to:
+  /// **'янв,фев,мар,мая,июн,июл,авг,сен,окт,ноя,дек'**
+  String get calMonthsShort;
+
+  /// No description provided for @calDaysShort.
+  ///
+  /// In ru, this message translates to:
+  /// **'пн,вт,ср,чт,пт,сб,вс'**
+  String get calDaysShort;
+
+  /// No description provided for @calTodayPrefix.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сегодня'**
+  String get calTodayPrefix;
+
+  /// No description provided for @calYesterday.
+  ///
+  /// In ru, this message translates to:
+  /// **'Вчера'**
+  String get calYesterday;
+
+  /// No description provided for @calTomorrow.
+  ///
+  /// In ru, this message translates to:
+  /// **'Завтра'**
+  String get calTomorrow;
+
+  /// No description provided for @calDayEmpty.
+  ///
+  /// In ru, this message translates to:
+  /// **'В этот день ничего не записано.'**
+  String get calDayEmpty;
+
+  /// No description provided for @taskOverdue.
+  ///
+  /// In ru, this message translates to:
+  /// **'Просрочено'**
+  String get taskOverdue;
+
+  /// No description provided for @taskNoTasks.
+  ///
+  /// In ru, this message translates to:
+  /// **'Задач нет — все выполнены или не созданы.'**
+  String get taskNoTasks;
+
+  /// No description provided for @settingsSync.
+  ///
+  /// In ru, this message translates to:
+  /// **'Синхронизация'**
+  String get settingsSync;
+
+  /// No description provided for @settingsSyncSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Google Drive для бэкапа'**
+  String get settingsSyncSub;
+
+  /// No description provided for @settingsExportSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'JSON в буфер обмена'**
+  String get settingsExportSub;
+
+  /// No description provided for @settingsImportSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Вставить JSON'**
+  String get settingsImportSub;
+
+  /// No description provided for @settingsAboutSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Версия, лицензии'**
+  String get settingsAboutSub;
+
+  /// No description provided for @roadmapTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'AI-План'**
+  String get roadmapTitle;
+
+  /// No description provided for @roadmapGenerateFirst.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сгенерируй первый план'**
+  String get roadmapGenerateFirst;
+
+  /// No description provided for @roadmapAxis.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ось'**
+  String get roadmapAxis;
+
+  /// No description provided for @roadmapGoal.
+  ///
+  /// In ru, this message translates to:
+  /// **'Цель'**
+  String get roadmapGoal;
+
+  /// No description provided for @roadmapGenerate.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сгенерировать'**
+  String get roadmapGenerate;
+
+  /// No description provided for @roadmapWeek1.
+  ///
+  /// In ru, this message translates to:
+  /// **'Неделя 1'**
+  String get roadmapWeek1;
+
+  /// No description provided for @roadmapWeek2.
+  ///
+  /// In ru, this message translates to:
+  /// **'Неделя 2'**
+  String get roadmapWeek2;
+
+  /// No description provided for @roadmapWeek3.
+  ///
+  /// In ru, this message translates to:
+  /// **'Неделя 3'**
+  String get roadmapWeek3;
+
+  /// No description provided for @roadmapWeek4.
+  ///
+  /// In ru, this message translates to:
+  /// **'Неделя 4'**
+  String get roadmapWeek4;
+
+  /// No description provided for @roadmapError.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ошибка'**
+  String get roadmapError;
+
+  /// No description provided for @homeMore.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ещё'**
+  String get homeMore;
+
+  /// No description provided for @onboardingActiveHours.
+  ///
+  /// In ru, this message translates to:
+  /// **'Активные часы'**
+  String get onboardingActiveHours;
+
+  /// No description provided for @menuRecipeSteps.
+  ///
+  /// In ru, this message translates to:
+  /// **'ШАГИ РЕЦЕПТА'**
+  String get menuRecipeSteps;
+
+  /// No description provided for @menuGenerateRecipe.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сгенерировать рецепт'**
+  String get menuGenerateRecipe;
+
+  /// No description provided for @entryUntitled.
+  ///
+  /// In ru, this message translates to:
+  /// **'Без названия'**
+  String get entryUntitled;
+
+  /// No description provided for @axisTileFocusTasks.
+  ///
+  /// In ru, this message translates to:
+  /// **'фокусных задач'**
+  String get axisTileFocusTasks;
+
+  /// No description provided for @backendsNoKey.
+  ///
+  /// In ru, this message translates to:
+  /// **'ключ не задан'**
+  String get backendsNoKey;
+
+  /// No description provided for @editListAddItem.
+  ///
+  /// In ru, this message translates to:
+  /// **'Добавить'**
+  String get editListAddItem;
+
+  /// No description provided for @editListHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Новый пункт'**
+  String get editListHint;
+
+  /// No description provided for @editListAddFirst.
+  ///
+  /// In ru, this message translates to:
+  /// **'Добавить первую запись'**
+  String get editListAddFirst;
+
+  /// No description provided for @entryTaskDone.
+  ///
+  /// In ru, this message translates to:
+  /// **'✓ задача'**
+  String get entryTaskDone;
+
+  /// No description provided for @entryTask.
+  ///
+  /// In ru, this message translates to:
+  /// **'задача'**
+  String get entryTask;
+
+  /// No description provided for @backendsActive.
+  ///
+  /// In ru, this message translates to:
+  /// **'Активный'**
+  String get backendsActive;
+
+  /// No description provided for @debugFillAxes.
+  ///
+  /// In ru, this message translates to:
+  /// **'Заполнить все оси до 100%'**
+  String get debugFillAxes;
+
+  /// No description provided for @debugFillAxesSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Создаёт синтетические задачи, чтобы пентагон встал на пик'**
+  String get debugFillAxesSub;
+
+  /// No description provided for @debugFillAxesDone.
+  ///
+  /// In ru, this message translates to:
+  /// **'Готово. Открой «Я» — оверлей должен появиться.'**
+  String get debugFillAxesDone;
+
+  /// No description provided for @debugResetAck.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сбросить ack эпохи'**
+  String get debugResetAck;
+
+  /// No description provided for @debugResetAckSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обнуляет epochAckedAt — оверлей снова пустит при пике'**
+  String get debugResetAckSub;
+
+  /// No description provided for @debugResetAckDone.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ack сброшен.'**
+  String get debugResetAckDone;
+
+  /// No description provided for @debugBumpEpoch.
+  ///
+  /// In ru, this message translates to:
+  /// **'Форсировать +1 эпоху'**
+  String get debugBumpEpoch;
+
+  /// No description provided for @debugBumpEpochDone.
+  ///
+  /// In ru, this message translates to:
+  /// **'Эпоха увеличена.'**
+  String get debugBumpEpochDone;
+
+  /// No description provided for @debugResetEpoch.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сбросить эпоху на 1'**
+  String get debugResetEpoch;
+
+  /// No description provided for @debugResetEpochSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Полный откат прогрессии до Эпохи 1'**
+  String get debugResetEpochSub;
+
+  /// No description provided for @debugResetEpochDone.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сброс до Эпохи 1.'**
+  String get debugResetEpochDone;
+
+  /// No description provided for @roadmapRegenerate.
+  ///
+  /// In ru, this message translates to:
+  /// **'Перегенерировать'**
+  String get roadmapRegenerate;
+
+  /// No description provided for @roadmapFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не получилось'**
+  String get roadmapFailed;
+
+  /// No description provided for @roadmapGenericError.
+  ///
+  /// In ru, this message translates to:
+  /// **'Что-то пошло не так'**
+  String get roadmapGenericError;
+
+  /// No description provided for @roadmapBack.
+  ///
+  /// In ru, this message translates to:
+  /// **'Назад'**
+  String get roadmapBack;
+
+  /// No description provided for @roadmapToday.
+  ///
+  /// In ru, this message translates to:
+  /// **'сегодня'**
+  String get roadmapToday;
+
+  /// No description provided for @roadmapTomorrow.
+  ///
+  /// In ru, this message translates to:
+  /// **'завтра'**
+  String get roadmapTomorrow;
+
+  /// No description provided for @roadmapInDays.
+  ///
+  /// In ru, this message translates to:
+  /// **'через {n} дн.'**
+  String roadmapInDays(int n);
+
+  /// No description provided for @roadmapDueDate.
+  ///
+  /// In ru, this message translates to:
+  /// **'до {date}'**
+  String roadmapDueDate(String date);
+
+  /// No description provided for @roadmapFromOnboarding.
+  ///
+  /// In ru, this message translates to:
+  /// **'Из онбординга'**
+  String get roadmapFromOnboarding;
+
+  /// No description provided for @pomodoroStopAction.
+  ///
+  /// In ru, this message translates to:
+  /// **'Стоп'**
+  String get pomodoroStopAction;
+
+  /// No description provided for @pomodoroGoAction.
+  ///
+  /// In ru, this message translates to:
+  /// **'Поехали'**
+  String get pomodoroGoAction;
+
+  /// No description provided for @onboardGoals.
+  ///
+  /// In ru, this message translates to:
+  /// **'поправить здоровье,сменить профессию,выучить новое,стать дисциплинированнее,развить отношения,найти баланс,запустить проект'**
+  String get onboardGoals;
+
+  /// No description provided for @onboardInterests.
+  ///
+  /// In ru, this message translates to:
+  /// **'учёба,код,дизайн,спорт,медитация,чтение,музыка,языки,кулинария,отношения,финансы,творчество,карьера,семья'**
+  String get onboardInterests;
+
+  /// No description provided for @onboardTimePrefix.
+  ///
+  /// In ru, this message translates to:
+  /// **'Время'**
+  String get onboardTimePrefix;
+
+  /// No description provided for @onboardPainPrefix.
+  ///
+  /// In ru, this message translates to:
+  /// **'Что мешает'**
+  String get onboardPainPrefix;
+
+  /// No description provided for @onboardComfortTime.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удобное время'**
+  String get onboardComfortTime;
+
+  /// No description provided for @onboardNameHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Имя'**
+  String get onboardNameHint;
+
+  /// No description provided for @onboardCustomValue.
+  ///
+  /// In ru, this message translates to:
+  /// **'Своё значение'**
+  String get onboardCustomValue;
+
+  /// No description provided for @onboardVolumeMini.
+  ///
+  /// In ru, this message translates to:
+  /// **'мини-объём, по чуть-чуть'**
+  String get onboardVolumeMini;
+
+  /// No description provided for @onboardVolumeComfort.
+  ///
+  /// In ru, this message translates to:
+  /// **'комфортный темп'**
+  String get onboardVolumeComfort;
+
+  /// No description provided for @onboardVolumeSerious.
+  ///
+  /// In ru, this message translates to:
+  /// **'серьёзная вовлечённость'**
+  String get onboardVolumeSerious;
+
+  /// No description provided for @onboardVolumeAlmost.
+  ///
+  /// In ru, this message translates to:
+  /// **'почти второй джоб'**
+  String get onboardVolumeAlmost;
+
+  /// No description provided for @onboardVolumeMax.
+  ///
+  /// In ru, this message translates to:
+  /// **'максимальный режим'**
+  String get onboardVolumeMax;
+
+  /// No description provided for @onboardPainSummary.
+  ///
+  /// In ru, this message translates to:
+  /// **'Что мешает: {pain}.'**
+  String onboardPainSummary(String pain);
+
+  /// No description provided for @onboardTimeSummary.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удобное время: {time}.'**
+  String onboardTimeSummary(String time);
+
+  /// No description provided for @pulseDeadlineLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Дедлайн'**
+  String get pulseDeadlineLabel;
 }
 
 class _SDelegate extends LocalizationsDelegate<S> {

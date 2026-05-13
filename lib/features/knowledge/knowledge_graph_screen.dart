@@ -209,7 +209,7 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
     final k = _knowledge;
     nodes.add(GraphNode(
       id: '__centre__',
-      label: k?.summary.isEmpty != false ? 'я' : k!.summary,
+      label: k?.summary.isEmpty != false ? tr.graphCentreLabel : k!.summary,
       color: const Color(0xFFFFFFFF),
       isCentre: true,
       position: Offset.zero,
@@ -487,24 +487,24 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
     switch (branch) {
       case GraphBranch.goals:
         _editList(
-          title: 'Цели',
-          hint: 'Что хочешь достичь',
+          title: S.of(context)!.graphBranchGoals,
+          hint: S.of(context)!.graphGoalsHint,
           items: _knowledge!.goals,
           apply: (n) =>
               _knowledge!.copyWith(goals: n, updatedAt: DateTime.now()),
         );
       case GraphBranch.constraints:
         _editList(
-          title: 'Ограничения',
-          hint: 'Что мешает или ограничивает',
+          title: S.of(context)!.graphBranchConstraints,
+          hint: S.of(context)!.graphConstraintsHint,
           items: _knowledge!.constraints,
           apply: (n) =>
               _knowledge!.copyWith(constraints: n, updatedAt: DateTime.now()),
         );
       case GraphBranch.highlights:
         _editList(
-          title: 'Достижения',
-          hint: 'Что уже получилось',
+          title: S.of(context)!.graphBranchHighlights,
+          hint: S.of(context)!.graphHighlightsHint,
           items: _knowledge!.completedHighlights,
           maxItems: 20,
           apply: (n) => _knowledge!.copyWith(
@@ -512,8 +512,8 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
         );
       case GraphBranch.reflections:
         _editList(
-          title: 'Рефлексии',
-          hint: 'Заметки о пройденном',
+          title: S.of(context)!.graphBranchReflections,
+          hint: S.of(context)!.graphReflectionsHint,
           items: _knowledge!.recentReflections,
           maxItems: 10,
           apply: (n) => _knowledge!.copyWith(
@@ -704,7 +704,7 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
                       onPressed: () =>
                           Navigator.of(ctx).pop(const EditResult(value: '')),
                       icon: const Icon(Icons.delete_outline),
-                      label: const Text('Удалить'),
+                      label: Text(S.of(context)!.graphDelete),
                       style: TextButton.styleFrom(
                         foregroundColor: palette.fg,
                       ),
@@ -712,7 +712,7 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
                   const Spacer(),
                   TextButton(
                     onPressed: () => Navigator.of(ctx).pop(null),
-                    child: const Text('Отмена'),
+                    child: Text(S.of(context)!.actionCancel),
                   ),
                   const SizedBox(width: 6),
                   FilledButton(
@@ -723,7 +723,7 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
                       backgroundColor: palette.fg,
                       foregroundColor: palette.bg,
                     ),
-                    child: const Text('Сохранить'),
+                    child: Text(S.of(context)!.actionSave),
                   ),
                 ],
               ),
@@ -761,16 +761,16 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
                 autofocus: true,
                 style: TextStyle(color: palette.fg),
                 decoration: InputDecoration(
-                  hintText: 'Поиск по базе знаний…',
+                  hintText: S.of(context)!.graphSearchHint,
                   hintStyle: TextStyle(color: palette.muted),
                   border: InputBorder.none,
                 ),
                 onChanged: _performSearch,
               )
-            : const Text('База знаний'),
+            : Text(S.of(context)!.graphKnowledgeBase),
         actions: [
           IconButton(
-            tooltip: 'Поиск',
+            tooltip: S.of(context)!.graphSearchTooltip,
             icon: Icon(_searchVisible ? Icons.close : Icons.search),
             onPressed: () {
               setState(() {
@@ -783,14 +783,14 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
             },
           ),
           IconButton(
-            tooltip: 'Дневник',
+            tooltip: S.of(context)!.graphDailyTooltip,
             icon: const Icon(Icons.today),
             onPressed: _openDailyNote,
           ),
           IconButton(
             tooltip: _hideRecipes
-                ? 'Показывать рецепты'
-                : 'Скрывать рецепты',
+                ? S.of(context)!.graphShowRecipes
+                : S.of(context)!.graphHideRecipes,
             icon: Icon(
               _hideRecipes
                   ? Icons.restaurant_menu_outlined
@@ -803,7 +803,7 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
           ),
           if (_localGraphCentreId != null)
             IconButton(
-              tooltip: 'Глобальный граф',
+              tooltip: S.of(context)!.graphGlobalTooltip,
               icon: const Icon(Icons.public),
               onPressed: () {
                 setState(() => _localGraphCentreId = null);
@@ -819,21 +819,21 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
               children: [
                 FloatingActionButton.small(
                   heroTag: 'new_note',
-                  tooltip: 'Новая заметка',
+                  tooltip: S.of(context)!.graphNewNote,
                   onPressed: _createNote,
                   child: const Icon(Icons.add),
                 ),
                 const SizedBox(height: 8),
                 FloatingActionButton.small(
                   heroTag: 'reset',
-                  tooltip: 'Сбросить вид',
+                  tooltip: S.of(context)!.graphResetView,
                   onPressed: _resetCamera,
                   child: const Icon(Icons.fit_screen_outlined),
                 ),
                 const SizedBox(height: 8),
                 FloatingActionButton.small(
                   heroTag: 'shake',
-                  tooltip: 'Перемешать',
+                  tooltip: S.of(context)!.graphShuffle,
                   onPressed: () {
                     final rng = math.Random();
                     for (final node in _nodes) {

@@ -232,7 +232,7 @@ class _BackendRowState extends State<_BackendRow> {
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
-                    'Активный',
+                    S.of(context)!.backendsActive,
                     style: TextStyle(
                       color: palette.bg,
                       fontSize: 11,

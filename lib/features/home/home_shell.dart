@@ -96,14 +96,14 @@ class _HomeShellState extends ConsumerState<HomeShell> {
               Navigator.of(ctx).pop();
               PomodoroService.instance.stop();
             },
-            child: const Text('Стоп'),
+            child: Text(S.of(ctx)!.pomodoroStopAction),
           ),
           FilledButton(
             onPressed: () {
               Navigator.of(ctx).pop();
               PomodoroService.instance.acknowledgePhaseTransition();
             },
-            child: const Text('Поехали'),
+            child: Text(S.of(ctx)!.pomodoroGoAction),
           ),
         ],
       ),

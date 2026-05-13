@@ -174,7 +174,7 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Сгенерировать план'),
+        title: Text(S.of(context)!.selfGeneratePlan),
       ),
       body: SafeArea(
         child: AnimatedSwitcher(
@@ -398,9 +398,9 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
                                   _result = null;
                                   _picked = null;
                                 }),
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          child: Text('Перегенерировать'),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Text(S.of(context)!.roadmapRegenerate),
                         ),
                       ),
                     ),
@@ -439,12 +439,12 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
           Icon(Icons.error_outline, color: palette.fg, size: 36),
           const SizedBox(height: 16),
           Text(
-            'Не получилось',
+            S.of(context)!.roadmapFailed,
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 8),
           Text(
-            _error ?? 'Что-то пошло не так',
+            _error ?? S.of(context)!.roadmapGenericError,
             textAlign: TextAlign.center,
             style: Theme.of(context)
                 .textTheme
@@ -454,9 +454,9 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
           const SizedBox(height: 18),
           OutlinedButton(
             onPressed: () => setState(() => _stage = _Stage.input),
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              child: Text('Назад'),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              child: Text(S.of(context)!.roadmapBack),
             ),
           ),
         ],
@@ -618,7 +618,7 @@ class _DraftCard extends StatelessWidget {
                             ),
                         if (draft.dueAt != null)
                           _Pill(
-                            text: _formatDue(draft.dueAt!),
+                            text: _formatDue(draft.dueAt!, context: context),
                             palette: palette,
                           ),
                       ],
@@ -633,15 +633,15 @@ class _DraftCard extends StatelessWidget {
     );
   }
 
-  static String _formatDue(DateTime due) {
+  static String _formatDue(DateTime due, {required BuildContext context}) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final d = DateTime(due.year, due.month, due.day);
     final diff = d.difference(today).inDays;
-    if (diff == 0) return 'сегодня';
-    if (diff == 1) return 'завтра';
-    if (diff <= 7) return 'через $diff дн.';
-    return 'до ${due.day}.${due.month.toString().padLeft(2, '0')}';
+    if (diff == 0) return S.of(context)!.roadmapToday;
+    if (diff == 1) return S.of(context)!.roadmapTomorrow;
+    if (diff <= 7) return S.of(context)!.roadmapInDays(diff);
+    return S.of(context)!.roadmapDueDate('${due.day}.${due.month.toString().padLeft(2, '0')}');
   }
 }
 
@@ -696,7 +696,7 @@ class _PrefillBadge extends StatelessWidget {
           Icon(Icons.auto_awesome, size: 12, color: palette.muted),
           const SizedBox(width: 6),
           Text(
-            'Из онбординга',
+            S.of(context)!.roadmapFromOnboarding,
             style: TextStyle(color: palette.muted, fontSize: 12),
           ),
         ],

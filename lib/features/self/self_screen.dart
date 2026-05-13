@@ -88,7 +88,7 @@ class _SelfScreenState extends ConsumerState<SelfScreen> {
         title: Text(hasName ? profile.name : S.of(context)!.tabSelf),
         actions: [
           IconButton(
-            tooltip: 'Ветви',
+            tooltip: S.of(context)!.selfBranchesTooltip,
             icon: const Icon(Icons.tune),
             onPressed: () {
               Navigator.of(context).push(
@@ -102,7 +102,7 @@ class _SelfScreenState extends ConsumerState<SelfScreen> {
           // it in the AppBar. On mobile it's the primary way in.
           if (isMobile)
             IconButton(
-              tooltip: 'Настройки',
+              tooltip: S.of(context)!.selfSettingsTooltip,
               icon: const Icon(Icons.settings_outlined),
               onPressed: () {
                 Navigator.of(context).push(
@@ -290,7 +290,7 @@ class _CurrentEpochBody extends ConsumerWidget {
           ),
           const SizedBox(height: 24),
           Text(
-            'ДРЕВО · ВЕТКИ',
+            S.of(context)!.selfTreeBranches,
             style: TextStyle(
               color: palette.muted,
               fontSize: 11,
@@ -308,14 +308,14 @@ class _CurrentEpochBody extends ConsumerWidget {
           OutlinedButton.icon(
             onPressed: onOpenRoadmap,
             icon: const Icon(Icons.auto_awesome),
-            label: const Padding(
-              padding: EdgeInsets.symmetric(vertical: 12),
-              child: Text('Сгенерировать план'),
+            label: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Text(S.of(context)!.selfGeneratePlan),
             ),
           ),
           const SizedBox(height: 16),
           Text(
-            'Очки начисляются за выполнение задач, привязанных к осям. Со временем затухают — пентаграмма отражает тебя за последний месяц.',
+            S.of(context)!.selfScoreExplain,
             style: Theme.of(context)
                 .textTheme
                 .bodySmall
@@ -374,7 +374,7 @@ class _PastEpochBody extends StatelessWidget {
                   Icon(Icons.history, size: 18, color: palette.muted),
                   const SizedBox(width: 8),
                   Text(
-                    'ЭПОХА ${snapshot.epoch} · АРХИВ',
+                    S.of(context)!.selfEpochArchive(snapshot.epoch),
                     style: TextStyle(
                       color: palette.muted,
                       fontSize: 11,
@@ -394,7 +394,7 @@ class _PastEpochBody extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'Древо этой эпохи на момент перехода. Только просмотр.',
+                S.of(context)!.selfArchiveReadonly,
                 style: Theme.of(context)
                     .textTheme
                     .bodySmall
@@ -413,9 +413,7 @@ class _PastEpochBody extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              'Архив этой эпохи пустой — она завершилась до того, '
-              'как мы начали записывать историю. Будущие переходы '
-              'сохранятся целиком.',
+              S.of(context)!.selfArchiveEmpty,
               style: Theme.of(context)
                   .textTheme
                   .bodyMedium
@@ -432,7 +430,7 @@ class _PastEpochBody extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           Text(
-            'ВЕТВИ ТОЙ ЭПОХИ',
+            S.of(context)!.selfArchiveBranches,
             style: TextStyle(
               color: palette.muted,
               fontSize: 11,
@@ -596,12 +594,12 @@ class _ProfileHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               _BigNumber(
-                label: 'ЭПОХА',
-                value: tier > 1 ? 'Э$epoch.$tier' : 'Э$epoch',
+                label: S.of(context)!.selfEpochLabel,
+                value: tier > 1 ? S.of(context)!.selfEpochTierShort('$epoch', '$tier') : S.of(context)!.selfEpochShort('$epoch'),
               ),
               const SizedBox(width: 20),
               _BigNumber(
-                label: 'УРОВЕНЬ',
+                label: S.of(context)!.selfLevelLabel,
                 value: l == null ? '—' : 'L${l.level}',
               ),
               const SizedBox(width: 20),
@@ -611,8 +609,8 @@ class _ProfileHeader extends StatelessWidget {
               ),
               const SizedBox(width: 20),
               _BigNumber(
-                label: 'СТРИК',
-                value: streak == 0 ? '—' : '$streak д.',
+                label: S.of(context)!.selfStreakLabel,
+                value: streak == 0 ? '—' : S.of(context)!.selfStreakDays(streak),
               ),
             ],
           ),
@@ -715,7 +713,7 @@ class _TransitionReadyBanner extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                'Готов к переходу — тапни, чтобы открыть',
+                S.of(context)!.selfReadyTransition,
                 style: TextStyle(
                   color: palette.fg,
                   fontSize: 13,
@@ -748,7 +746,7 @@ class _StreakBreakBanner extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Стрик прервался. Закрой одну задачу сегодня — начнём заново.',
+              S.of(context)!.selfStreakBroken,
               style: TextStyle(color: palette.muted, fontSize: 13),
             ),
           ),

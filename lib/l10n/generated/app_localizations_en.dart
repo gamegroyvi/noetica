@@ -218,7 +218,7 @@ class SEn extends S {
   String get onboardingGoals => 'What are your goals?';
 
   @override
-  String get onboardingInterests => 'What interests you?';
+  String get onboardingInterests => 'Interests';
 
   @override
   String get onboardingHours => 'Hours per week?';
@@ -254,7 +254,7 @@ class SEn extends S {
   String get settingsExport => 'Export data';
 
   @override
-  String get settingsImport => 'Import data';
+  String get settingsImport => 'Import from clipboard';
 
   @override
   String get settingsTheme => 'Theme';
@@ -975,7 +975,7 @@ class SEn extends S {
   String get roadmapNeedAxes => 'Need at least 3 axes. Add them in the «Self» tab.';
 
   @override
-  String get roadmapGenerating => 'This takes 5–15 seconds';
+  String get roadmapGenerating => 'Generating plan…';
 
   @override
   String roadmapImportBtn(int n) {
@@ -1067,7 +1067,9 @@ class SEn extends S {
   String get pulseNoData => 'no data';
 
   @override
-  String get pulseDeadline => 'DEADLINE';
+  String pulseDeadline(String date) {
+    return 'by $date';
+  }
 
   @override
   String get pulseNoDeadline => 'no deadlines';
@@ -1100,9 +1102,7 @@ class SEn extends S {
   String get onboardQ4 => 'How many hours per week can you realistically dedicate?';
 
   @override
-  String onboardHoursWeek(int h) {
-    return '$h h/wk';
-  }
+  String get onboardHoursWeek => 'h/wk';
 
   @override
   String onboardWeeklyTime(int h) {
@@ -1356,7 +1356,7 @@ class SEn extends S {
   }
 
   @override
-  String get menuIngredients => 'Ingredients';
+  String get menuIngredients => 'INGREDIENTS';
 
   @override
   String menuFullRecipe(String link) {
@@ -1863,4 +1863,550 @@ class SEn extends S {
 
   @override
   String get pomodoroSoundVibroSub => 'System ding and haptic on phase change (notification always comes)';
+
+  @override
+  String get graphCentreLabel => 'me';
+
+  @override
+  String get graphGoalsHint => 'What do you want to achieve';
+
+  @override
+  String get graphConstraintsHint => 'What holds you back';
+
+  @override
+  String get graphHighlightsHint => 'What you have achieved';
+
+  @override
+  String get graphReflectionsHint => 'Notes on the past';
+
+  @override
+  String get graphDelete => 'Delete';
+
+  @override
+  String get graphSearchHint => 'Search knowledge base…';
+
+  @override
+  String get graphKnowledgeBase => 'Knowledge base';
+
+  @override
+  String get graphSearchTooltip => 'Search';
+
+  @override
+  String get graphDailyTooltip => 'Daily';
+
+  @override
+  String get graphShowRecipes => 'Show recipes';
+
+  @override
+  String get graphHideRecipes => 'Hide recipes';
+
+  @override
+  String get graphGlobalTooltip => 'Global graph';
+
+  @override
+  String get graphNewNote => 'New note';
+
+  @override
+  String get graphResetView => 'Reset view';
+
+  @override
+  String get graphShuffle => 'Shuffle';
+
+  @override
+  String get graphEmptyTitle1 => 'Write';
+
+  @override
+  String get graphEmptyBody1 => 'Notes, tasks, daily — everything becomes graph nodes.';
+
+  @override
+  String get graphEmptyTitle2 => 'Connect';
+
+  @override
+  String get graphEmptyBody2 => 'Mention [[title]] in text — Noetica builds an edge.';
+
+  @override
+  String get graphEmptyTitle3 => 'Explore';
+
+  @override
+  String get graphEmptyBody3 => 'Graph shows which topics overlap and where gaps are.';
+
+  @override
+  String get graphEmptyTitle4 => 'About you';
+
+  @override
+  String get graphEmptyBody4 => 'Goals, constraints, achievements — these branches help AI.';
+
+  @override
+  String get graphEmptyTitle5 => 'First entry';
+
+  @override
+  String get graphEmptyBody5 => 'Tap + to create a note and see the graph in action.';
+
+  @override
+  String get graphEmptyTitle6 => 'Tags';
+
+  @override
+  String get graphEmptyBody6 => 'Add tags to entries — they become nodes too.';
+
+  @override
+  String get graphResetFilter => 'Reset filter';
+
+  @override
+  String get graphEmptyAllTitle => 'Knowledge base is empty';
+
+  @override
+  String get graphEmptyAllBody => 'Create your first note or task — they will appear here as graph nodes.';
+
+  @override
+  String get graphEmptyAllAction => 'Create entry';
+
+  @override
+  String get graphEmptyNotesTitle => 'No notes yet';
+
+  @override
+  String get graphEmptyNotesBody => 'Notes appear as individual nodes. Links are created automatically when the body contains a [[reference]] to another note.';
+
+  @override
+  String get graphEmptyNotesAction => 'Create note';
+
+  @override
+  String get graphEmptyTasksTitle => 'No tasks in graph';
+
+  @override
+  String get graphEmptyTasksBody => 'Create a task via \"+\" or generate a task plan from your goal.';
+
+  @override
+  String get graphEmptyBookmarksTitle => 'No bookmarks yet';
+
+  @override
+  String get graphEmptyBookmarksBody => 'Long-press a graph node to bookmark it.';
+
+  @override
+  String get graphEmptyDailyTitle => 'Daily is empty';
+
+  @override
+  String get graphEmptyDailyBody => 'Tap the calendar icon in the header to create an entry for today.';
+
+  @override
+  String get graphEmptyKnowledgeTitle => 'Self-knowledge is empty';
+
+  @override
+  String get graphEmptyKnowledgeBody => 'Fill in goals, constraints and achievements via branch taps — this gives AI more context for plan generation.';
+
+  @override
+  String get editListAdd => 'Add';
+
+  @override
+  String get editListRemove => 'Remove';
+
+  @override
+  String get editListSave => 'Save';
+
+  @override
+  String get graphConnections => 'connections';
+
+  @override
+  String get selfBranchesTooltip => 'Branches';
+
+  @override
+  String get selfSettingsTooltip => 'Settings';
+
+  @override
+  String get selfTreeBranches => 'TREE · BRANCHES';
+
+  @override
+  String get selfGeneratePlan => 'Generate plan';
+
+  @override
+  String get selfScoreExplain => 'Points are awarded for completing tasks linked to axes. They decay over time — the pentagram reflects you over the last month.';
+
+  @override
+  String selfEpochArchive(int n) {
+    return 'EPOCH $n · ARCHIVE';
+  }
+
+  @override
+  String get selfArchiveReadonly => 'Tree of this epoch at the time of transition. Read only.';
+
+  @override
+  String get selfArchiveEmpty => 'Archive of this epoch is empty — it ended before we started recording history. Future transitions will be saved completely.';
+
+  @override
+  String get selfArchiveBranches => 'BRANCHES OF THAT EPOCH';
+
+  @override
+  String get selfEpochLabel => 'EPOCH';
+
+  @override
+  String selfEpochShort(String epoch) {
+    return 'E$epoch';
+  }
+
+  @override
+  String selfEpochTierShort(String epoch, String tier) {
+    return 'E$epoch.$tier';
+  }
+
+  @override
+  String get selfLevelLabel => 'LEVEL';
+
+  @override
+  String get selfStreakLabel => 'STREAK';
+
+  @override
+  String selfStreakDays(int n) {
+    return '$n d.';
+  }
+
+  @override
+  String get selfReadyTransition => 'Ready for transition — tap to open';
+
+  @override
+  String get selfStreakBroken => 'Streak broken. Close one task today — start over.';
+
+  @override
+  String axisEpochPrefix(String n) {
+    return 'E$n';
+  }
+
+  @override
+  String get axisState => 'STATE';
+
+  @override
+  String get axisCompletedByAxis => 'COMPLETED BY AXIS';
+
+  @override
+  String get axisNoTasks => 'Completed tasks linked to this axis will appear here.';
+
+  @override
+  String get axesOnboardingFirst => 'Complete onboarding first.';
+
+  @override
+  String get axesYes => 'Yes';
+
+  @override
+  String get axesAxis => 'Axis';
+
+  @override
+  String get axesDone => 'Done';
+
+  @override
+  String get dashNoActiveTasks => 'No active tasks — rest or create a new one.';
+
+  @override
+  String get dashDone => 'Done';
+
+  @override
+  String get dashPostpone => 'Postpone';
+
+  @override
+  String get dashFocusTimer => 'Start focus timer';
+
+  @override
+  String get dashPostponeBy => 'POSTPONE BY';
+
+  @override
+  String get dashViewPentagram => 'View your pentagram';
+
+  @override
+  String get heatmapWeekdays => 'Mo,,We,,Fr,,';
+
+  @override
+  String get heatmapMonths => 'Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec';
+
+  @override
+  String heatmapEmptyYear(int year) {
+    return 'nothing in $year yet';
+  }
+
+  @override
+  String heatmapYearSummary(String total, int year) {
+    return '$total closed in $year — tap a day';
+  }
+
+  @override
+  String get heatmapLess => 'less';
+
+  @override
+  String get heatmapMore => 'more';
+
+  @override
+  String get miniTreeEmpty => 'Tree appears after the first branch';
+
+  @override
+  String miniTreeXp(int xp) {
+    return 'total $xp XP · tap for full tree';
+  }
+
+  @override
+  String pulseStreakDay(int n) {
+    return '$n day';
+  }
+
+  @override
+  String pulseStreakDays(int n) {
+    return '$n days';
+  }
+
+  @override
+  String pulseStreakDaysMany(int n) {
+    return '$n days';
+  }
+
+  @override
+  String get notesQuickHint => 'Quick note…';
+
+  @override
+  String get notesSearchHint => 'Search';
+
+  @override
+  String get notesNotFound => 'Nothing found';
+
+  @override
+  String get notesEmptyHint => 'Write a thought in the line above or open the full editor with \"+\".';
+
+  @override
+  String get notesNotFoundHint => 'Try a different query.';
+
+  @override
+  String get calMonths => 'January,February,March,April,May,June,July,August,September,October,November,December';
+
+  @override
+  String get calWeekdays => 'Mon,Tue,Wed,Thu,Fri,Sat,Sun';
+
+  @override
+  String get calToday => 'Today';
+
+  @override
+  String get calPlanDay => 'Plan for this day';
+
+  @override
+  String get calNothingRecorded => 'Nothing recorded.';
+
+  @override
+  String get calMonthsShort => 'Jan,Feb,Mar,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec';
+
+  @override
+  String get calDaysShort => 'Mon,Tue,Wed,Thu,Fri,Sat,Sun';
+
+  @override
+  String get calTodayPrefix => 'Today';
+
+  @override
+  String get calYesterday => 'Yesterday';
+
+  @override
+  String get calTomorrow => 'Tomorrow';
+
+  @override
+  String get calDayEmpty => 'Nothing recorded for this day.';
+
+  @override
+  String get taskOverdue => 'Overdue';
+
+  @override
+  String get taskNoTasks => 'No tasks — all completed or none created.';
+
+  @override
+  String get settingsSync => 'Sync';
+
+  @override
+  String get settingsSyncSub => 'Google Drive for backup';
+
+  @override
+  String get settingsExportSub => 'JSON to clipboard';
+
+  @override
+  String get settingsImportSub => 'Paste JSON';
+
+  @override
+  String get settingsAboutSub => 'Version, licenses';
+
+  @override
+  String get roadmapTitle => 'AI Plan';
+
+  @override
+  String get roadmapGenerateFirst => 'Generate your first plan';
+
+  @override
+  String get roadmapAxis => 'Axis';
+
+  @override
+  String get roadmapGoal => 'Goal';
+
+  @override
+  String get roadmapGenerate => 'Generate';
+
+  @override
+  String get roadmapWeek1 => 'Week 1';
+
+  @override
+  String get roadmapWeek2 => 'Week 2';
+
+  @override
+  String get roadmapWeek3 => 'Week 3';
+
+  @override
+  String get roadmapWeek4 => 'Week 4';
+
+  @override
+  String get roadmapError => 'Error';
+
+  @override
+  String get homeMore => 'More';
+
+  @override
+  String get onboardingActiveHours => 'Active hours';
+
+  @override
+  String get menuRecipeSteps => 'RECIPE STEPS';
+
+  @override
+  String get menuGenerateRecipe => 'Generate recipe';
+
+  @override
+  String get entryUntitled => 'Untitled';
+
+  @override
+  String get axisTileFocusTasks => 'focus tasks';
+
+  @override
+  String get backendsNoKey => 'key not set';
+
+  @override
+  String get editListAddItem => 'Add';
+
+  @override
+  String get editListHint => 'New item';
+
+  @override
+  String get editListAddFirst => 'Add first entry';
+
+  @override
+  String get entryTaskDone => '✓ task';
+
+  @override
+  String get entryTask => 'task';
+
+  @override
+  String get backendsActive => 'Active';
+
+  @override
+  String get debugFillAxes => 'Fill all axes to 100%';
+
+  @override
+  String get debugFillAxesSub => 'Creates synthetic tasks so the pentagon hits peak';
+
+  @override
+  String get debugFillAxesDone => 'Done. Open Self — overlay should appear.';
+
+  @override
+  String get debugResetAck => 'Reset epoch ack';
+
+  @override
+  String get debugResetAckSub => 'Clears epochAckedAt — overlay will trigger again at peak';
+
+  @override
+  String get debugResetAckDone => 'Ack reset.';
+
+  @override
+  String get debugBumpEpoch => 'Force +1 epoch';
+
+  @override
+  String get debugBumpEpochDone => 'Epoch incremented.';
+
+  @override
+  String get debugResetEpoch => 'Reset epoch to 1';
+
+  @override
+  String get debugResetEpochSub => 'Full progression rollback to Epoch 1';
+
+  @override
+  String get debugResetEpochDone => 'Reset to Epoch 1.';
+
+  @override
+  String get roadmapRegenerate => 'Regenerate';
+
+  @override
+  String get roadmapFailed => 'Failed';
+
+  @override
+  String get roadmapGenericError => 'Something went wrong';
+
+  @override
+  String get roadmapBack => 'Back';
+
+  @override
+  String get roadmapToday => 'today';
+
+  @override
+  String get roadmapTomorrow => 'tomorrow';
+
+  @override
+  String roadmapInDays(int n) {
+    return 'in $n days';
+  }
+
+  @override
+  String roadmapDueDate(String date) {
+    return 'by $date';
+  }
+
+  @override
+  String get roadmapFromOnboarding => 'From onboarding';
+
+  @override
+  String get pomodoroStopAction => 'Stop';
+
+  @override
+  String get pomodoroGoAction => 'Let\'s go';
+
+  @override
+  String get onboardGoals => 'improve health,switch career,learn something new,become disciplined,develop relationships,find balance,launch project';
+
+  @override
+  String get onboardInterests => 'studying,code,design,sports,meditation,reading,music,languages,cooking,relationships,finance,creativity,career,family';
+
+  @override
+  String get onboardTimePrefix => 'Time';
+
+  @override
+  String get onboardPainPrefix => 'What blocks you';
+
+  @override
+  String get onboardComfortTime => 'Comfortable time';
+
+  @override
+  String get onboardNameHint => 'Name';
+
+  @override
+  String get onboardCustomValue => 'Custom value';
+
+  @override
+  String get onboardVolumeMini => 'mini volume, bit by bit';
+
+  @override
+  String get onboardVolumeComfort => 'comfortable pace';
+
+  @override
+  String get onboardVolumeSerious => 'serious involvement';
+
+  @override
+  String get onboardVolumeAlmost => 'almost a second job';
+
+  @override
+  String get onboardVolumeMax => 'maximum mode';
+
+  @override
+  String onboardPainSummary(String pain) {
+    return 'Obstacles: $pain.';
+  }
+
+  @override
+  String onboardTimeSummary(String time) {
+    return 'Comfortable time: $time.';
+  }
+
+  @override
+  String get pulseDeadlineLabel => 'Deadline';
 }

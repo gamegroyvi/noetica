@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/body_utils.dart';
 import '../../utils/subtask_utils.dart';
@@ -52,7 +53,7 @@ class EntryCard extends ConsumerWidget {
                 const Spacer(),
                 if (entry.isTask)
                   _Chip(
-                    text: entry.isCompleted ? '✓ задача' : 'задача',
+                    text: entry.isCompleted ? S.of(context)!.entryTaskDone : S.of(context)!.entryTask,
                   ),
               ],
             ),

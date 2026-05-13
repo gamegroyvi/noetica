@@ -55,31 +55,10 @@ class _OnboardingChatScreenState
   bool _saving = false;
 
   // Suggestions.
-  static const _aspirationOptions = <String>[
-    'поправить здоровье',
-    'сменить профессию',
-    'выучить новое',
-    'стать дисциплинированнее',
-    'развить отношения',
-    'найти баланс',
-    'запустить проект',
-  ];
-  static const _interestOptions = <String>[
-    'учёба',
-    'код',
-    'дизайн',
-    'спорт',
-    'медитация',
-    'чтение',
-    'музыка',
-    'языки',
-    'кулинария',
-    'отношения',
-    'финансы',
-    'творчество',
-    'карьера',
-    'семья',
-  ];
+  List<String> _aspirationOptions(BuildContext context) =>
+      S.of(context)!.onboardGoals.split(',');
+  List<String> _interestOptions(BuildContext context) =>
+      S.of(context)!.onboardInterests.split(',');
 
 
   @override
@@ -165,7 +144,7 @@ class _OnboardingChatScreenState
       case 2:
         return _interests.join(', ');
       case 3:
-        return S.of(context)!.onboardHoursWeek(_weeklyHours);
+        return '$_weeklyHours ${S.of(context)!.onboardHoursWeek}';
     }
     return '';
   }
@@ -243,9 +222,9 @@ class _OnboardingChatScreenState
         goals: profile.aspiration.isEmpty ? const [] : [profile.aspiration],
         constraints: [
           S.of(context)!.onboardWeeklyTime(profile.weeklyHours),
-          if (_windows.isNotEmpty) 'Время: ${_windows.join(", ")}',
+          if (_windows.isNotEmpty) S.of(context)!.onboardTimeSummary(_windows.join(', ')),
           if (_painPoints.isNotEmpty)
-            'Что мешает: ${_painPoints.join(", ")}',
+            S.of(context)!.onboardPainSummary(_painPoints.join(', ')),
         ],
       );
       AnalyticsService.instance.track(AnalyticsEvents.onboardingCompleted);
@@ -274,9 +253,9 @@ class _OnboardingChatScreenState
       if (profile.aspiration.isNotEmpty) S.of(context)!.onboardProfileGoal(profile.aspiration),
       if (levelsBlurb.isNotEmpty) S.of(context)!.onboardProfileNow(levelsBlurb),
       if (_painPoints.isNotEmpty)
-        'Что мешает: ${_painPoints.join(", ")}.',
+        S.of(context)!.onboardPainSummary(_painPoints.join(', ')),
       S.of(context)!.onboardProfileHours(profile.weeklyHours),
-      if (_windows.isNotEmpty) 'Удобное время: ${_windows.join(", ")}.',
+      if (_windows.isNotEmpty) S.of(context)!.onboardTimeSummary(_windows.join(', ')),
     ];
     return parts.join(' ');
   }
@@ -348,14 +327,14 @@ class _OnboardingChatScreenState
       case 0:
         return _TextReply(
           controller: _textCtrl,
-          hint: 'Имя',
+          hint: S.of(context)!.onboardNameHint,
           onChange: (v) => setState(() => _name = v),
           onSubmit: _canAdvance ? _advance : null,
           palette: palette,
         );
       case 1:
         return _ChipsReply(
-          options: _aspirationOptions,
+          options: _aspirationOptions(context),
           selected: _aspirations,
           allowMultiple: true,
           onPick: (v) => setState(() {
@@ -393,7 +372,7 @@ class _OnboardingChatScreenState
         );
       case 2:
         return _ChipsReply(
-          options: _interestOptions,
+          options: _interestOptions(context),
           selected: _interests,
           allowMultiple: true,
           onPick: (v) => setState(() {
@@ -626,7 +605,7 @@ class _ChipsReply extends StatelessWidget {
                   autofocus: true,
                   onSubmitted: (_) => onSubmitCustom?.call(),
                   decoration: InputDecoration(
-                    hintText: 'Своё значение',
+                    hintText: S.of(context)!.onboardCustomValue,
                     isDense: true,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
@@ -765,12 +744,12 @@ class _HoursReply extends StatelessWidget {
   final VoidCallback? onSubmit;
   final NoeticaPalette palette;
 
-  String _hint(int v) {
-    if (v <= 3) return 'мини-объём, по чуть-чуть';
-    if (v <= 8) return 'комфортный темп';
-    if (v <= 15) return 'серьёзная вовлечённость';
-    if (v <= 25) return 'почти второй джоб';
-    return 'максимальный режим';
+  String _hint(int v, BuildContext context) {
+    if (v <= 3) return S.of(context)!.onboardVolumeMini;
+    if (v <= 8) return S.of(context)!.onboardVolumeComfort;
+    if (v <= 15) return S.of(context)!.onboardVolumeSerious;
+    if (v <= 25) return S.of(context)!.onboardVolumeAlmost;
+    return S.of(context)!.onboardVolumeMax;
   }
 
   @override
@@ -792,7 +771,7 @@ class _HoursReply extends StatelessWidget {
             ),
             const SizedBox(width: 6),
             Text(
-              'ч/нед',
+              S.of(context)!.onboardHoursWeek,
               style: TextStyle(
                 fontFamily: 'IBMPlexMono',
                 fontSize: 14,
@@ -801,7 +780,7 @@ class _HoursReply extends StatelessWidget {
             ),
             const Spacer(),
             Text(
-              _hint(value),
+              _hint(value, context),
               style: TextStyle(
                 fontFamily: 'IBMPlexMono',
                 fontSize: 11,

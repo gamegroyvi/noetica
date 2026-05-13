@@ -159,7 +159,7 @@ class _AxesEditorScreenState extends ConsumerState<AxesEditorScreen> {
     final profile = ref.read(profileProvider).valueOrNull;
     if (profile == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Сначала пройди онбординг.')),
+        SnackBar(content: Text(S.of(context)!.axesOnboardingFirst)),
       );
       return;
     }
@@ -234,7 +234,7 @@ class _AxesEditorScreenState extends ConsumerState<AxesEditorScreen> {
       SnackBar(
         content: Text(S.of(context)!.axesProfileUpdated),
         action: SnackBarAction(
-          label: 'Да',
+          label: S.of(context)!.axesYes,
           onPressed: _regenerateBranches,
         ),
       ),
@@ -511,7 +511,7 @@ class _AxisEditSheetState extends State<_AxisEditSheet> {
               ),
             ),
             Text(
-              'Ось',
+              S.of(context)!.axesAxis,
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 16),
@@ -576,9 +576,9 @@ class _AxisEditSheetState extends State<_AxisEditSheet> {
                         _symbol.text.trim().isEmpty
                     ? null
                     : _save,
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 12),
-                  child: Text('Готово'),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Text(S.of(context)!.axesDone),
                 ),
               ),
             ),

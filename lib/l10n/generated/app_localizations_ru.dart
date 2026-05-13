@@ -218,7 +218,7 @@ class SRu extends S {
   String get onboardingGoals => 'Какие у тебя цели?';
 
   @override
-  String get onboardingInterests => 'Что тебе интересно?';
+  String get onboardingInterests => 'Интересы';
 
   @override
   String get onboardingHours => 'Сколько часов в неделю?';
@@ -254,7 +254,7 @@ class SRu extends S {
   String get settingsExport => 'Экспорт данных';
 
   @override
-  String get settingsImport => 'Импорт данных';
+  String get settingsImport => 'Импорт из буфера';
 
   @override
   String get settingsTheme => 'Тема';
@@ -977,7 +977,7 @@ class SRu extends S {
   String get roadmapNeedAxes => 'Нужно хотя бы 3 оси. Добавь их на вкладке «Я».';
 
   @override
-  String get roadmapGenerating => 'Это занимает 5–15 секунд';
+  String get roadmapGenerating => 'Генерируем план…';
 
   @override
   String roadmapImportBtn(int n) {
@@ -1069,7 +1069,9 @@ class SRu extends S {
   String get pulseNoData => 'нет данных';
 
   @override
-  String get pulseDeadline => 'ДЕДЛАЙН';
+  String pulseDeadline(String date) {
+    return 'до $date';
+  }
 
   @override
   String get pulseNoDeadline => 'нет дедлайнов';
@@ -1102,9 +1104,7 @@ class SRu extends S {
   String get onboardQ4 => 'Сколько часов в неделю реально готов уделять?';
 
   @override
-  String onboardHoursWeek(int h) {
-    return '$h ч/нед';
-  }
+  String get onboardHoursWeek => 'ч/нед';
 
   @override
   String onboardWeeklyTime(int h) {
@@ -1358,7 +1358,7 @@ class SRu extends S {
   }
 
   @override
-  String get menuIngredients => 'Ингредиенты';
+  String get menuIngredients => 'ИНГРЕДИЕНТЫ';
 
   @override
   String menuFullRecipe(String link) {
@@ -1865,4 +1865,550 @@ class SRu extends S {
 
   @override
   String get pomodoroSoundVibroSub => 'Системный «дзынь» и хаптик при смене фазы (уведомление приходит в любом случае)';
+
+  @override
+  String get graphCentreLabel => 'я';
+
+  @override
+  String get graphGoalsHint => 'Что хочешь достичь';
+
+  @override
+  String get graphConstraintsHint => 'Что мешает или ограничивает';
+
+  @override
+  String get graphHighlightsHint => 'Что уже получилось';
+
+  @override
+  String get graphReflectionsHint => 'Заметки о пройденном';
+
+  @override
+  String get graphDelete => 'Удалить';
+
+  @override
+  String get graphSearchHint => 'Поиск по базе знаний…';
+
+  @override
+  String get graphKnowledgeBase => 'База знаний';
+
+  @override
+  String get graphSearchTooltip => 'Поиск';
+
+  @override
+  String get graphDailyTooltip => 'Дневник';
+
+  @override
+  String get graphShowRecipes => 'Показывать рецепты';
+
+  @override
+  String get graphHideRecipes => 'Скрывать рецепты';
+
+  @override
+  String get graphGlobalTooltip => 'Глобальный граф';
+
+  @override
+  String get graphNewNote => 'Новая заметка';
+
+  @override
+  String get graphResetView => 'Сбросить вид';
+
+  @override
+  String get graphShuffle => 'Перемешать';
+
+  @override
+  String get graphEmptyTitle1 => 'Записывай';
+
+  @override
+  String get graphEmptyBody1 => 'Заметки, задачи, дневник — всё становится узлами графа.';
+
+  @override
+  String get graphEmptyTitle2 => 'Связывай';
+
+  @override
+  String get graphEmptyBody2 => 'Упоминай [[заголовок]] в тексте — Noetica построит ребро.';
+
+  @override
+  String get graphEmptyTitle3 => 'Изучай';
+
+  @override
+  String get graphEmptyBody3 => 'Граф покажет, какие темы пересекаются и где пусто.';
+
+  @override
+  String get graphEmptyTitle4 => 'О себе';
+
+  @override
+  String get graphEmptyBody4 => 'Цели, ограничения, достижения — эти ветки помогут AI.';
+
+  @override
+  String get graphEmptyTitle5 => 'Первая запись';
+
+  @override
+  String get graphEmptyBody5 => 'Нажми +, чтобы создать заметку и увидеть граф в действии.';
+
+  @override
+  String get graphEmptyTitle6 => 'Теги';
+
+  @override
+  String get graphEmptyBody6 => 'Добавляй теги к записям — они тоже станут узлами.';
+
+  @override
+  String get graphResetFilter => 'Сбросить фильтр';
+
+  @override
+  String get graphEmptyAllTitle => 'База знаний пока пуста';
+
+  @override
+  String get graphEmptyAllBody => 'Создайте первую заметку или задачу — они появятся здесь как узлы графа.';
+
+  @override
+  String get graphEmptyAllAction => 'Создать запись';
+
+  @override
+  String get graphEmptyNotesTitle => 'Заметок пока нет';
+
+  @override
+  String get graphEmptyNotesBody => 'Заметки будут видны как отдельные узлы. Связи появляются автоматически, когда в теле есть [[ссылка]] на другую заметку.';
+
+  @override
+  String get graphEmptyNotesAction => 'Создать заметку';
+
+  @override
+  String get graphEmptyTasksTitle => 'Задач в графе нет';
+
+  @override
+  String get graphEmptyTasksBody => 'Создайте задачу через «+» или сгенерируйте план задач из вашей цели.';
+
+  @override
+  String get graphEmptyBookmarksTitle => 'Закладок пока нет';
+
+  @override
+  String get graphEmptyBookmarksBody => 'Долгое нажатие на узел графа добавит его в закладки.';
+
+  @override
+  String get graphEmptyDailyTitle => 'Дневник пуст';
+
+  @override
+  String get graphEmptyDailyBody => 'Тапните иконку календаря в шапке, чтобы создать запись на сегодня.';
+
+  @override
+  String get graphEmptyKnowledgeTitle => 'Знания о себе пусты';
+
+  @override
+  String get graphEmptyKnowledgeBody => 'Заполните цели, ограничения и достижения через тапы по веткам графа — это даст AI больше контекста для генерации планов.';
+
+  @override
+  String get editListAdd => 'Добавить';
+
+  @override
+  String get editListRemove => 'Удалить';
+
+  @override
+  String get editListSave => 'Сохранить';
+
+  @override
+  String get graphConnections => 'связей';
+
+  @override
+  String get selfBranchesTooltip => 'Ветви';
+
+  @override
+  String get selfSettingsTooltip => 'Настройки';
+
+  @override
+  String get selfTreeBranches => 'ДРЕВО · ВЕТКИ';
+
+  @override
+  String get selfGeneratePlan => 'Сгенерировать план';
+
+  @override
+  String get selfScoreExplain => 'Очки начисляются за выполнение задач, привязанных к осям. Со временем затухают — пентаграмма отражает тебя за последний месяц.';
+
+  @override
+  String selfEpochArchive(int n) {
+    return 'ЭПОХА $n · АРХИВ';
+  }
+
+  @override
+  String get selfArchiveReadonly => 'Древо этой эпохи на момент перехода. Только просмотр.';
+
+  @override
+  String get selfArchiveEmpty => 'Архив этой эпохи пустой — она завершилась до того, как мы начали записывать историю. Будущие переходы сохранятся целиком.';
+
+  @override
+  String get selfArchiveBranches => 'ВЕТВИ ТОЙ ЭПОХИ';
+
+  @override
+  String get selfEpochLabel => 'ЭПОХА';
+
+  @override
+  String selfEpochShort(String epoch) {
+    return 'Э$epoch';
+  }
+
+  @override
+  String selfEpochTierShort(String epoch, String tier) {
+    return 'Э$epoch.$tier';
+  }
+
+  @override
+  String get selfLevelLabel => 'УРОВЕНЬ';
+
+  @override
+  String get selfStreakLabel => 'СТРИК';
+
+  @override
+  String selfStreakDays(int n) {
+    return '$n д.';
+  }
+
+  @override
+  String get selfReadyTransition => 'Готов к переходу — тапни, чтобы открыть';
+
+  @override
+  String get selfStreakBroken => 'Стрик прервался. Закрой одну задачу сегодня — начнём заново.';
+
+  @override
+  String axisEpochPrefix(String n) {
+    return 'Э$n';
+  }
+
+  @override
+  String get axisState => 'СОСТОЯНИЕ';
+
+  @override
+  String get axisCompletedByAxis => 'ВЫПОЛНЕНО ПО ОСИ';
+
+  @override
+  String get axisNoTasks => 'Здесь появятся выполненные задачи, привязанные к этой оси.';
+
+  @override
+  String get axesOnboardingFirst => 'Сначала пройди онбординг.';
+
+  @override
+  String get axesYes => 'Да';
+
+  @override
+  String get axesAxis => 'Ось';
+
+  @override
+  String get axesDone => 'Готово';
+
+  @override
+  String get dashNoActiveTasks => 'Активных задач нет — отдохни или создай новую.';
+
+  @override
+  String get dashDone => 'Готово';
+
+  @override
+  String get dashPostpone => 'Отложить';
+
+  @override
+  String get dashFocusTimer => 'Запустить таймер фокуса';
+
+  @override
+  String get dashPostponeBy => 'ОТЛОЖИТЬ НА';
+
+  @override
+  String get dashViewPentagram => 'Посмотреть свою пентаграмму';
+
+  @override
+  String get heatmapWeekdays => 'Пн,,Ср,,Пт,,';
+
+  @override
+  String get heatmapMonths => 'янв,фев,мар,апр,май,июн,июл,авг,сен,окт,ноя,дек';
+
+  @override
+  String heatmapEmptyYear(int year) {
+    return 'в $year году пока пусто';
+  }
+
+  @override
+  String heatmapYearSummary(String total, int year) {
+    return '$total закрыто в $year — тапни день';
+  }
+
+  @override
+  String get heatmapLess => 'меньше';
+
+  @override
+  String get heatmapMore => 'больше';
+
+  @override
+  String get miniTreeEmpty => 'Древо появится после первой ветви';
+
+  @override
+  String miniTreeXp(int xp) {
+    return 'всего $xp XP · тап — древо целиком';
+  }
+
+  @override
+  String pulseStreakDay(int n) {
+    return '$n день';
+  }
+
+  @override
+  String pulseStreakDays(int n) {
+    return '$n дня';
+  }
+
+  @override
+  String pulseStreakDaysMany(int n) {
+    return '$n дней';
+  }
+
+  @override
+  String get notesQuickHint => 'Быстрая заметка…';
+
+  @override
+  String get notesSearchHint => 'Поиск';
+
+  @override
+  String get notesNotFound => 'Ничего не найдено';
+
+  @override
+  String get notesEmptyHint => 'Запиши мысль одной строкой выше или открой полный редактор кнопкой «+».';
+
+  @override
+  String get notesNotFoundHint => 'Попробуй другой запрос.';
+
+  @override
+  String get calMonths => 'Январь,Февраль,Март,Апрель,Май,Июнь,Июль,Август,Сентябрь,Октябрь,Ноябрь,Декабрь';
+
+  @override
+  String get calWeekdays => 'Пн,Вт,Ср,Чт,Пт,Сб,Вс';
+
+  @override
+  String get calToday => 'Сегодня';
+
+  @override
+  String get calPlanDay => 'Запланировать на этот день';
+
+  @override
+  String get calNothingRecorded => 'Ничего не записано.';
+
+  @override
+  String get calMonthsShort => 'янв,фев,мар,мая,июн,июл,авг,сен,окт,ноя,дек';
+
+  @override
+  String get calDaysShort => 'пн,вт,ср,чт,пт,сб,вс';
+
+  @override
+  String get calTodayPrefix => 'Сегодня';
+
+  @override
+  String get calYesterday => 'Вчера';
+
+  @override
+  String get calTomorrow => 'Завтра';
+
+  @override
+  String get calDayEmpty => 'В этот день ничего не записано.';
+
+  @override
+  String get taskOverdue => 'Просрочено';
+
+  @override
+  String get taskNoTasks => 'Задач нет — все выполнены или не созданы.';
+
+  @override
+  String get settingsSync => 'Синхронизация';
+
+  @override
+  String get settingsSyncSub => 'Google Drive для бэкапа';
+
+  @override
+  String get settingsExportSub => 'JSON в буфер обмена';
+
+  @override
+  String get settingsImportSub => 'Вставить JSON';
+
+  @override
+  String get settingsAboutSub => 'Версия, лицензии';
+
+  @override
+  String get roadmapTitle => 'AI-План';
+
+  @override
+  String get roadmapGenerateFirst => 'Сгенерируй первый план';
+
+  @override
+  String get roadmapAxis => 'Ось';
+
+  @override
+  String get roadmapGoal => 'Цель';
+
+  @override
+  String get roadmapGenerate => 'Сгенерировать';
+
+  @override
+  String get roadmapWeek1 => 'Неделя 1';
+
+  @override
+  String get roadmapWeek2 => 'Неделя 2';
+
+  @override
+  String get roadmapWeek3 => 'Неделя 3';
+
+  @override
+  String get roadmapWeek4 => 'Неделя 4';
+
+  @override
+  String get roadmapError => 'Ошибка';
+
+  @override
+  String get homeMore => 'Ещё';
+
+  @override
+  String get onboardingActiveHours => 'Активные часы';
+
+  @override
+  String get menuRecipeSteps => 'ШАГИ РЕЦЕПТА';
+
+  @override
+  String get menuGenerateRecipe => 'Сгенерировать рецепт';
+
+  @override
+  String get entryUntitled => 'Без названия';
+
+  @override
+  String get axisTileFocusTasks => 'фокусных задач';
+
+  @override
+  String get backendsNoKey => 'ключ не задан';
+
+  @override
+  String get editListAddItem => 'Добавить';
+
+  @override
+  String get editListHint => 'Новый пункт';
+
+  @override
+  String get editListAddFirst => 'Добавить первую запись';
+
+  @override
+  String get entryTaskDone => '✓ задача';
+
+  @override
+  String get entryTask => 'задача';
+
+  @override
+  String get backendsActive => 'Активный';
+
+  @override
+  String get debugFillAxes => 'Заполнить все оси до 100%';
+
+  @override
+  String get debugFillAxesSub => 'Создаёт синтетические задачи, чтобы пентагон встал на пик';
+
+  @override
+  String get debugFillAxesDone => 'Готово. Открой «Я» — оверлей должен появиться.';
+
+  @override
+  String get debugResetAck => 'Сбросить ack эпохи';
+
+  @override
+  String get debugResetAckSub => 'Обнуляет epochAckedAt — оверлей снова пустит при пике';
+
+  @override
+  String get debugResetAckDone => 'Ack сброшен.';
+
+  @override
+  String get debugBumpEpoch => 'Форсировать +1 эпоху';
+
+  @override
+  String get debugBumpEpochDone => 'Эпоха увеличена.';
+
+  @override
+  String get debugResetEpoch => 'Сбросить эпоху на 1';
+
+  @override
+  String get debugResetEpochSub => 'Полный откат прогрессии до Эпохи 1';
+
+  @override
+  String get debugResetEpochDone => 'Сброс до Эпохи 1.';
+
+  @override
+  String get roadmapRegenerate => 'Перегенерировать';
+
+  @override
+  String get roadmapFailed => 'Не получилось';
+
+  @override
+  String get roadmapGenericError => 'Что-то пошло не так';
+
+  @override
+  String get roadmapBack => 'Назад';
+
+  @override
+  String get roadmapToday => 'сегодня';
+
+  @override
+  String get roadmapTomorrow => 'завтра';
+
+  @override
+  String roadmapInDays(int n) {
+    return 'через $n дн.';
+  }
+
+  @override
+  String roadmapDueDate(String date) {
+    return 'до $date';
+  }
+
+  @override
+  String get roadmapFromOnboarding => 'Из онбординга';
+
+  @override
+  String get pomodoroStopAction => 'Стоп';
+
+  @override
+  String get pomodoroGoAction => 'Поехали';
+
+  @override
+  String get onboardGoals => 'поправить здоровье,сменить профессию,выучить новое,стать дисциплинированнее,развить отношения,найти баланс,запустить проект';
+
+  @override
+  String get onboardInterests => 'учёба,код,дизайн,спорт,медитация,чтение,музыка,языки,кулинария,отношения,финансы,творчество,карьера,семья';
+
+  @override
+  String get onboardTimePrefix => 'Время';
+
+  @override
+  String get onboardPainPrefix => 'Что мешает';
+
+  @override
+  String get onboardComfortTime => 'Удобное время';
+
+  @override
+  String get onboardNameHint => 'Имя';
+
+  @override
+  String get onboardCustomValue => 'Своё значение';
+
+  @override
+  String get onboardVolumeMini => 'мини-объём, по чуть-чуть';
+
+  @override
+  String get onboardVolumeComfort => 'комфортный темп';
+
+  @override
+  String get onboardVolumeSerious => 'серьёзная вовлечённость';
+
+  @override
+  String get onboardVolumeAlmost => 'почти второй джоб';
+
+  @override
+  String get onboardVolumeMax => 'максимальный режим';
+
+  @override
+  String onboardPainSummary(String pain) {
+    return 'Что мешает: $pain.';
+  }
+
+  @override
+  String onboardTimeSummary(String time) {
+    return 'Удобное время: $time.';
+  }
+
+  @override
+  String get pulseDeadlineLabel => 'Дедлайн';
 }

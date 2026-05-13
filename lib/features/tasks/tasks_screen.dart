@@ -389,21 +389,9 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
 
   String _formatDay(DateTime d) {
     if (d.millisecondsSinceEpoch == 0) return S.of(context)!.noDate;
-    final loc = Localizations.localeOf(context).languageCode;
-    if (loc == 'ru') {
-      const days = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
-      const months = [
-        'янв', 'фев', 'мар', 'апр', 'май', 'июн',
-        'июл', 'авг', 'сен', 'окт', 'ноя', 'дек',
-      ];
-      return '${days[d.weekday - 1]}, ${d.day} ${months[d.month - 1]}';
-    }
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-    ];
-    return '${days[d.weekday - 1]}, ${months[d.month - 1]} ${d.day}';
+    final days = S.of(context)!.calWeekdays.split(',');
+    final months = S.of(context)!.calMonthsShort.split(',');
+    return '${days[d.weekday - 1]}, ${d.day} ${months[d.month - 1]}';
   }
 
   // -------------------------------------------------------------- sort
