@@ -1081,4 +1081,90 @@ class SEn extends S {
   String pulseDeadlineDays(int d) {
     return '${d}d';
   }
+
+  @override
+  String get onboardQ1 => 'Hi. I\'m your growth assistant. What\'s your name?';
+
+  @override
+  String onboardQ2(String name) {
+    return 'Okay, $name. What do you want to achieve in the next year?';
+  }
+
+  @override
+  String get onboardQ2NoName => 'What do you want to achieve in the next year?';
+
+  @override
+  String get onboardQ3 => 'Which areas are you already active in? Pick 3–8.';
+
+  @override
+  String get onboardQ4 => 'How many hours per week can you realistically dedicate?';
+
+  @override
+  String onboardHoursWeek(int h) {
+    return '$h h/wk';
+  }
+
+  @override
+  String onboardWeeklyTime(int h) {
+    return 'Weekly for growth: ~$h h';
+  }
+
+  @override
+  String onboardSaveError(String error) {
+    return 'Failed to save profile: $error';
+  }
+
+  @override
+  String get onboardSelectOne => 'Select at least one';
+
+  @override
+  String onboardSelectMore(int n) {
+    return 'Select $n more';
+  }
+
+  @override
+  String get onboardCustomOpen => '× custom';
+
+  @override
+  String get onboardCustomClosed => '+ custom';
+
+  @override
+  String onboardHoursLabel(int h) {
+    return '$h h';
+  }
+
+  @override
+  String get onboardLevelNovice => 'novice';
+
+  @override
+  String get onboardLevelLearning => 'learning';
+
+  @override
+  String get onboardLevelConfident => 'confident';
+
+  @override
+  String get onboardLevelExpert => 'expert';
+
+  @override
+  String onboardProfileName(String name) {
+    return 'Name: $name.';
+  }
+
+  @override
+  String onboardProfileGoal(String goal) {
+    return 'Goal: $goal.';
+  }
+
+  @override
+  String onboardProfileNow(String text) {
+    return 'Current: $text.';
+  }
+
+  @override
+  String onboardProfileHours(int h) {
+    return 'Ready to dedicate about $h h/wk.';
+  }
+
+  @override
+  String get actionNext => 'Next';
 }

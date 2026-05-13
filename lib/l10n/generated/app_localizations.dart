@@ -2032,6 +2032,138 @@ abstract class S {
   /// In ru, this message translates to:
   /// **'{d}д'**
   String pulseDeadlineDays(int d);
+
+  /// No description provided for @onboardQ1.
+  ///
+  /// In ru, this message translates to:
+  /// **'Привет. Я твой ассистент роста. Как тебя зовут?'**
+  String get onboardQ1;
+
+  /// No description provided for @onboardQ2.
+  ///
+  /// In ru, this message translates to:
+  /// **'Окей, {name}. Чего ты хочешь достичь в ближайший год?'**
+  String onboardQ2(String name);
+
+  /// No description provided for @onboardQ2NoName.
+  ///
+  /// In ru, this message translates to:
+  /// **'Чего ты хочешь достичь в ближайший год?'**
+  String get onboardQ2NoName;
+
+  /// No description provided for @onboardQ3.
+  ///
+  /// In ru, this message translates to:
+  /// **'В каких сферах ты уже что-то делаешь? Выбери 3–8.'**
+  String get onboardQ3;
+
+  /// No description provided for @onboardQ4.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сколько часов в неделю реально готов уделять?'**
+  String get onboardQ4;
+
+  /// No description provided for @onboardHoursWeek.
+  ///
+  /// In ru, this message translates to:
+  /// **'{h} ч/нед'**
+  String onboardHoursWeek(int h);
+
+  /// No description provided for @onboardWeeklyTime.
+  ///
+  /// In ru, this message translates to:
+  /// **'В неделю на развитие: ~{h} ч'**
+  String onboardWeeklyTime(int h);
+
+  /// No description provided for @onboardSaveError.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось сохранить профиль: {error}'**
+  String onboardSaveError(String error);
+
+  /// No description provided for @onboardSelectOne.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выбери хотя бы одну'**
+  String get onboardSelectOne;
+
+  /// No description provided for @onboardSelectMore.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выбери ещё {n}'**
+  String onboardSelectMore(int n);
+
+  /// No description provided for @onboardCustomOpen.
+  ///
+  /// In ru, this message translates to:
+  /// **'× своё'**
+  String get onboardCustomOpen;
+
+  /// No description provided for @onboardCustomClosed.
+  ///
+  /// In ru, this message translates to:
+  /// **'+ своё'**
+  String get onboardCustomClosed;
+
+  /// No description provided for @onboardHoursLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'{h} ч'**
+  String onboardHoursLabel(int h);
+
+  /// No description provided for @onboardLevelNovice.
+  ///
+  /// In ru, this message translates to:
+  /// **'новичок'**
+  String get onboardLevelNovice;
+
+  /// No description provided for @onboardLevelLearning.
+  ///
+  /// In ru, this message translates to:
+  /// **'учусь'**
+  String get onboardLevelLearning;
+
+  /// No description provided for @onboardLevelConfident.
+  ///
+  /// In ru, this message translates to:
+  /// **'уверенно'**
+  String get onboardLevelConfident;
+
+  /// No description provided for @onboardLevelExpert.
+  ///
+  /// In ru, this message translates to:
+  /// **'эксперт'**
+  String get onboardLevelExpert;
+
+  /// No description provided for @onboardProfileName.
+  ///
+  /// In ru, this message translates to:
+  /// **'Зовут {name}.'**
+  String onboardProfileName(String name);
+
+  /// No description provided for @onboardProfileGoal.
+  ///
+  /// In ru, this message translates to:
+  /// **'Цель: {goal}.'**
+  String onboardProfileGoal(String goal);
+
+  /// No description provided for @onboardProfileNow.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сейчас: {text}.'**
+  String onboardProfileNow(String text);
+
+  /// No description provided for @onboardProfileHours.
+  ///
+  /// In ru, this message translates to:
+  /// **'Готов уделять около {h} ч/нед.'**
+  String onboardProfileHours(int h);
+
+  /// No description provided for @actionNext.
+  ///
+  /// In ru, this message translates to:
+  /// **'Далее'**
+  String get actionNext;
 }
 
 class _SDelegate extends LocalizationsDelegate<S> {

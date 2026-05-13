@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../l10n/generated/app_localizations.dart';
 import '../../data/personal_knowledge_service.dart';
 import '../../data/profile.dart';
 import '../../providers.dart';
@@ -100,7 +101,12 @@ class _OnboardingChatScreenState
       );
       _weeklyHours = e.weeklyHours;
     }
-    _seedThread();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_thread.isEmpty) _seedThread();
   }
 
   @override
@@ -111,21 +117,22 @@ class _OnboardingChatScreenState
   }
 
   void _seedThread() {
-    _thread.add(_ChatMsg.bot(_questionFor(0)));
+    final tr = S.of(context)!;
+    _thread.add(_ChatMsg.bot(_questionFor(0, tr)));
   }
 
-  String _questionFor(int step) {
+  String _questionFor(int step, S tr) {
     switch (step) {
       case 0:
-        return 'Привет. Я твой ассистент роста. Как тебя зовут?';
+        return tr.onboardQ1;
       case 1:
         return _name.isNotEmpty
-            ? 'Окей, ${_firstName(_name)}. Чего ты хочешь достичь в ближайший год?'
-            : 'Чего ты хочешь достичь в ближайший год?';
+            ? tr.onboardQ2(_firstName(_name))
+            : tr.onboardQ2NoName;
       case 2:
-        return 'В каких сферах ты уже что-то делаешь? Выбери 3–8.';
+        return tr.onboardQ3;
       case 3:
-        return 'Сколько часов в неделю реально готов уделять?';
+        return tr.onboardQ4;
       default:
         return '';
     }
@@ -158,7 +165,7 @@ class _OnboardingChatScreenState
       case 2:
         return _interests.join(', ');
       case 3:
-        return '$_weeklyHours ч/нед';
+        return S.of(context)!.onboardHoursWeek(_weeklyHours);
     }
     return '';
   }
@@ -172,7 +179,7 @@ class _OnboardingChatScreenState
       _textCtrl.clear();
       if (_step < _stepCount - 1) {
         _step += 1;
-        _thread.add(_ChatMsg.bot(_questionFor(_step)));
+        _thread.add(_ChatMsg.bot(_questionFor(_step, S.of(context)!)));
       }
     });
     AnalyticsService.instance.track(AnalyticsEvents.onboardingStepCompleted, {
@@ -235,7 +242,7 @@ class _OnboardingChatScreenState
         summary: summary,
         goals: profile.aspiration.isEmpty ? const [] : [profile.aspiration],
         constraints: [
-          'В неделю на развитие: ~${profile.weeklyHours} ч',
+          S.of(context)!.onboardWeeklyTime(profile.weeklyHours),
           if (_windows.isNotEmpty) 'Время: ${_windows.join(", ")}',
           if (_painPoints.isNotEmpty)
             'Что мешает: ${_painPoints.join(", ")}',
@@ -249,7 +256,7 @@ class _OnboardingChatScreenState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Не удалось сохранить профиль: $e')),
+          SnackBar(content: Text(S.of(context)!.onboardSaveError('$e'))),
         );
       }
     } finally {
@@ -263,22 +270,22 @@ class _OnboardingChatScreenState
         .map((e) => '${e.key} (${_levelRu(e.value)})')
         .join(', ');
     final parts = <String>[
-      if (profile.name.isNotEmpty) 'Зовут ${profile.name}.',
-      if (profile.aspiration.isNotEmpty) 'Цель: ${profile.aspiration}.',
-      if (levelsBlurb.isNotEmpty) 'Сейчас: $levelsBlurb.',
+      if (profile.name.isNotEmpty) S.of(context)!.onboardProfileName(profile.name),
+      if (profile.aspiration.isNotEmpty) S.of(context)!.onboardProfileGoal(profile.aspiration),
+      if (levelsBlurb.isNotEmpty) S.of(context)!.onboardProfileNow(levelsBlurb),
       if (_painPoints.isNotEmpty)
         'Что мешает: ${_painPoints.join(", ")}.',
-      'Готов уделять около ${profile.weeklyHours} ч/нед.',
+      S.of(context)!.onboardProfileHours(profile.weeklyHours),
       if (_windows.isNotEmpty) 'Удобное время: ${_windows.join(", ")}.',
     ];
     return parts.join(' ');
   }
 
   String _levelRu(String level) => switch (level) {
-        'novice' => 'новичок',
-        'learning' => 'учусь',
-        'confident' => 'уверенно',
-        'expert' => 'эксперт',
+        'novice' => S.of(context)!.onboardLevelNovice,
+        'learning' => S.of(context)!.onboardLevelLearning,
+        'confident' => S.of(context)!.onboardLevelConfident,
+        'expert' => S.of(context)!.onboardLevelExpert,
         _ => level,
       };
 
@@ -381,7 +388,7 @@ class _OnboardingChatScreenState
           },
           palette: palette,
           submitLabel:
-              _aspirations.isEmpty ? 'Выбери хотя бы одну' : 'Далее',
+              _aspirations.isEmpty ? S.of(context)!.onboardSelectOne : S.of(context)!.actionNext,
           onSubmit: _aspirations.isEmpty ? null : _advance,
         );
       case 2:
@@ -421,8 +428,8 @@ class _OnboardingChatScreenState
           },
           palette: palette,
           submitLabel: _canAdvance
-              ? 'Далее'
-              : 'Выбери ещё ${3 - _interests.length}',
+              ? S.of(context)!.actionNext
+              : S.of(context)!.onboardSelectMore(3 - _interests.length),
           onSubmit: _canAdvance ? _advance : null,
         );
       case 3:
@@ -602,7 +609,7 @@ class _ChipsReply extends StatelessWidget {
                 ),
             if (onToggleCustom != null)
               _Chip(
-                label: customOpen ? '× своё' : '+ своё',
+                label: customOpen ? S.of(context)!.onboardCustomOpen : S.of(context)!.onboardCustomClosed,
                 selected: customOpen,
                 onTap: onToggleCustom!,
                 palette: palette,
@@ -821,7 +828,7 @@ class _HoursReply extends StatelessWidget {
             min: 1,
             max: 60,
             divisions: 59,
-            label: '$value ч',
+            label: S.of(context)!.onboardHoursLabel(value),
             onChanged: (v) => onChanged(v.round()),
           ),
         ),
@@ -841,7 +848,7 @@ class _HoursReply extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 14),
           ),
           onPressed: onSubmit,
-          child: const Text('Далее', style: TextStyle(fontFamily: 'IBMPlexMono', fontWeight: FontWeight.w700)),
+          child: Text(S.of(context)!.actionNext, style: const TextStyle(fontFamily: 'IBMPlexMono', fontWeight: FontWeight.w700)),
         ),
       ],
     );

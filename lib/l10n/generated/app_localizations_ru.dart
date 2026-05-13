@@ -1083,4 +1083,90 @@ class SRu extends S {
   String pulseDeadlineDays(int d) {
     return '$dд';
   }
+
+  @override
+  String get onboardQ1 => 'Привет. Я твой ассистент роста. Как тебя зовут?';
+
+  @override
+  String onboardQ2(String name) {
+    return 'Окей, $name. Чего ты хочешь достичь в ближайший год?';
+  }
+
+  @override
+  String get onboardQ2NoName => 'Чего ты хочешь достичь в ближайший год?';
+
+  @override
+  String get onboardQ3 => 'В каких сферах ты уже что-то делаешь? Выбери 3–8.';
+
+  @override
+  String get onboardQ4 => 'Сколько часов в неделю реально готов уделять?';
+
+  @override
+  String onboardHoursWeek(int h) {
+    return '$h ч/нед';
+  }
+
+  @override
+  String onboardWeeklyTime(int h) {
+    return 'В неделю на развитие: ~$h ч';
+  }
+
+  @override
+  String onboardSaveError(String error) {
+    return 'Не удалось сохранить профиль: $error';
+  }
+
+  @override
+  String get onboardSelectOne => 'Выбери хотя бы одну';
+
+  @override
+  String onboardSelectMore(int n) {
+    return 'Выбери ещё $n';
+  }
+
+  @override
+  String get onboardCustomOpen => '× своё';
+
+  @override
+  String get onboardCustomClosed => '+ своё';
+
+  @override
+  String onboardHoursLabel(int h) {
+    return '$h ч';
+  }
+
+  @override
+  String get onboardLevelNovice => 'новичок';
+
+  @override
+  String get onboardLevelLearning => 'учусь';
+
+  @override
+  String get onboardLevelConfident => 'уверенно';
+
+  @override
+  String get onboardLevelExpert => 'эксперт';
+
+  @override
+  String onboardProfileName(String name) {
+    return 'Зовут $name.';
+  }
+
+  @override
+  String onboardProfileGoal(String goal) {
+    return 'Цель: $goal.';
+  }
+
+  @override
+  String onboardProfileNow(String text) {
+    return 'Сейчас: $text.';
+  }
+
+  @override
+  String onboardProfileHours(int h) {
+    return 'Готов уделять около $h ч/нед.';
+  }
+
+  @override
+  String get actionNext => 'Далее';
 }
