@@ -411,8 +411,8 @@
   "dashboardNoteTitle": "Write your first note",
   "dashboardCreate": "Create",
   "dashboardWeekPassed": "A week has passed",
-  "pomodoroFocusDone": "Focus complete",
-  "pomodoroBreakDone": "Break complete",
+  "pomodoroFocusDone": "Focus done",
+  "pomodoroBreakDone": "Break done",
   "pomodoroLongBreakBody": "Long break {min} min — press «Go» when ready.",
   "@pomodoroLongBreakBody": {
     "placeholders": {
@@ -1240,7 +1240,7 @@
   "pomodoroSettings": "Settings",
   "pomodoroFocusMin": "Focus, min",
   "pomodoroShortBreak": "Short break, min",
-  "pomodoroLongBreak": "Long break, min",
+  "pomodoroLongBreak": "Long break",
   "pomodoroAutoStart": "Auto-start next phase",
   "pomodoroAutoStartSub": "Timer continues automatically after focus/break ends",
   "pomodoroSoundVibro": "Sound + vibration",
@@ -1612,5 +1612,50 @@
   "pluralMonthMany": "months",
   "pluralYearOne": "year",
   "pluralYearFew": "years",
-  "pluralYearMany": "years"
+  "pluralYearMany": "years",
+  "pomodoroFocus": "Focus",
+  "pomodoroBreak": "Short break",
+  "pomodoroLongBreakHint": "Long break {min} min",
+  "@pomodoroLongBreakHint": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "pomodoroShortBreakHint": "Short break {min} min",
+  "@pomodoroShortBreakHint": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "pomodoroNextFocusAuto": "Let's go — next focus {min} min",
+  "@pomodoroNextFocusAuto": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "pomodoroNextFocusManual": "Start next focus when ready",
+  "pomodoroTimeToRest": "Time to rest",
+  "pomodoroBackToFocus": "Back to focus",
+  "pomodoroReadyAgain": "Ready to work again?",
+  "notifChannelName": "Deadlines & reminders",
+  "notifChannelDesc": "Reminders about upcoming and overdue tasks.",
+  "notifWindowsHint": "Windows toasts + tray icon. Keep the app minimized to tray for notifications to work.",
+  "notifUnsupported": "This platform is not supported.",
+  "notifMorningTitle": "Morning plan",
+  "notifMorningBody": "Open AI coach — plan your day",
+  "notifEveningTitle": "Evening review",
+  "notifEveningBody": "Let's review the day — what went well, what to improve?",
+  "notifDeadlineTomorrow": "Deadline tomorrow",
+  "notifDeadlineToday": "Deadline today",
+  "notifDeadlinePassed": "Deadline passed",
+  "notifWeeklyTitle": "Weekly reflection time",
+  "notifWeeklyBody": "How was your week?",
+  "trayOpen": "Open Noetica",
+  "trayExit": "Exit"
 }

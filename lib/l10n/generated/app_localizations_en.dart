@@ -830,10 +830,10 @@ class SEn extends S {
   String get dashboardWeekPassed => 'A week has passed';
 
   @override
-  String get pomodoroFocusDone => 'Focus complete';
+  String get pomodoroFocusDone => 'Focus done';
 
   @override
-  String get pomodoroBreakDone => 'Break complete';
+  String get pomodoroBreakDone => 'Break done';
 
   @override
   String pomodoroLongBreakBody(int min) {
@@ -1850,7 +1850,7 @@ class SEn extends S {
   String get pomodoroShortBreak => 'Short break, min';
 
   @override
-  String get pomodoroLongBreak => 'Long break, min';
+  String get pomodoroLongBreak => 'Long break';
 
   @override
   String get pomodoroAutoStart => 'Auto-start next phase';
@@ -2522,4 +2522,82 @@ class SEn extends S {
 
   @override
   String get pluralYearMany => 'years';
+
+  @override
+  String get pomodoroFocus => 'Focus';
+
+  @override
+  String get pomodoroBreak => 'Short break';
+
+  @override
+  String pomodoroLongBreakHint(int min) {
+    return 'Long break $min min';
+  }
+
+  @override
+  String pomodoroShortBreakHint(int min) {
+    return 'Short break $min min';
+  }
+
+  @override
+  String pomodoroNextFocusAuto(int min) {
+    return 'Let\'s go — next focus $min min';
+  }
+
+  @override
+  String get pomodoroNextFocusManual => 'Start next focus when ready';
+
+  @override
+  String get pomodoroTimeToRest => 'Time to rest';
+
+  @override
+  String get pomodoroBackToFocus => 'Back to focus';
+
+  @override
+  String get pomodoroReadyAgain => 'Ready to work again?';
+
+  @override
+  String get notifChannelName => 'Deadlines & reminders';
+
+  @override
+  String get notifChannelDesc => 'Reminders about upcoming and overdue tasks.';
+
+  @override
+  String get notifWindowsHint => 'Windows toasts + tray icon. Keep the app minimized to tray for notifications to work.';
+
+  @override
+  String get notifUnsupported => 'This platform is not supported.';
+
+  @override
+  String get notifMorningTitle => 'Morning plan';
+
+  @override
+  String get notifMorningBody => 'Open AI coach — plan your day';
+
+  @override
+  String get notifEveningTitle => 'Evening review';
+
+  @override
+  String get notifEveningBody => 'Let\'s review the day — what went well, what to improve?';
+
+  @override
+  String get notifDeadlineTomorrow => 'Deadline tomorrow';
+
+  @override
+  String get notifDeadlineToday => 'Deadline today';
+
+  @override
+  String get notifDeadlinePassed => 'Deadline passed';
+
+  @override
+  String get notifWeeklyTitle => 'Weekly reflection time';
+
+  @override
+  String get notifWeeklyBody => 'How was your week?';
+
+  @override
+  String get trayOpen => 'Open Noetica';
+
+  @override
+  String get trayExit => 'Exit';
 }

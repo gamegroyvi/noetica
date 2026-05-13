@@ -52,6 +52,7 @@ class _PomodoroSheetState extends State<PomodoroSheet> {
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
+    _service.updateLocale(S.of(context)!);
     return AnimatedBuilder(
       animation: _service,
       builder: (context, _) {
@@ -191,7 +192,7 @@ class _PhaseHeader extends StatelessWidget {
         const SizedBox(width: 28),
         Expanded(
           child: Text(
-            phase.label.toUpperCase(),
+            phase.localizedLabel(S.of(context)!).toUpperCase(),
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 12,

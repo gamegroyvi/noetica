@@ -1240,7 +1240,7 @@
   "pomodoroSettings": "Настройки",
   "pomodoroFocusMin": "Фокус, мин",
   "pomodoroShortBreak": "Короткий отдых, мин",
-  "pomodoroLongBreak": "Длинный отдых, мин",
+  "pomodoroLongBreak": "Длинный отдых",
   "pomodoroAutoStart": "Авто-старт следующей фазы",
   "pomodoroAutoStartSub": "После окончания фокуса/отдыха таймер продолжается сам",
   "pomodoroSoundVibro": "Звук + вибрация",
@@ -1612,5 +1612,50 @@
   "pluralMonthMany": "месяцев",
   "pluralYearOne": "год",
   "pluralYearFew": "года",
-  "pluralYearMany": "лет"
+  "pluralYearMany": "лет",
+  "pomodoroFocus": "Фокус",
+  "pomodoroBreak": "Короткий отдых",
+  "pomodoroLongBreakHint": "Длинный отдых {min} мин",
+  "@pomodoroLongBreakHint": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "pomodoroShortBreakHint": "Короткий отдых {min} мин",
+  "@pomodoroShortBreakHint": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "pomodoroNextFocusAuto": "Поехали — следующий фокус {min} мин",
+  "@pomodoroNextFocusAuto": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "pomodoroNextFocusManual": "Запусти следующий фокус когда готов",
+  "pomodoroTimeToRest": "Время передохнуть",
+  "pomodoroBackToFocus": "Возвращаемся к фокусу",
+  "pomodoroReadyAgain": "Готов снова работать?",
+  "notifChannelName": "Дедлайны и напоминания",
+  "notifChannelDesc": "Напоминания о приближающихся и просроченных задачах.",
+  "notifWindowsHint": "Тосты Windows + иконка в трее. Чтобы напоминания приходили, не закрывай приложение полностью — сворачивай в трей (крестик это и делает).",
+  "notifUnsupported": "Эта платформа не поддерживается.",
+  "notifMorningTitle": "Утренний план",
+  "notifMorningBody": "Загляни в AI-коуч — спланируй свой день",
+  "notifEveningTitle": "Вечерний разбор",
+  "notifEveningBody": "Подведём итоги дня — что получилось, что улучшить?",
+  "notifDeadlineTomorrow": "Завтра дедлайн",
+  "notifDeadlineToday": "Сегодня дедлайн",
+  "notifDeadlinePassed": "Дедлайн прошёл",
+  "notifWeeklyTitle": "Время недельной рефлексии",
+  "notifWeeklyBody": "Заглянем как прошла неделя?",
+  "trayOpen": "Открыть Noetica",
+  "trayExit": "Выйти"
 }

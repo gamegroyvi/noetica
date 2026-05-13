@@ -1852,7 +1852,7 @@ class SRu extends S {
   String get pomodoroShortBreak => 'Короткий отдых, мин';
 
   @override
-  String get pomodoroLongBreak => 'Длинный отдых, мин';
+  String get pomodoroLongBreak => 'Длинный отдых';
 
   @override
   String get pomodoroAutoStart => 'Авто-старт следующей фазы';
@@ -2524,4 +2524,82 @@ class SRu extends S {
 
   @override
   String get pluralYearMany => 'лет';
+
+  @override
+  String get pomodoroFocus => 'Фокус';
+
+  @override
+  String get pomodoroBreak => 'Короткий отдых';
+
+  @override
+  String pomodoroLongBreakHint(int min) {
+    return 'Длинный отдых $min мин';
+  }
+
+  @override
+  String pomodoroShortBreakHint(int min) {
+    return 'Короткий отдых $min мин';
+  }
+
+  @override
+  String pomodoroNextFocusAuto(int min) {
+    return 'Поехали — следующий фокус $min мин';
+  }
+
+  @override
+  String get pomodoroNextFocusManual => 'Запусти следующий фокус когда готов';
+
+  @override
+  String get pomodoroTimeToRest => 'Время передохнуть';
+
+  @override
+  String get pomodoroBackToFocus => 'Возвращаемся к фокусу';
+
+  @override
+  String get pomodoroReadyAgain => 'Готов снова работать?';
+
+  @override
+  String get notifChannelName => 'Дедлайны и напоминания';
+
+  @override
+  String get notifChannelDesc => 'Напоминания о приближающихся и просроченных задачах.';
+
+  @override
+  String get notifWindowsHint => 'Тосты Windows + иконка в трее. Чтобы напоминания приходили, не закрывай приложение полностью — сворачивай в трей (крестик это и делает).';
+
+  @override
+  String get notifUnsupported => 'Эта платформа не поддерживается.';
+
+  @override
+  String get notifMorningTitle => 'Утренний план';
+
+  @override
+  String get notifMorningBody => 'Загляни в AI-коуч — спланируй свой день';
+
+  @override
+  String get notifEveningTitle => 'Вечерний разбор';
+
+  @override
+  String get notifEveningBody => 'Подведём итоги дня — что получилось, что улучшить?';
+
+  @override
+  String get notifDeadlineTomorrow => 'Завтра дедлайн';
+
+  @override
+  String get notifDeadlineToday => 'Сегодня дедлайн';
+
+  @override
+  String get notifDeadlinePassed => 'Дедлайн прошёл';
+
+  @override
+  String get notifWeeklyTitle => 'Время недельной рефлексии';
+
+  @override
+  String get notifWeeklyBody => 'Заглянем как прошла неделя?';
+
+  @override
+  String get trayOpen => 'Открыть Noetica';
+
+  @override
+  String get trayExit => 'Выйти';
 }

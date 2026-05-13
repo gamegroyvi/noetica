@@ -3374,7 +3374,7 @@ abstract class S {
   /// No description provided for @pomodoroLongBreak.
   ///
   /// In ru, this message translates to:
-  /// **'Длинный отдых, мин'**
+  /// **'Длинный отдых'**
   String get pomodoroLongBreak;
 
   /// No description provided for @pomodoroAutoStart.
@@ -4642,6 +4642,150 @@ abstract class S {
   /// In ru, this message translates to:
   /// **'лет'**
   String get pluralYearMany;
+
+  /// No description provided for @pomodoroFocus.
+  ///
+  /// In ru, this message translates to:
+  /// **'Фокус'**
+  String get pomodoroFocus;
+
+  /// No description provided for @pomodoroBreak.
+  ///
+  /// In ru, this message translates to:
+  /// **'Короткий отдых'**
+  String get pomodoroBreak;
+
+  /// No description provided for @pomodoroLongBreakHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Длинный отдых {min} мин'**
+  String pomodoroLongBreakHint(int min);
+
+  /// No description provided for @pomodoroShortBreakHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Короткий отдых {min} мин'**
+  String pomodoroShortBreakHint(int min);
+
+  /// No description provided for @pomodoroNextFocusAuto.
+  ///
+  /// In ru, this message translates to:
+  /// **'Поехали — следующий фокус {min} мин'**
+  String pomodoroNextFocusAuto(int min);
+
+  /// No description provided for @pomodoroNextFocusManual.
+  ///
+  /// In ru, this message translates to:
+  /// **'Запусти следующий фокус когда готов'**
+  String get pomodoroNextFocusManual;
+
+  /// No description provided for @pomodoroTimeToRest.
+  ///
+  /// In ru, this message translates to:
+  /// **'Время передохнуть'**
+  String get pomodoroTimeToRest;
+
+  /// No description provided for @pomodoroBackToFocus.
+  ///
+  /// In ru, this message translates to:
+  /// **'Возвращаемся к фокусу'**
+  String get pomodoroBackToFocus;
+
+  /// No description provided for @pomodoroReadyAgain.
+  ///
+  /// In ru, this message translates to:
+  /// **'Готов снова работать?'**
+  String get pomodoroReadyAgain;
+
+  /// No description provided for @notifChannelName.
+  ///
+  /// In ru, this message translates to:
+  /// **'Дедлайны и напоминания'**
+  String get notifChannelName;
+
+  /// No description provided for @notifChannelDesc.
+  ///
+  /// In ru, this message translates to:
+  /// **'Напоминания о приближающихся и просроченных задачах.'**
+  String get notifChannelDesc;
+
+  /// No description provided for @notifWindowsHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Тосты Windows + иконка в трее. Чтобы напоминания приходили, не закрывай приложение полностью — сворачивай в трей (крестик это и делает).'**
+  String get notifWindowsHint;
+
+  /// No description provided for @notifUnsupported.
+  ///
+  /// In ru, this message translates to:
+  /// **'Эта платформа не поддерживается.'**
+  String get notifUnsupported;
+
+  /// No description provided for @notifMorningTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Утренний план'**
+  String get notifMorningTitle;
+
+  /// No description provided for @notifMorningBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Загляни в AI-коуч — спланируй свой день'**
+  String get notifMorningBody;
+
+  /// No description provided for @notifEveningTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Вечерний разбор'**
+  String get notifEveningTitle;
+
+  /// No description provided for @notifEveningBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Подведём итоги дня — что получилось, что улучшить?'**
+  String get notifEveningBody;
+
+  /// No description provided for @notifDeadlineTomorrow.
+  ///
+  /// In ru, this message translates to:
+  /// **'Завтра дедлайн'**
+  String get notifDeadlineTomorrow;
+
+  /// No description provided for @notifDeadlineToday.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сегодня дедлайн'**
+  String get notifDeadlineToday;
+
+  /// No description provided for @notifDeadlinePassed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Дедлайн прошёл'**
+  String get notifDeadlinePassed;
+
+  /// No description provided for @notifWeeklyTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Время недельной рефлексии'**
+  String get notifWeeklyTitle;
+
+  /// No description provided for @notifWeeklyBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Заглянем как прошла неделя?'**
+  String get notifWeeklyBody;
+
+  /// No description provided for @trayOpen.
+  ///
+  /// In ru, this message translates to:
+  /// **'Открыть Noetica'**
+  String get trayOpen;
+
+  /// No description provided for @trayExit.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выйти'**
+  String get trayExit;
 }
 
 class _SDelegate extends LocalizationsDelegate<S> {

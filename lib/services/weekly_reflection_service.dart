@@ -1,5 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../l10n/generated/app_localizations.dart';
 import 'notifications.dart';
 
 const _kLastShownKey = 'noetica.weekly_reflection.last_shown.v1';
@@ -12,6 +13,9 @@ const _kFirstSeenKey = 'noetica.weekly_reflection.first_seen.v1';
 class WeeklyReflectionService {
   WeeklyReflectionService._();
   static final WeeklyReflectionService instance = WeeklyReflectionService._();
+
+  S? _tr;
+  void updateLocale(S tr) => _tr = tr;
 
   /// Returns true if the dashboard banner / sheet should be shown right now.
   /// Logic: at least 7 days since `firstSeen`, and at least 7 days since the
@@ -50,8 +54,8 @@ class WeeklyReflectionService {
     // even if they don't open the app.
     await NotificationsService.instance.scheduleTest(
       delay: const Duration(days: 7),
-      title: 'Время недельной рефлексии',
-      body: 'Заглянем как прошла неделя?',
+      title: _tr?.notifWeeklyTitle ?? 'Weekly reflection time',
+      body: _tr?.notifWeeklyBody ?? 'How was your week?',
     );
   }
 
