@@ -252,7 +252,7 @@ class _EpochOverlayState extends ConsumerState<EpochOverlay>
       updatedAt: now,
       epochArchive: newArchive,
     );
-    await ref.read(profileServiceProvider).save(updated);
+    await (await ref.read(profileServiceProvider.future)).save(updated);
     if (!mounted) return;
     await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const AxesEditorScreen()),
@@ -281,7 +281,7 @@ class _EpochOverlayState extends ConsumerState<EpochOverlay>
       epochAckedAt: now,
       updatedAt: now,
     );
-    await ref.read(profileServiceProvider).save(updated);
+    await (await ref.read(profileServiceProvider.future)).save(updated);
     if (mounted) {
       _exit.reverse();
       setState(() {

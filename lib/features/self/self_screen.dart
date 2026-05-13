@@ -60,7 +60,7 @@ class _SelfScreenState extends ConsumerState<SelfScreen> {
         _rearmInFlight = true;
         WidgetsBinding.instance.addPostFrameCallback((_) async {
           if (!mounted) return;
-          final svc = ref.read(profileServiceProvider);
+          final svc = await ref.read(profileServiceProvider.future);
           await svc.save(profile.copyWith(
             clearEpochAckedAt: true,
             updatedAt: DateTime.now(),
@@ -146,7 +146,7 @@ class _SelfScreenState extends ConsumerState<SelfScreen> {
               axisLevels: axisLevelsAsync.valueOrNull,
               onClearAck: () async {
                 if (profile == null) return;
-                final svc = ref.read(profileServiceProvider);
+                final svc = await ref.read(profileServiceProvider.future);
                 await svc.save(profile.copyWith(
                   clearEpochAckedAt: true,
                   updatedAt: DateTime.now(),
@@ -154,7 +154,7 @@ class _SelfScreenState extends ConsumerState<SelfScreen> {
               },
               onAckDismiss: () async {
                 if (profile == null || profile.epochAckedAt != null) return;
-                final svc = ref.read(profileServiceProvider);
+                final svc = await ref.read(profileServiceProvider.future);
                 await svc.save(profile.copyWith(
                   epochAckedAt: DateTime.now(),
                   updatedAt: DateTime.now(),

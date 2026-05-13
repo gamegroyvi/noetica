@@ -20,7 +20,7 @@ class NoeticaDb {
   /// v5 adds `entries.base_xp` so the reflection-difficulty multiplier
   /// is always applied to the original XP, never to a previously-
   /// adjusted value (used to compound on every re-complete cycle).
-  static const int currentSchemaVersion = 6;
+  static const int currentSchemaVersion = 7;
 
   static Future<NoeticaDb> open() async {
     final path = await _databasePath();
@@ -94,6 +94,7 @@ class NoeticaDb {
         'CREATE INDEX idx_entry_axes_axis ON entry_axes(axis_id)');
     await _createReflectionsTable(db);
     await _createEntryLinksTable(db);
+    await _createProfileTable(db);
   }
 
   static Future<void> _createReflectionsTable(Database db) async {
@@ -110,6 +111,16 @@ class NoeticaDb {
     ''');
     await db.execute(
         'CREATE INDEX IF NOT EXISTS idx_task_reflections_entry ON task_reflections(entry_id)');
+  }
+
+  static Future<void> _createProfileTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS profile (
+        key TEXT PRIMARY KEY,
+        data TEXT NOT NULL,
+        updated_at INTEGER NOT NULL
+      )
+    ''');
   }
 
   static Future<void> _createEntryLinksTable(Database db) async {
@@ -180,6 +191,9 @@ class NoeticaDb {
           "ALTER TABLE entries ADD COLUMN tags TEXT NOT NULL DEFAULT ''");
       await db.execute(
           'ALTER TABLE entries ADD COLUMN bookmarked INTEGER NOT NULL DEFAULT 0');
+    }
+    if (oldVersion < 7) {
+      await _createProfileTable(db);
     }
   }
 

@@ -2,10 +2,13 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+import 'db.dart';
 import 'models.dart';
 
 const _kProfileKey = 'noetica.profile.v1';
+const _kDbProfileKey = 'user_profile_v1';
 
 /// Suggested interest chips shown in the questionnaire. They are *only*
 /// label hints — the user can add custom phrases freely, and the AI is
@@ -308,6 +311,10 @@ class UserProfile {
 }
 
 class ProfileService {
+  ProfileService(this._db);
+
+  final NoeticaDb _db;
+
   /// Broadcast every save/clear so the sync layer can push immediately.
   static final _changes = StreamController<UserProfile?>.broadcast();
 
@@ -315,9 +322,41 @@ class ProfileService {
   /// changes promptly without polling.
   static Stream<UserProfile?> get changes => _changes.stream;
 
+  bool _migrated = false;
+
+  /// Migrate legacy SharedPreferences profile into SQLite on first load.
+  Future<void> _migrateFromPrefs() async {
+    if (_migrated) return;
+    _migrated = true;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_kProfileKey);
+      if (raw == null || raw.isEmpty) return;
+      // Write into SQLite, then delete from prefs.
+      await _db.raw.insert(
+        'profile',
+        {
+          'key': _kDbProfileKey,
+          'data': raw,
+          'updated_at': DateTime.now().millisecondsSinceEpoch,
+        },
+        conflictAlgorithm: ConflictAlgorithm.ignore,
+      );
+      await prefs.remove(_kProfileKey);
+    } catch (_) {
+      // Non-fatal — if prefs can't be read we just skip migration.
+    }
+  }
+
   Future<UserProfile?> load() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_kProfileKey);
+    await _migrateFromPrefs();
+    final rows = await _db.raw.query(
+      'profile',
+      where: 'key = ?',
+      whereArgs: [_kDbProfileKey],
+    );
+    if (rows.isEmpty) return null;
+    final raw = rows.first['data'] as String?;
     if (raw == null || raw.isEmpty) return null;
     try {
       return UserProfile.fromJson(jsonDecode(raw) as Map<String, dynamic>);
@@ -327,14 +366,25 @@ class ProfileService {
   }
 
   Future<void> save(UserProfile profile) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_kProfileKey, jsonEncode(profile.toJson()));
+    final json = jsonEncode(profile.toJson());
+    await _db.raw.insert(
+      'profile',
+      {
+        'key': _kDbProfileKey,
+        'data': json,
+        'updated_at': DateTime.now().millisecondsSinceEpoch,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
     if (!_changes.isClosed) _changes.add(profile);
   }
 
   Future<void> clear() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_kProfileKey);
+    await _db.raw.delete(
+      'profile',
+      where: 'key = ?',
+      whereArgs: [_kDbProfileKey],
+    );
     if (!_changes.isClosed) _changes.add(null);
   }
 }

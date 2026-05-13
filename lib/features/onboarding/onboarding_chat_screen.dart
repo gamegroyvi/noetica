@@ -204,7 +204,7 @@ class _OnboardingChatScreenState
     setState(() => _saving = true);
     HapticFeedback.selectionClick();
     try {
-      final svc = ref.read(profileServiceProvider);
+      final svc = await ref.read(profileServiceProvider.future);
       final cleanLevels = <String, String>{
         for (final i in _interests)
           i: _interestLevels[i] ?? 'novice',
