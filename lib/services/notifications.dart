@@ -10,6 +10,7 @@ import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../data/models.dart';
+import '../l10n/generated/app_localizations.dart';
 
 const _kNotifEnabledKey = 'noetica.notif.enabled.v1';
 const _kNotifMorningHourKey = 'noetica.notif.morning_hour.v1';
@@ -24,9 +25,8 @@ const _kNotifCoachEnabledKey = 'noetica.notif.coach.v1';
 const _kNotifDesktopScheduleKey = 'noetica.notif.desktop_schedule.v1';
 
 const _kAndroidChannelId = 'noetica_deadlines';
-const _kAndroidChannelName = 'Дедлайны и напоминания';
-const _kAndroidChannelDescription =
-    'Напоминания о приближающихся и просроченных задачах.';
+const _kAndroidChannelNameFallback = 'Deadlines & reminders';
+const _kAndroidChannelDescFallback = 'Reminders for approaching and overdue tasks.';
 
 /// Three notifications per task, identified by deterministic suffixes so
 /// rescheduling/cancelling is straightforward.
@@ -46,6 +46,9 @@ class NotificationsService {
   NotificationsService._();
   static final NotificationsService instance = NotificationsService._();
 
+  S? _tr;
+  void updateLocale(S tr) => _tr = tr;
+
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
   bool _initialised = false;
@@ -58,13 +61,14 @@ class NotificationsService {
 
   /// Human-readable platform notes shown in Settings under the toggle.
   String get platformNote {
+    final tr = _tr;
     switch (_backend.kind) {
       case _BackendKind.mobile:
-        return 'OS-level scheduled reminders. Работают даже если приложение закрыто.';
+        return 'OS-level scheduled reminders.';
       case _BackendKind.desktop:
-        return 'Тосты Windows + иконка в трее. Чтобы напоминания приходили, не закрывай приложение полностью — сворачивай в трей (крестик это и делает).';
+        return tr?.notifWindowsHint ?? 'Keep the app minimized to tray for notifications to work.';
       case _BackendKind.none:
-        return 'Эта платформа не поддерживается.';
+        return tr?.notifUnsupported ?? 'This platform is not supported.';
     }
   }
 
@@ -103,10 +107,10 @@ class NotificationsService {
             AndroidFlutterLocalNotificationsPlugin>();
         if (androidImpl != null) {
           await androidImpl.createNotificationChannel(
-            const AndroidNotificationChannel(
+            AndroidNotificationChannel(
               _kAndroidChannelId,
-              _kAndroidChannelName,
-              description: _kAndroidChannelDescription,
+              _tr?.androidChannelName ?? _kAndroidChannelNameFallback,
+              description: _tr?.androidChannelDesc ?? _kAndroidChannelDescFallback,
               importance: Importance.high,
             ),
           );
@@ -295,8 +299,8 @@ class NotificationsService {
       await _backend.schedule(
         id: _morningCoachNotifId,
         when: morningDt,
-        title: 'Утренний план',
-        body: 'Загляни в AI-коуч — спланируй свой день',
+        title: _tr?.notifMorningTitle ?? 'Morning plan',
+        body: _tr?.notifMorningBody ?? 'Plan your day',
       );
     } catch (e) {
       debugPrint('Morning coach schedule failed: $e');
@@ -305,8 +309,8 @@ class NotificationsService {
       await _backend.schedule(
         id: _eveningCoachNotifId,
         when: eveningDt,
-        title: 'Вечерний разбор',
-        body: 'Подведём итоги дня — что получилось, что улучшить?',
+        title: _tr?.notifEveningTitle ?? 'Evening review',
+        body: _tr?.notifEveningBody ?? 'Review your day',
       );
     } catch (e) {
       debugPrint('Evening coach schedule failed: $e');
@@ -355,21 +359,21 @@ class NotificationsService {
       entry,
       _Slot.dayBefore,
       dayBefore,
-      title: 'Завтра дедлайн',
+      title: _tr?.notifDeadlineTomorrow ?? 'Deadline tomorrow',
       body: entry.title,
     );
     await _scheduleIfFuture(
       entry,
       _Slot.morningOf,
       morningOf,
-      title: 'Сегодня дедлайн',
+      title: _tr?.notifDeadlineToday ?? 'Deadline today',
       body: entry.title,
     );
     await _scheduleIfFuture(
       entry,
       _Slot.lateAfter,
       lateAfter,
-      title: 'Дедлайн прошёл',
+      title: _tr?.notifDeadlinePassed ?? 'Deadline passed',
       body: entry.title,
     );
   }
@@ -471,8 +475,8 @@ class _MobileBackend implements _Backend {
   static const _details = NotificationDetails(
     android: AndroidNotificationDetails(
       _kAndroidChannelId,
-      _kAndroidChannelName,
-      channelDescription: _kAndroidChannelDescription,
+      _kAndroidChannelNameFallback,
+      channelDescription: _kAndroidChannelDescFallback,
       importance: Importance.high,
       priority: Priority.high,
     ),

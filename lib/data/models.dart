@@ -6,6 +6,8 @@ library;
 
 import 'package:flutter/foundation.dart';
 
+import '../l10n/generated/app_localizations.dart';
+
 enum EntryKind { note, task }
 
 /// A single user-defined growth axis (one vertex of the pentagon).
@@ -243,16 +245,16 @@ class Entry {
 enum ReflectionStatus { easy, normal, hard, blocked }
 
 extension ReflectionStatusX on ReflectionStatus {
-  String get label {
+  String localizedLabel(S tr) {
     switch (this) {
       case ReflectionStatus.easy:
-        return 'Легко';
+        return tr.reflectionEasy;
       case ReflectionStatus.normal:
-        return 'Норм';
+        return tr.reflectionNormal;
       case ReflectionStatus.hard:
-        return 'Сложно';
+        return tr.reflectionHard;
       case ReflectionStatus.blocked:
-        return 'Не пошло';
+        return tr.reflectionBlocked;
     }
   }
 

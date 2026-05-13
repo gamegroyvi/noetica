@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../l10n/generated/app_localizations.dart';
 import '../../data/models.dart';
 import '../../data/personal_knowledge_service.dart';
 import '../../providers.dart';
@@ -179,7 +180,7 @@ class _ReflectionSheetState extends ConsumerState<_ReflectionSheet> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Как прошло?',
+                S.of(context)!.reflectionHow,
                 style: TextStyle(
                   color: palette.fg,
                   fontSize: 18,
@@ -201,7 +202,7 @@ class _ReflectionSheetState extends ConsumerState<_ReflectionSheet> {
                 children: [
                   for (final s in ReflectionStatus.values)
                     ChoiceChip(
-                      label: Text(s.label),
+                      label: Text(s.localizedLabel(S.of(context)!)),
                       selected: _status == s,
                       onSelected: (_) => setState(() => _status = s),
                     ),
@@ -212,10 +213,10 @@ class _ReflectionSheetState extends ConsumerState<_ReflectionSheet> {
                 controller: _outcomeCtrl,
                 minLines: 2,
                 maxLines: 4,
-                decoration: const InputDecoration(
-                  labelText: 'Что получилось / результат',
-                  hintText: 'Можно пропустить',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: S.of(context)!.reflectionResult,
+                  hintText: S.of(context)!.reflectionCanSkip,
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 12),
@@ -223,20 +224,20 @@ class _ReflectionSheetState extends ConsumerState<_ReflectionSheet> {
                 controller: _difficultiesCtrl,
                 minLines: 2,
                 maxLines: 4,
-                decoration: const InputDecoration(
-                  labelText: 'Что мешало / сложности',
-                  hintText: 'Можно пропустить',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: S.of(context)!.reflectionDifficulties,
+                  hintText: S.of(context)!.reflectionCanSkip,
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _minutesCtrl,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Сколько потратил, мин',
-                  hintText: 'Можно пропустить',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: S.of(context)!.reflectionMinutes,
+                  hintText: S.of(context)!.reflectionCanSkip,
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 16),
@@ -245,14 +246,14 @@ class _ReflectionSheetState extends ConsumerState<_ReflectionSheet> {
                   Expanded(
                     child: OutlinedButton(
                       onPressed: _skip,
-                      child: const Text('Пропустить'),
+                      child: Text(S.of(context)!.reflectionSkip),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: FilledButton(
                       onPressed: _save,
-                      child: const Text('Сохранить'),
+                      child: Text(S.of(context)!.actionSave),
                     ),
                   ),
                 ],

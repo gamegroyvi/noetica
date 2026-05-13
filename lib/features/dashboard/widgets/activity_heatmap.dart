@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../data/models.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../theme/app_theme.dart';
 import '../../../utils/plural.dart';
 
@@ -25,11 +26,8 @@ class _ActivityHeatmapState extends State<ActivityHeatmap> {
   final ScrollController _scroll = ScrollController();
   int _lastYearRendered = 0;
 
-  static const _weekdayLabels = ['Пн', '', 'Ср', '', 'Пт', '', ''];
-  static const _monthLabels = [
-    'янв', 'фев', 'мар', 'апр', 'май', 'июн',
-    'июл', 'авг', 'сен', 'окт', 'ноя', 'дек',
-  ];
+  List<String> _weekdayLabels(BuildContext context) => S.of(context)!.heatmapWeekdays.split(',');
+  List<String> _monthLabels(BuildContext context) => S.of(context)!.heatmapMonths.split(',');
 
   static const double _cellPx = 13;
   static const double _spacingPx = 3;
@@ -83,12 +81,12 @@ class _ActivityHeatmapState extends State<ActivityHeatmap> {
       final d = firstCol.add(Duration(days: c * 7));
       if (d.year != year) continue;
       if (d.month != lastMonth) {
-        monthMarkers[c] = _monthLabels[d.month - 1];
+        monthMarkers[c] = _monthLabels(context)[d.month - 1];
         lastMonth = d.month;
       }
     }
 
-    String monthName(int m) => _monthLabels[m - 1];
+    String monthName(int m) => _monthLabels(context)[m - 1];
 
     final total = counts.values.fold<int>(0, (a, b) => a + b);
 
@@ -115,8 +113,8 @@ class _ActivityHeatmapState extends State<ActivityHeatmap> {
         const SizedBox(height: 6),
         Text(
           total == 0
-              ? 'в $year году пока пусто'
-              : '$total ${plural(total, "задача", "задачи", "задач")} закрыто в $year — тапни день',
+              ? S.of(context)!.heatmapEmptyYear(year)
+              : S.of(context)!.heatmapYearSummary('$total', year),
           style: TextStyle(color: palette.muted, fontSize: 11),
         ),
         const SizedBox(height: 8),
@@ -157,6 +155,7 @@ class _ActivityHeatmapState extends State<ActivityHeatmap> {
             }
 
             final grid = _buildGrid(
+              context: context,
               cols: cols,
               rows: rows,
               cell: cell,
@@ -187,7 +186,7 @@ class _ActivityHeatmapState extends State<ActivityHeatmap> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('меньше',
+              Text(S.of(context)!.heatmapLess,
                   style: TextStyle(color: palette.muted, fontSize: 10)),
               const SizedBox(width: 6),
               for (final t in const [0.0, 0.25, 0.5, 0.75, 1.0]) ...[
@@ -202,7 +201,7 @@ class _ActivityHeatmapState extends State<ActivityHeatmap> {
                 const SizedBox(width: 3),
               ],
               const SizedBox(width: 3),
-              Text('больше',
+              Text(S.of(context)!.heatmapMore,
                   style: TextStyle(color: palette.muted, fontSize: 10)),
             ],
           ),
@@ -212,6 +211,7 @@ class _ActivityHeatmapState extends State<ActivityHeatmap> {
   }
 
   Widget _buildGrid({
+    required BuildContext context,
     required int cols,
     required int rows,
     required double cell,
@@ -268,7 +268,7 @@ class _ActivityHeatmapState extends State<ActivityHeatmap> {
                     SizedBox(
                       height: cell,
                       child: Text(
-                        _weekdayLabels[r],
+                        _weekdayLabels(context)[r],
                         style: TextStyle(
                           color: palette.muted,
                           fontSize: 10,
@@ -290,6 +290,7 @@ class _ActivityHeatmapState extends State<ActivityHeatmap> {
                       children: [
                         for (var r = 0; r < rows; r++) ...[
                           _buildCell(
+                            context,
                             firstCol.add(Duration(days: c * 7 + r)),
                             year,
                             todayD,
@@ -315,6 +316,7 @@ class _ActivityHeatmapState extends State<ActivityHeatmap> {
   }
 
   Widget _buildCell(
+    BuildContext context,
     DateTime date,
     int year,
     DateTime todayD,
@@ -342,10 +344,11 @@ class _ActivityHeatmapState extends State<ActivityHeatmap> {
     final t = maxCount == 0 ? 0.0 : (value / maxCount);
     final color =
         value == 0 ? palette.line.withOpacity(0.35) : _bucketColor(t);
+    final tr = S.of(context)!;
     final label = value == 0
-        ? '${date.day} ${monthName(date.month)} $year · ничего'
+        ? '${date.day} ${monthName(date.month)} $year · ${tr.heatmapNothing}'
         : '${date.day} ${monthName(date.month)} $year · '
-            '$value ${plural(value, "задача", "задачи", "задач")}';
+            '$value ${plural(value, tr.pluralTaskOne, tr.pluralTaskFew, tr.pluralTaskMany)}';
     final cell = Container(
       width: size,
       height: size,

@@ -1,4 +1,7 @@
+import 'package:flutter/widgets.dart';
 import 'package:intl/intl.dart';
+
+import '../l10n/generated/app_localizations.dart';
 
 String formatTimestamp(DateTime t) {
   final df = DateFormat('d MMM, HH:mm', 'ru');
@@ -11,49 +14,51 @@ String formatDateOnly(DateTime t) {
 }
 
 /// Human-readable gap between two timestamps, e.g. "через 3 дня",
-/// "5 часов назад". Russian, plural-aware (rough — good enough for MVP).
-String formatGap(Duration d) {
+/// "5 часов назад". Plural-aware via ARB translations.
+String formatGap(Duration d, BuildContext context) {
   final abs = d.abs();
   final past = d.isNegative;
+  final tr = S.of(context)!;
   String unit;
   int value;
   if (abs.inDays >= 1) {
     value = abs.inDays;
-    unit = _pluralRu(value, 'день', 'дня', 'дней');
+    unit = _pluralRu(value, tr.pluralDayOne, tr.pluralDayFew, tr.pluralDayMany);
   } else if (abs.inHours >= 1) {
     value = abs.inHours;
-    unit = _pluralRu(value, 'час', 'часа', 'часов');
+    unit = _pluralRu(value, tr.pluralHourOne, tr.pluralHourFew, tr.pluralHourMany);
   } else if (abs.inMinutes >= 1) {
     value = abs.inMinutes;
-    unit = _pluralRu(value, 'минута', 'минуты', 'минут');
+    unit = _pluralRu(value, tr.pluralMinuteOne, tr.pluralMinuteFew, tr.pluralMinuteMany);
   } else {
-    return past ? 'только что' : 'сейчас';
+    return past ? tr.timeJustNow : tr.timeNow;
   }
-  return past ? '$value $unit назад' : 'через $value $unit';
+  return past ? tr.timeAgoFmt(value, unit) : tr.timeInFmt(value, unit);
 }
 
 /// Gap "since previous entry" rendered as a soft label.
-String formatGapSince(DateTime current, DateTime previous) {
+String formatGapSince(DateTime current, DateTime previous, BuildContext context) {
   final d = current.difference(previous).abs();
-  if (d.inMinutes < 1) return 'сразу после';
+  final tr = S.of(context)!;
+  if (d.inMinutes < 1) return tr.timeRightAfter;
   if (d.inHours < 1) {
     final m = d.inMinutes;
-    return '+ $m ${_pluralRu(m, 'минута', 'минуты', 'минут')}';
+    return tr.timePlusFmt(m, _pluralRu(m, tr.pluralMinuteOne, tr.pluralMinuteFew, tr.pluralMinuteMany));
   }
   if (d.inDays < 1) {
     final h = d.inHours;
-    return '+ $h ${_pluralRu(h, 'час', 'часа', 'часов')}';
+    return tr.timePlusFmt(h, _pluralRu(h, tr.pluralHourOne, tr.pluralHourFew, tr.pluralHourMany));
   }
   if (d.inDays < 30) {
     final v = d.inDays;
-    return '+ $v ${_pluralRu(v, 'день', 'дня', 'дней')}';
+    return tr.timePlusFmt(v, _pluralRu(v, tr.pluralDayOne, tr.pluralDayFew, tr.pluralDayMany));
   }
   if (d.inDays < 365) {
     final v = (d.inDays / 30).round();
-    return '+ $v ${_pluralRu(v, 'месяц', 'месяца', 'месяцев')}';
+    return tr.timePlusFmt(v, _pluralRu(v, tr.pluralMonthOne, tr.pluralMonthFew, tr.pluralMonthMany));
   }
   final v = (d.inDays / 365).round();
-  return '+ $v ${_pluralRu(v, 'год', 'года', 'лет')}';
+  return tr.timePlusFmt(v, _pluralRu(v, tr.pluralYearOne, tr.pluralYearFew, tr.pluralYearMany));
 }
 
 String _pluralRu(int n, String one, String few, String many) {

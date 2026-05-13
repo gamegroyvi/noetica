@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:noetica/l10n/generated/app_localizations_ru.dart';
 import 'package:noetica/services/builtin_generators.dart';
 import 'package:noetica/services/generator_manifest.dart';
 
 void main() {
+  final tr = SRu();
   group('GeneratorManifest', () {
     test('isInteractable is true for available and beta', () {
       const a = GeneratorManifest(
@@ -105,7 +107,7 @@ void main() {
 
   group('defaultBuiltinManifests', () {
     test('exposes menu-week as available with a builder', () {
-      final manifests = defaultBuiltinManifests();
+      final manifests = defaultBuiltinManifests(tr);
       final menu = manifests.firstWhere((m) => m.id == 'menu-week');
       expect(menu.status, GeneratorStatus.available);
       expect(menu.builder, isNotNull);
@@ -113,12 +115,12 @@ void main() {
     });
 
     test('all ids are unique', () {
-      final ids = defaultBuiltinManifests().map((m) => m.id).toList();
+      final ids = defaultBuiltinManifests(tr).map((m) => m.id).toList();
       expect(ids.toSet().length, ids.length);
     });
 
     test('contains at least one "soon" placeholder', () {
-      final manifests = defaultBuiltinManifests();
+      final manifests = defaultBuiltinManifests(tr);
       expect(
         manifests.any((m) => m.status == GeneratorStatus.soon),
         isTrue,

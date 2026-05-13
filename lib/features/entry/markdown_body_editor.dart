@@ -10,6 +10,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../l10n/generated/app_localizations.dart';
 import '../../data/models.dart';
 import '../../providers.dart';
 import '../../theme/app_theme.dart';
@@ -639,10 +640,7 @@ class _MarkdownBodyEditorState extends ConsumerState<MarkdownBodyEditor> {
       keyboardType: TextInputType.multiline,
       style: TextStyle(height: 1.5, fontSize: widget.fontSize),
       decoration: InputDecoration(
-        hintText: widget.hintText ??
-            'Что у тебя на уме?\n'
-                'Форматирование: жирный, курсив, заголовки, '
-                'чек-листы, [[ссылки на заметки]].',
+        hintText: widget.hintText ?? S.of(context)!.editorBodyHint,
         alignLabelWithHint: true,
         // In full-screen "document mode" the field has to paint its
         // border around the entire scrolling area, otherwise the
@@ -739,23 +737,23 @@ class _MarkdownToolbar extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _ToolBtn(palette: palette, tip: 'Заголовок 1', label: 'H1', onPressed: onH1),
-            _ToolBtn(palette: palette, tip: 'Заголовок 2', label: 'H2', onPressed: onH2),
-            _ToolBtn(palette: palette, tip: 'Заголовок 3', label: 'H3', onPressed: onH3),
+            _ToolBtn(palette: palette, tip: S.of(context)!.editorToolH1, label: 'H1', onPressed: onH1),
+            _ToolBtn(palette: palette, tip: S.of(context)!.editorToolH2, label: 'H2', onPressed: onH2),
+            _ToolBtn(palette: palette, tip: S.of(context)!.editorToolH3, label: 'H3', onPressed: onH3),
             _Sep(palette: palette),
-            _ToolBtn(palette: palette, tip: 'Жирный', icon: Icons.format_bold, onPressed: onBold),
-            _ToolBtn(palette: palette, tip: 'Курсив', icon: Icons.format_italic, onPressed: onItalic),
-            _ToolBtn(palette: palette, tip: 'Зачёркнутый', icon: Icons.format_strikethrough, onPressed: onStrike),
-            _ToolBtn(palette: palette, tip: 'Код', icon: Icons.code, onPressed: onCode),
+            _ToolBtn(palette: palette, tip: S.of(context)!.editorToolBold, icon: Icons.format_bold, onPressed: onBold),
+            _ToolBtn(palette: palette, tip: S.of(context)!.editorToolItalic, icon: Icons.format_italic, onPressed: onItalic),
+            _ToolBtn(palette: palette, tip: S.of(context)!.editorToolStrike, icon: Icons.format_strikethrough, onPressed: onStrike),
+            _ToolBtn(palette: palette, tip: S.of(context)!.editorToolCode, icon: Icons.code, onPressed: onCode),
             _Sep(palette: palette),
-            _ToolBtn(palette: palette, tip: 'Маркированный список', icon: Icons.format_list_bulleted, onPressed: onBullet),
-            _ToolBtn(palette: palette, tip: 'Нумерованный список', icon: Icons.format_list_numbered, onPressed: onNumber),
-            _ToolBtn(palette: palette, tip: 'Чек-лист', icon: Icons.check_box_outlined, onPressed: onCheckbox),
-            _ToolBtn(palette: palette, tip: 'Цитата', icon: Icons.format_quote, onPressed: onQuote),
+            _ToolBtn(palette: palette, tip: S.of(context)!.editorToolBullet, icon: Icons.format_list_bulleted, onPressed: onBullet),
+            _ToolBtn(palette: palette, tip: S.of(context)!.editorToolNumber, icon: Icons.format_list_numbered, onPressed: onNumber),
+            _ToolBtn(palette: palette, tip: S.of(context)!.editorToolCheckbox, icon: Icons.check_box_outlined, onPressed: onCheckbox),
+            _ToolBtn(palette: palette, tip: S.of(context)!.editorToolQuote, icon: Icons.format_quote, onPressed: onQuote),
             _Sep(palette: palette),
-            _ToolBtn(palette: palette, tip: 'Ссылка', icon: Icons.link, onPressed: onLink),
-            _ToolBtn(palette: palette, tip: 'Ссылка на заметку', icon: Icons.article_outlined, onPressed: onWikiLink),
-            _ToolBtn(palette: palette, tip: 'Тег', icon: Icons.tag, onPressed: onTag),
+            _ToolBtn(palette: palette, tip: S.of(context)!.editorToolLink, icon: Icons.link, onPressed: onLink),
+            _ToolBtn(palette: palette, tip: S.of(context)!.editorToolWikiLink, icon: Icons.article_outlined, onPressed: onWikiLink),
+            _ToolBtn(palette: palette, tip: S.of(context)!.editorToolTag, icon: Icons.tag, onPressed: onTag),
           ],
         ),
       ),
@@ -883,7 +881,7 @@ class _WikiLinkSuggestions extends ConsumerWidget {
                 Icon(Icons.link, size: 12, color: palette.muted),
                 const SizedBox(width: 6),
                 Text(
-                  'Ссылка на заметку',
+                  S.of(context)!.editorWikiLinkTitle,
                   style: TextStyle(
                     color: palette.muted,
                     fontSize: 11,
@@ -902,7 +900,7 @@ class _WikiLinkSuggestions extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.all(12),
               child: Text(
-                'Начни печатать название…',
+                S.of(context)!.editorWikiLinkHint,
                 style: TextStyle(color: palette.muted, fontSize: 12),
               ),
             ),
@@ -942,22 +940,7 @@ class _WikiLinkSuggestions extends ConsumerWidget {
                         TextSpan(
                           children: [
                             TextSpan(
-                              text: 'Создать «',
-                              style: TextStyle(
-                                color: palette.muted,
-                                fontSize: 13,
-                              ),
-                            ),
-                            TextSpan(
-                              text: query.trim(),
-                              style: TextStyle(
-                                color: palette.fg,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            TextSpan(
-                              text: '»',
+                              text: S.of(context)!.editorCreateNote(query.trim()),
                               style: TextStyle(
                                 color: palette.muted,
                                 fontSize: 13,

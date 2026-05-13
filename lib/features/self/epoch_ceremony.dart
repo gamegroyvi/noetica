@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../l10n/generated/app_localizations.dart';
 import '../../data/models.dart';
 import '../../data/profile.dart';
 import '../../providers.dart';
@@ -252,7 +253,7 @@ class _EpochOverlayState extends ConsumerState<EpochOverlay>
       updatedAt: now,
       epochArchive: newArchive,
     );
-    await ref.read(profileServiceProvider).save(updated);
+    await (await ref.read(profileServiceProvider.future)).save(updated);
     if (!mounted) return;
     await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const AxesEditorScreen()),
@@ -281,7 +282,7 @@ class _EpochOverlayState extends ConsumerState<EpochOverlay>
       epochAckedAt: now,
       updatedAt: now,
     );
-    await ref.read(profileServiceProvider).save(updated);
+    await (await ref.read(profileServiceProvider.future)).save(updated);
     if (mounted) {
       _exit.reverse();
       setState(() {
@@ -445,7 +446,7 @@ class _EpochOverlayCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    'ЭПОХА ${profile.currentEpoch} · ПИК',
+                    S.of(context)!.epochPeak(profile.currentEpoch),
                     style: TextStyle(
                       color: palette.muted,
                       fontSize: 11,
@@ -455,7 +456,7 @@ class _EpochOverlayCard extends StatelessWidget {
                   ),
                 ),
                 IconButton(
-                  tooltip: 'Отложить',
+                  tooltip: S.of(context)!.epochPostpone,
                   onPressed: committing ? null : onDismiss,
                   icon: const Icon(Icons.close),
                   color: palette.muted,
@@ -467,7 +468,7 @@ class _EpochOverlayCard extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              'Ты заполнил древо.',
+              S.of(context)!.epochTreeFull,
               style: TextStyle(
                 color: palette.fg,
                 fontSize: 22,
@@ -477,10 +478,7 @@ class _EpochOverlayCard extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              'Два пути дальше — можешь обновить сам набор осей и '
-              'начать Эпоху $nextEpoch с чистого листа, либо остаться '
-              'в текущем фокусе и взять следующий, более трудный '
-              'тир задач.',
+              S.of(context)!.epochTwoPaths(nextEpoch),
               style: TextStyle(
                 color: palette.muted,
                 fontSize: 13,
@@ -491,9 +489,8 @@ class _EpochOverlayCard extends StatelessWidget {
             _PathTile(
               palette: palette,
               icon: Icons.refresh,
-              title: 'Новая эпоха',
-              subtitle:
-                  'Перерисовать ветви — Эпоха $nextEpoch. XP и уровень остаются.',
+              title: S.of(context)!.epochNewEpoch,
+              subtitle: S.of(context)!.epochNewEpochSub(nextEpoch),
               onTap: committing ? null : onNewEpoch,
               filled: true,
             ),
@@ -501,9 +498,8 @@ class _EpochOverlayCard extends StatelessWidget {
             _PathTile(
               palette: palette,
               icon: Icons.trending_up,
-              title: 'Углубиться',
-              subtitle:
-                  'Тир $nextTier в той же Эпохе — задачи станут сложнее, древо обнулится.',
+              title: S.of(context)!.epochGoDeeper,
+              subtitle: S.of(context)!.epochGoDeeperSub(nextTier),
               onTap: committing ? null : onGoDeeper,
               filled: false,
             ),

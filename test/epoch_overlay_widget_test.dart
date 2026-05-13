@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:noetica/data/profile.dart';
 import 'package:noetica/features/self/epoch_ceremony.dart';
+import 'package:noetica/l10n/generated/app_localizations.dart';
 import 'package:noetica/theme/app_theme.dart' as t;
 
 /// Renders [EpochOverlay] directly so we can smoke-test the two
@@ -16,6 +18,14 @@ Widget _harness({
   return ProviderScope(
     child: MaterialApp(
       theme: t.AppTheme.dark(),
+      locale: const Locale('ru'),
+      localizationsDelegates: const [
+        S.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: S.supportedLocales,
       home: Scaffold(
         body: Center(
           child: SizedBox(
@@ -115,6 +125,14 @@ void main() {
       ProviderScope(
         child: MaterialApp(
           theme: t.AppTheme.dark(),
+          locale: const Locale('ru'),
+          localizationsDelegates: const [
+            S.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: S.supportedLocales,
           home: Scaffold(
             body: EpochOverlay(
               profile: build(),

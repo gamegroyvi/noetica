@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../l10n/generated/app_localizations.dart';
 import '../../data/models.dart';
 import '../../data/personal_knowledge_service.dart';
 import '../../providers.dart';
@@ -99,7 +100,7 @@ class _AxesEditorScreenState extends ConsumerState<AxesEditorScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Не удалось сохранить: $e')),
+        SnackBar(content: Text(S.of(context)!.axesSaveError('$e'))),
       );
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -158,7 +159,7 @@ class _AxesEditorScreenState extends ConsumerState<AxesEditorScreen> {
     final profile = ref.read(profileProvider).valueOrNull;
     if (profile == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Сначала пройди онбординг.')),
+        SnackBar(content: Text(S.of(context)!.axesOnboardingFirst)),
       );
       return;
     }
@@ -171,7 +172,7 @@ class _AxesEditorScreenState extends ConsumerState<AxesEditorScreen> {
     final messenger = ScaffoldMessenger.of(context);
     setState(() => _saving = true);
     messenger.showSnackBar(
-      const SnackBar(content: Text('AI рисует новые ветви…')),
+      SnackBar(content: Text(S.of(context)!.axesAiDrawing)),
     );
     try {
       final api = ref.read(axesApiProvider);
@@ -203,7 +204,7 @@ class _AxesEditorScreenState extends ConsumerState<AxesEditorScreen> {
     } catch (e) {
       if (!mounted) return;
       messenger.showSnackBar(
-        SnackBar(content: Text('Не удалось перегенерировать: $e')),
+        SnackBar(content: Text(S.of(context)!.axesRegenError('$e'))),
       );
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -231,10 +232,9 @@ class _AxesEditorScreenState extends ConsumerState<AxesEditorScreen> {
     final messenger = ScaffoldMessenger.of(context);
     messenger.showSnackBar(
       SnackBar(
-        content: const Text(
-            'Профиль обновлён. Хочешь сразу перегенерировать ветви?'),
+        content: Text(S.of(context)!.axesProfileUpdated),
         action: SnackBarAction(
-          label: 'Да',
+          label: S.of(context)!.axesYes,
           onPressed: _regenerateBranches,
         ),
       ),
@@ -246,16 +246,16 @@ class _AxesEditorScreenState extends ConsumerState<AxesEditorScreen> {
     final palette = context.palette;
     if (!_hydrated) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Ветви')),
+        appBar: AppBar(title: Text(S.of(context)!.navBranches)),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Ветви'),
+        title: Text(S.of(context)!.navBranches),
         actions: [
           PopupMenuButton<String>(
-            tooltip: 'Ещё',
+            tooltip: S.of(context)!.settingsMore,
             icon: const Icon(Icons.more_vert),
             onSelected: (v) {
               switch (v) {
@@ -267,33 +267,32 @@ class _AxesEditorScreenState extends ConsumerState<AxesEditorScreen> {
                   break;
               }
             },
-            itemBuilder: (_) => const [
+            itemBuilder: (_) => [
               PopupMenuItem(
                 value: 'regen',
                 child: ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: Icon(Icons.auto_awesome),
-                  title: Text('Перегенерировать ветви'),
-                  subtitle: Text('AI перерисует набор с новыми вводными'),
+                  leading: const Icon(Icons.auto_awesome),
+                  title: Text(S.of(context)!.settingsRegenAxes),
+                  subtitle: Text(S.of(context)!.axesAiRedrawHint),
                 ),
               ),
               PopupMenuItem(
                 value: 'reonboard',
                 child: ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: Icon(Icons.refresh),
-                  title: Text('Пройти онбординг заново'),
-                  subtitle: Text(
-                      'Обновить интересы, боли, цели и пересобрать ветви'),
+                  leading: const Icon(Icons.refresh),
+                  title: Text(S.of(context)!.settingsOnboardAgain),
+                  subtitle: Text(S.of(context)!.settingsOnboardAgainHint),
                 ),
               ),
             ],
           ),
           TextButton(
             onPressed: _isValid && !_saving ? _save : null,
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 8),
-              child: Text('Сохранить'),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Text(S.of(context)!.actionSave),
             ),
           ),
         ],
@@ -305,8 +304,7 @@ class _AxesEditorScreenState extends ConsumerState<AxesEditorScreen> {
             child: Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                'Перетаскивай, переименовывай, добавляй или удаляй (от $_kMinAxes до $_kMaxAxes). '
-                'Чтобы AI перерисовал ветви с нуля — Меню → «Perveгенерировать».',
+                S.of(context)!.axesDragHint(_kMinAxes, _kMaxAxes),
                 style: Theme.of(context)
                     .textTheme
                     .bodySmall
@@ -343,8 +341,8 @@ class _AxesEditorScreenState extends ConsumerState<AxesEditorScreen> {
                 label: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   child: Text(_drafts.length >= _kMaxAxes
-                      ? 'Максимум $_kMaxAxes ветвей'
-                      : 'Добавить ветвь'),
+                      ? S.of(context)!.axesMaxBranches(_kMaxAxes)
+                      : S.of(context)!.settingsAddBranch),
                 ),
               ),
             ),
@@ -420,7 +418,7 @@ class _AxisRow extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    hasName ? draft.name : 'Без названия',
+                    hasName ? draft.name : S.of(context)!.editorUntitled,
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                           color: hasName ? palette.fg : palette.muted,
                           fontStyle: hasName ? null : FontStyle.italic,
@@ -428,7 +426,7 @@ class _AxisRow extends StatelessWidget {
                   ),
                 ),
                 IconButton(
-                  tooltip: canRemove ? 'Удалить' : 'Минимум 3 ветви',
+                  tooltip: canRemove ? S.of(context)!.axesRemoveTooltip : S.of(context)!.axesMinBranches,
                   onPressed: canRemove ? onRemove : null,
                   icon: Icon(
                     Icons.delete_outline,
@@ -513,16 +511,16 @@ class _AxisEditSheetState extends State<_AxisEditSheet> {
               ),
             ),
             Text(
-              'Ось',
+              S.of(context)!.axesAxis,
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 16),
             TextField(
               controller: _name,
               autofocus: widget.draft.name.isEmpty,
-              decoration: const InputDecoration(
-                labelText: 'Название',
-                hintText: 'Например: Тело',
+              decoration: InputDecoration(
+                labelText: S.of(context)!.editorTitle,
+                hintText: S.of(context)!.axesNameHint,
               ),
               onChanged: (_) => setState(() {}),
             ),
@@ -530,8 +528,8 @@ class _AxisEditSheetState extends State<_AxisEditSheet> {
             TextField(
               controller: _symbol,
               maxLength: 2,
-              decoration: const InputDecoration(
-                labelText: 'Символ',
+              decoration: InputDecoration(
+                labelText: S.of(context)!.editorSymbol,
                 counterText: '',
               ),
               onChanged: (_) => setState(() {}),
@@ -578,9 +576,9 @@ class _AxisEditSheetState extends State<_AxisEditSheet> {
                         _symbol.text.trim().isEmpty
                     ? null
                     : _save,
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 12),
-                  child: Text('Готово'),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Text(S.of(context)!.axesDone),
                 ),
               ),
             ),
@@ -615,27 +613,20 @@ class _RegenHintDialogState extends State<_RegenHintDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Перегенерировать ветви'),
+      title: Text(S.of(context)!.settingsRegenAxes),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'AI составит новый набор. Опиши, что хочешь изменить '
-            '(тон, акцент, жизненные сферы) — или оставь поле '
-            'пустым, и тогда просто получится другой случайный '
-            'вариант на тех же интересах.',
-          ),
+          Text(S.of(context)!.axesAiNewSet),
           const SizedBox(height: 12),
           TextField(
             controller: _ctrl,
             autofocus: true,
             maxLines: 3,
-            decoration: const InputDecoration(
-              hintText:
-                  'например: больше про здоровье и творчество, '
-                  'меньше про работу',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              hintText: S.of(context)!.axesAiExample,
+              border: const OutlineInputBorder(),
             ),
           ),
         ],
@@ -643,12 +634,12 @@ class _RegenHintDialogState extends State<_RegenHintDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Отмена'),
+          child: Text(S.of(context)!.actionCancel),
         ),
         FilledButton(
           onPressed: () =>
               Navigator.of(context).pop(_ctrl.text.trim()),
-          child: const Text('Перегенерировать'),
+          child: Text(S.of(context)!.dashboardGenerate),
         ),
       ],
     );

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:noetica/l10n/generated/app_localizations.dart';
 import 'package:noetica/features/calendar/calendar_screen.dart';
 import 'package:noetica/features/knowledge/knowledge_graph_screen.dart';
 import 'package:noetica/features/onboarding/onboarding_chat_screen.dart';
@@ -18,7 +20,17 @@ import 'package:noetica/features/settings/settings_screen.dart';
 /// overflow assertions, missing keys in layout).
 void main() {
   Widget host(Widget child) => ProviderScope(
-        child: MaterialApp(home: child),
+        child: MaterialApp(
+          localizationsDelegates: const [
+            S.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: S.supportedLocales,
+          locale: const Locale('ru'),
+          home: child,
+        ),
       );
 
   Future<void> renderAt(

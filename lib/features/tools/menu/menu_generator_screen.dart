@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../data/models.dart';
 import '../../../providers.dart';
 import '../../../services/analytics_service.dart';
@@ -71,9 +72,11 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
       ((_values['restrictions'] as String?) ?? '').trim();
   String get _extraNotes => ((_values['notes'] as String?) ?? '').trim();
 
-  void _seedValuesFromManifest() {
+  bool _seeded = false;
+
+  void _seedValuesFromManifest(S tr) {
     _values.clear();
-    for (final f in menuWeekInputs()) {
+    for (final f in menuWeekInputs(tr)) {
       _values[f.id] = f.defaultValue;
     }
     // Date default isn't covered by manifest defaults (intentionally
@@ -86,9 +89,17 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_seeded) {
+      _seeded = true;
+      _seedValuesFromManifest(S.of(context)!);
+    }
+  }
+
+  @override
   void initState() {
     super.initState();
-    _seedValuesFromManifest();
     // Best-effort: if the user has already imported a menu in a past
     // session, drop them back into the imported view so they can keep
     // generating recipes for individual dishes. Without this, exiting
@@ -253,7 +264,7 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
       _menuId = null;
       _plan = null;
       _error = null;
-      _seedValuesFromManifest();
+      _seedValuesFromManifest(S.of(context)!);
       _stage = _Stage.form;
     });
   }
@@ -262,20 +273,18 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Создать новое меню?'),
-        content: const Text(
-          'Текущие задачи и рецепты останутся в базе знаний — их можно '
-          'найти по тегу menu/… или открыть по ссылке.\n\n'
-          'Форма генерации откроется заново.',
+        title: Text(S.of(context)!.menuNewConfirmTitle),
+        content: Text(
+          S.of(context)!.menuNewConfirmBody,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Отмена'),
+            child: Text(S.of(context)!.actionCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Создать'),
+            child: Text(S.of(context)!.actionCreate),
           ),
         ],
       ),
@@ -318,6 +327,7 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
   Future<void> _import() async {
     final plan = _plan;
     if (plan == null) return;
+    final tr = S.of(context)!;
     setState(() {
       _stage = _Stage.importing;
       _error = null;
@@ -334,10 +344,10 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
         final day = plan.days[d];
         final date = _startDate.add(Duration(days: d));
         final slots = <(MenuMeal? meal, int hour, int minute, String label, String emoji)>[
-          (day.breakfast, 8, 0, 'Завтрак', '🌅'),
-          (day.lunch, 13, 0, 'Обед', '🥗'),
-          (day.dinner, 19, 0, 'Ужин', '🍽'),
-          (day.snack, 16, 0, 'Перекус', '🍎'),
+          (day.breakfast, 8, 0, tr.menuBreakfast, '🌅'),
+          (day.lunch, 13, 0, tr.menuLunch, '🥗'),
+          (day.dinner, 19, 0, tr.menuDinner, '🍽'),
+          (day.snack, 16, 0, tr.menuSnack, '🍎'),
         ];
         for (final slot in slots) {
           final meal = slot.$1;
@@ -359,9 +369,8 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
           // navigation from the task body opens an empty note the
           // user can fill in later via "Сгенерировать рецепт".
           final recipeStub = await repo.createEntry(
-            title: 'Рецепт: ${meal.name}',
-            body: '_Рецепт ещё не сгенерирован._\n\nОткрой меню недели → '
-                'нажми «Получить рецепт» рядом с этим блюдом.',
+            title: tr.menuRecipeStubTitle(meal.name),
+            body: tr.menuRecipeStubBody,
             kind: EntryKind.note,
             tags: [menuTag, 'recipe'],
           );
@@ -381,9 +390,9 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
       // as ticking sub-tasks, so the user gets a working checklist
       // without any extra plumbing.
       final shopping = StringBuffer();
-      shopping.writeln('# Список покупок на неделю');
+      shopping.writeln('# ${tr.menuShoppingHeader}');
       shopping.writeln();
-      shopping.writeln('Цель: ${_goal.label} · $_servings порций');
+      shopping.writeln(tr.menuGoalServings(_goal.localizedLabel(tr), _servings));
       shopping.writeln();
       plan.shoppingList.forEach((category, items) {
         shopping.writeln('## $category');
@@ -394,7 +403,7 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
         shopping.writeln();
       });
       await repo.createEntry(
-        title: 'Список покупок · меню ${_humanRange()}',
+        title: tr.menuShoppingTitle(_humanRange()),
         body: shopping.toString().trim(),
         kind: EntryKind.note,
         tags: [menuTag, 'shopping'],
@@ -411,7 +420,7 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = 'Не удалось импортировать меню: $e';
+        _error = tr.menuImportError('$e');
         _stage = _Stage.preview;
       });
     }
@@ -459,7 +468,7 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
   String _renderMealBody(MenuMeal meal, String slot) {
     final buf = StringBuffer();
     if (meal.ingredients.isNotEmpty) {
-      buf.writeln('## Ингредиенты');
+      buf.writeln('## ${S.of(context)!.menuIngredients}');
       for (final ing in meal.ingredients) {
         final amount = ing.amount.isEmpty ? '' : ' — ${ing.amount}';
         buf.writeln('- ${ing.name}$amount');
@@ -475,7 +484,7 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
       buf.writeln('**КБЖУ:** ${macroParts.join(' · ')}');
       buf.writeln();
     }
-    buf.writeln('Полный рецепт: [[Рецепт: ${meal.name}]]');
+    buf.writeln(S.of(context)!.menuFullRecipe(S.of(context)!.menuRecipeStubTitle(meal.name)));
     // Marker for downstream tooling (history view, recipe regen) so
     // we don't need a separate database table for `tools_runs`.
     buf.writeln();
@@ -502,7 +511,7 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
     final palette = context.palette;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Меню недели'),
+        title: Text(S.of(context)!.menuTitle),
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () => Navigator.of(context).maybePop(),
@@ -511,9 +520,9 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
       body: SafeArea(
         child: switch (_stage) {
           _Stage.form => _buildForm(palette),
-          _Stage.generating => _buildBusy(palette, 'AI составляет меню…'),
+          _Stage.generating => _buildBusy(palette, S.of(context)!.menuGenerating),
           _Stage.preview => _buildPreview(palette),
-          _Stage.importing => _buildBusy(palette, 'Создаю задачи и список покупок…'),
+          _Stage.importing => _buildBusy(palette, S.of(context)!.menuImporting),
           _Stage.imported => _buildImported(palette),
         },
       ),
@@ -551,7 +560,7 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
             child: Text(_error!, style: TextStyle(color: palette.fg)),
           ),
         GeneratorFormView(
-          fields: menuWeekInputs(),
+          fields: menuWeekInputs(S.of(context)!),
           values: _values,
           axes: axes,
           onChanged: (id, v) => setState(() => _values[id] = v),
@@ -563,7 +572,7 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
         Padding(
           padding: const EdgeInsets.only(left: 4),
           child: Text(
-            '7 дней с ${_d(_startDate)} по ${_d(_startDate.add(const Duration(days: 6)))}',
+            S.of(context)!.menuDateRange(_d(_startDate), _d(_startDate.add(const Duration(days: 6)))),
             style: theme.textTheme.bodySmall?.copyWith(color: palette.muted),
           ),
         ),
@@ -578,19 +587,19 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Что я создам', style: theme.textTheme.labelLarge),
+              Text(S.of(context)!.menuWhatCreated, style: theme.textTheme.labelLarge),
               const SizedBox(height: 8),
-              _bullet(palette, '21 задача (завтрак / обед / ужин на 7 дней)'),
-              _bullet(palette, '1 заметка «Список покупок» с чек-листом'),
+              _bullet(palette, S.of(context)!.menuBullet1),
+              _bullet(palette, S.of(context)!.menuBullet2),
               _bullet(palette,
-                  'Рецепты подгрузятся по тапу и сохранятся в связанные заметки'),
+                  S.of(context)!.menuBullet3),
             ],
           ),
         ),
         const SizedBox(height: 24),
         FilledButton.icon(
           icon: const Icon(Icons.auto_awesome, size: 18),
-          label: const Text('Сгенерировать'),
+          label: Text(S.of(context)!.dashboardGenerate),
           onPressed: _generate,
           style: FilledButton.styleFrom(
             minimumSize: const Size.fromHeight(48),
@@ -651,14 +660,14 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${_goal.label} · $_servings порций · ${_humanRange()}',
+                      S.of(context)!.menuSummary(_goal.localizedLabel(S.of(context)!), _servings, _humanRange()),
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                     if (plan.dailyAvgCalories > 0)
                       Text(
-                        '~${plan.dailyAvgCalories} ккал в день',
+                        S.of(context)!.menuDailyCalories(plan.dailyAvgCalories),
                         style: TextStyle(color: palette.muted),
                       ),
                   ],
@@ -666,7 +675,7 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
               ),
               TextButton.icon(
                 icon: const Icon(Icons.refresh, size: 16),
-                label: const Text('Перегенерировать'),
+                label: Text(S.of(context)!.menuRegenerate),
                 onPressed: _generate,
               ),
             ],
@@ -692,7 +701,7 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
           padding: const EdgeInsets.all(16),
           child: FilledButton.icon(
             icon: const Icon(Icons.download_for_offline_outlined),
-            label: const Text('Импортировать в задачи'),
+            label: Text(S.of(context)!.menuImportBtn),
             onPressed: _import,
             style: FilledButton.styleFrom(
               minimumSize: const Size.fromHeight(48),
@@ -716,7 +725,7 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Меню импортировано · ${_imported.length} задач',
+                  S.of(context)!.menuImportedCount(_imported.length),
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
@@ -725,7 +734,7 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
               TextButton.icon(
                 onPressed: _confirmStartNewMenu,
                 icon: const Icon(Icons.add, size: 18),
-                label: const Text('Новое меню'),
+                label: Text(S.of(context)!.menuNew),
               ),
             ],
           ),
@@ -733,9 +742,7 @@ class _MenuGeneratorScreenState extends ConsumerState<MenuGeneratorScreen> {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
           child: Text(
-            'Тег #${'menu/${(_menuId ?? '').substring(0, 8)}'} группирует все '
-            'эти записи. Тапни блюдо — открой задачу. Нажми «Получить рецепт» '
-            'на любом блюде — рецепт сохранится в связанной заметке.',
+            S.of(context)!.menuImportedHint('menu/${(_menuId ?? '').substring(0, 8)}'),
             style: TextStyle(color: palette.muted, height: 1.4),
           ),
         ),
@@ -831,10 +838,10 @@ class _DayCard extends StatelessWidget {
               )),
           const SizedBox(height: 8),
           if (day.breakfast != null)
-            _MealLine('Завтрак', day.breakfast!, palette),
-          if (day.lunch != null) _MealLine('Обед', day.lunch!, palette),
-          if (day.dinner != null) _MealLine('Ужин', day.dinner!, palette),
-          if (day.snack != null) _MealLine('Перекус', day.snack!, palette),
+            _MealLine(S.of(context)!.menuBreakfast, day.breakfast!, palette),
+          if (day.lunch != null) _MealLine(S.of(context)!.menuLunch, day.lunch!, palette),
+          if (day.dinner != null) _MealLine(S.of(context)!.menuDinner, day.dinner!, palette),
+          if (day.snack != null) _MealLine(S.of(context)!.menuSnack, day.snack!, palette),
         ],
       ),
     );
@@ -870,7 +877,7 @@ class _MealLine extends StatelessWidget {
                         ?.copyWith(fontWeight: FontWeight.w600)),
                 if (meal.calories > 0)
                   Text(
-                    '${meal.calories} ккал · ${meal.protein}б/${meal.fat}ж/${meal.carbs}у',
+                    S.of(context)!.menuMacroLine(meal.calories, meal.protein, meal.fat, meal.carbs),
                     style: theme.textTheme.bodySmall
                         ?.copyWith(color: palette.muted),
                   ),
@@ -932,9 +939,7 @@ class _MealRow extends StatelessWidget {
                 ),
                 if (imported.meal.calories > 0)
                   Text(
-                    '${imported.meal.calories} ккал · '
-                    '${imported.meal.protein}б/${imported.meal.fat}ж/'
-                    '${imported.meal.carbs}у',
+                    S.of(context)!.menuMacroLine(imported.meal.calories, imported.meal.protein, imported.meal.fat, imported.meal.carbs),
                     style: theme.textTheme.bodySmall
                         ?.copyWith(color: palette.muted),
                   ),
@@ -958,13 +963,13 @@ class _MealRow extends StatelessWidget {
           else if (hasRecipe)
             TextButton.icon(
               icon: const Icon(Icons.menu_book_outlined, size: 16),
-              label: const Text('Открыть'),
+              label: Text(S.of(context)!.menuOpenRecipe),
               onPressed: onOpenRecipe,
             )
           else
             TextButton.icon(
               icon: const Icon(Icons.auto_awesome, size: 16),
-              label: const Text('Получить рецепт'),
+              label: Text(S.of(context)!.menuGetRecipe),
               onPressed: onLoadRecipe,
             ),
         ],

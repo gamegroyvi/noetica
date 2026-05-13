@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../l10n/generated/app_localizations.dart';
 import '../../data/models.dart';
 import '../../providers.dart';
 import '../../services/levels.dart';
@@ -110,7 +111,7 @@ class _AxisDetailSheet extends ConsumerWidget {
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      'Э${epochFromXp(ls.totalXp)}',
+                      S.of(context)!.axisEpochPrefix('\${epochFromXp(ls.totalXp)}'),
                       style: TextStyle(
                         color: palette.bg,
                         fontWeight: FontWeight.w700,
@@ -125,21 +126,21 @@ class _AxisDetailSheet extends ConsumerWidget {
             Row(
               children: [
                 _Stat(
-                  label: 'СОСТОЯНИЕ',
+                  label: S.of(context)!.axisState,
                   value: '${score.value.round()} / 100',
                   palette: palette,
                 ),
                 const SizedBox(width: 24),
                 if (ls != null)
                   _Stat(
-                    label: 'XP ВСЕГО',
+                    label: S.of(context)!.axisXpTotal,
                     value: '${ls.totalXp}',
                     palette: palette,
                   ),
                 const SizedBox(width: 24),
                 if (ls != null)
                   _Stat(
-                    label: 'ДО Э${epochFromXp(ls.totalXp) + 1}',
+                    label: S.of(context)!.axisToEpoch(epochFromXp(ls.totalXp) + 1),
                     value: '${xpToNextEpoch(ls.totalXp)}',
                     palette: palette,
                   ),
@@ -148,9 +149,7 @@ class _AxisDetailSheet extends ConsumerWidget {
             if (ls != null) ...[
               const SizedBox(height: 6),
               Text(
-                'Уровень L${ls.level} — от всех закрытых задач. '
-                'Эпоха Э${epochFromXp(ls.totalXp)} — от XP именно этой оси, '
-                'растёт и после того как древо заполнено на 100 %.',
+                S.of(context)!.axisLevelHint(ls.level, epochFromXp(ls.totalXp)),
                 style: TextStyle(color: palette.muted, fontSize: 11),
               ),
             ],
@@ -172,7 +171,7 @@ class _AxisDetailSheet extends ConsumerWidget {
             ],
             const SizedBox(height: 24),
             Text(
-              'ВЫПОЛНЕНО ПО ОСИ',
+              S.of(context)!.axisCompletedByAxis,
               style: TextStyle(
                 color: palette.muted,
                 fontSize: 11,
@@ -185,7 +184,7 @@ class _AxisDetailSheet extends ConsumerWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 child: Text(
-                  'Здесь появятся выполненные задачи, привязанные к этой оси.',
+                  S.of(context)!.axisNoTasks,
                   style: TextStyle(color: palette.muted),
                 ),
               )
@@ -219,7 +218,7 @@ class _AxisDetailSheet extends ConsumerWidget {
                         style: TextStyle(color: palette.muted, fontSize: 11),
                       ),
                       trailing: Text(
-                        '+$xpForAxis XP',
+                        S.of(context)!.axisXpForAxis(xpForAxis),
                         style: TextStyle(
                           color: palette.fg,
                           fontWeight: FontWeight.w600,

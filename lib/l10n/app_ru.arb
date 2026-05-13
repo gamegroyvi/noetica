@@ -1,0 +1,1795 @@
+{
+  "@@locale": "ru",
+  "appTitle": "NOETICA",
+  "tabDashboard": "Сейчас",
+  "tabSelf": "Я",
+  "tabTasks": "Задачи",
+  "tabMore": "Ещё",
+  "navJournal": "Журнал",
+  "navCalendar": "Календарь",
+  "navKnowledge": "Граф",
+  "navAssistant": "Ассистент",
+  "navSettings": "Настройки",
+  "navPomodoro": "Помодоро",
+  "navRoadmap": "AI-План",
+  "navCoach": "AI Коуч",
+  "sectionNow": "СЕЙЧАС",
+  "sectionToday": "СЕГОДНЯ",
+  "sectionPulse": "ПУЛЬС",
+  "sectionRecent": "ПОСЛЕДНЕЕ",
+  "sectionOverdue": "ПРОСРОЧЕНО",
+  "sectionTomorrow": "ЗАВТРА",
+  "sectionThisWeek": "НА ЭТОЙ НЕДЕЛЕ",
+  "sectionLater": "ПОЗЖЕ",
+  "sectionDone": "ГОТОВО",
+  "sectionHeatmap": "АКТИВНОСТЬ",
+  "sectionTree": "ДРЕВО",
+  "sectionRecentlyClosed": "НЕДАВНО ЗАКРЫТО",
+  "linkCalendar": "календарь →",
+  "linkAll": "все →",
+  "linkTasks": "задачи →",
+  "freeDay": "свободный день",
+  "filterAll": "Все",
+  "filterOpen": "Открытые",
+  "filterOverdue": "Просроч.",
+  "filterDone": "Готово",
+  "actionSave": "Сохранить",
+  "actionCancel": "Отмена",
+  "actionDelete": "Удалить",
+  "actionUndo": "Отменить",
+  "actionDone": "Готово",
+  "actionAdd": "Добавить",
+  "actionEdit": "Редактировать",
+  "actionSearch": "Поиск",
+  "actionExport": "Экспорт",
+  "actionImport": "Импорт",
+  "taskNew": "Новая запись",
+  "taskComplete": "Готово",
+  "taskSubtasks": "Подзадачи",
+  "taskDueDate": "Дедлайн",
+  "taskXp": "XP",
+  "editorTitle": "Название",
+  "editorBody": "Текст",
+  "editorTags": "Теги",
+  "editorAddTag": "добавить тег…",
+  "editorAxes": "Оси",
+  "editorBacklinks": "Сюда ссылаются",
+  "editorSubtasks": "Подзадачи",
+  "selfBranches": "Ветви",
+  "selfSettings": "Настройки",
+  "selfEpoch": "Эпоха {n}",
+  "selfLevel": "Уровень",
+  "selfStreak": "Стрик",
+  "selfNewEpoch": "Новая эпоха",
+  "selfDeepen": "Углубиться",
+  "axisBody": "Тело",
+  "axisMind": "Ум",
+  "axisWork": "Дело",
+  "axisSocial": "Связи",
+  "axisSoul": "Душа",
+  "onboardingName": "Как тебя зовут?",
+  "onboardingGoals": "Какие у тебя цели?",
+  "onboardingInterests": "Интересы",
+  "onboardingHours": "Сколько часов в неделю?",
+  "onboardingContinue": "Далее",
+  "onboardingFinish": "Начать",
+  "pomodoroTitle": "Помодоро",
+  "pomodoroStart": "Начать фокус",
+  "pomodoroPause": "Пауза",
+  "pomodoroReset": "Сброс",
+  "settingsTitle": "Настройки",
+  "settingsAbout": "О приложении",
+  "settingsAccount": "Аккаунт",
+  "settingsExport": "Экспорт данных",
+  "settingsImport": "Импорт из буфера",
+  "settingsTheme": "Тема",
+  "settingsDarkMode": "Тёмная тема",
+  "settingsLightMode": "Светлая тема",
+  "knowledgeEmpty": "База знаний пока пуста",
+  "knowledgeEmptyHint": "Создайте первую заметку или задачу — они появятся здесь как узлы графа.",
+  "knowledgeCreateEntry": "Создать запись",
+  "knowledgeGoals": "Цели",
+  "knowledgeConstraints": "Ограничения",
+  "knowledgeHighlights": "Достижения",
+  "knowledgeReflections": "Рефлексии",
+  "knowledgePreferences": "Предпочтения",
+  "calendarTitle": "Календарь",
+  "notesTitle": "Журнал",
+  "deleteConfirm": "Запись удалена",
+  "deleteUndone": "Восстановлено",
+  "emptyTasks": "Задач пока нет",
+  "emptyNotes": "Заметок пока нет",
+  "greetingMorning": "Доброе утро",
+  "greetingDay": "Добрый день",
+  "greetingEvening": "Добрый вечер",
+  "greetingNight": "Доброй ночи",
+  "reflectionHow": "Как прошло?",
+  "reflectionEasy": "Легко",
+  "reflectionNormal": "Нормально",
+  "reflectionHard": "Сложно",
+  "reflectionSkip": "Пропустить",
+  "weeklyReflection": "Недельная рефлексия",
+  "daysTotalStreak": "{count, plural, =0{0 дней} =1{1 день} few{{count} дня} other{{count} дней}}",
+  "@daysTotalStreak": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sortSmart": "Умная",
+  "sortDueAsc": "Срок ↑",
+  "sortCreatedDesc": "Свежие",
+  "sortXpDesc": "Тяжёлые сверху",
+  "tooltipSort": "Сортировка",
+  "tooltipSettings": "Настройки",
+  "noDate": "Без даты",
+  "allAxes": "Все оси",
+  "noAxis": "Без оси",
+  "expandPlans": "Развернуть планы",
+  "collapsePlans": "Свернуть планы",
+  "weeklyMenu": "Меню недели",
+  "tasksInPlan": "{count} {count, plural, =1{задача} few{задачи} other{задач}} в плане",
+  "@tasksInPlan": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "plansCount": "Планы ({count})",
+  "@plansCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "emptyFilterTitle": "Под фильтр ничего не попало",
+  "emptyFilterHint": "Сбрось фильтры или поменяй сортировку, чтобы увидеть остальные задачи.",
+  "emptyTasksTitle": "Задач нет",
+  "emptyTasksHint": "Создай задачу через «+». Привяжи её к осям — выполнение начислит очки в пентаграмму.",
+  "sectionAccount": "Аккаунт",
+  "sectionProfile": "Профиль",
+  "sectionAxes": "Оси роста",
+  "sectionNotifications": "Уведомления",
+  "sectionBackend": "Бэкенд",
+  "sectionData": "Данные",
+  "sectionAbout": "О приложении",
+  "sectionDeveloper": "⚙ Разработчик",
+  "settingsLogout": "Выйти",
+  "settingsSyncNow": "Синхронизировать сейчас",
+  "settingsSyncHint": "Стянуть данные с облака и отправить локальные изменения",
+  "settingsNotLoggedIn": "Не выполнен вход",
+  "settingsNotLoggedInHint": "Перезапустите приложение, чтобы войти.",
+  "settingsNoName": "Без имени",
+  "settingsNoGoal": "Цель не указана",
+  "settingsRegenAxes": "Перегенерировать оси",
+  "settingsRegenAxesNoInterests": "Добавь интересы в профиле, чтобы AI собрал оси",
+  "settingsRegenAxesHint": "AI пересоберёт оси по {count} интересам",
+  "@settingsRegenAxesHint": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsNotificationsUnsupported": "Уведомления здесь не поддерживаются",
+  "settingsLocalNotifications": "Локальные уведомления",
+  "settingsLocalNotificationsHint": "За 1 день, утром, и через час после дедлайна",
+  "settingsMorningReminder": "Утреннее напоминание",
+  "settingsCoachReminders": "AI-коуч напоминания",
+  "settingsCoachRemindersHint": "Утренний план и вечерний разбор",
+  "settingsEveningReview": "Вечерний разбор",
+  "settingsExportJson": "Экспорт в JSON",
+  "settingsExportJsonHint": "Сохранить профиль, оси и записи в файл",
+  "settingsImportJson": "Импорт из JSON",
+  "settingsImportJsonHint": "Восстановить данные из буфера обмена",
+  "settingsEraseAll": "Стереть все данные",
+  "settingsEraseAllHint": "Возврат к экрану онбординга",
+  "settingsSourceCode": "Исходный код",
+  "settingsVersion": "v0.1.0 — minimalist growth tracker",
+  "dialogImportTitle": "Импорт данных",
+  "dialogImportBody": "Вставьте JSON экспорта из буфера обмена. Существующие данные объединятся с импортом (entry ID используется для дедупликации).",
+  "dialogPasteClipboard": "Вставить из буфера",
+  "dialogEraseTitle": "Стереть все данные?",
+  "dialogEraseBody": "Удалятся профиль, оси, задачи, заметки и настройки. Действие необратимо.",
+  "dialogErase": "Стереть",
+  "dialogLogoutTitle": "Выйти из аккаунта?",
+  "dialogLogoutBody": "Локальные данные останутся на устройстве. Чтобы они снова синхронизировались, войдите тем же Google-аккаунтом.",
+  "snackExportSaved": "Сохранён: {path}",
+  "@snackExportSaved": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "snackCopy": "Копировать",
+  "snackExportError": "Не удалось экспортировать: {error}",
+  "@snackExportError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "snackClipboardEmpty": "Буфер обмена пуст.",
+  "snackImportSuccess": "Импортировано {count} записей.",
+  "@snackImportSuccess": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "snackImportError": "Не удалось импортировать: {error}",
+  "@snackImportError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "snackEraseError": "Не удалось стереть: {error}",
+  "@snackEraseError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "snackSyncing": "Синхронизация…",
+  "snackSyncDone": "Готово. Данные подтянуты с облака.",
+  "snackSyncError": "Не удалось: {error}",
+  "@snackSyncError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "snackLogoutError": "Не удалось выйти: {error}",
+  "@snackLogoutError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "loadingBackends": "Загрузка…",
+  "loadingBackendsHint": "Подгружаем список бэкендов…",
+  "reflectionDidNotGo": "Не пошло",
+  "reflectionDifficult": "Сложно",
+  "reflectionOk": "Норм",
+  "reflectionEasyShort": "Легко",
+  "entryKindTask": "Задача",
+  "entryKindNote": "Заметка",
+  "entryKindHabit": "Привычка",
+  "editorSaveError": "Не удалось сохранить запись: {error}",
+  "@editorSaveError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "editorDeletedMsg": "«{title}» удалена",
+  "@editorDeletedMsg": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "editorHintTask": "Что нужно сделать?",
+  "editorNewEntry": "Новая запись",
+  "editorEntry": "Запись",
+  "editorExpand": "Развернуть",
+  "editorClose": "Закрыть",
+  "editorParams": "Параметры",
+  "editorMakeTask": "Сделать задачей",
+  "editorTaskModeHint": "Дедлайн и XP при выполнении",
+  "editorNoteModeHint": "По умолчанию — заметка",
+  "editorNoDeadline": "Без дедлайна",
+  "editorXpOnComplete": "XP при выполнении",
+  "editorAddAxesHint": "Сначала добавь оси в онбординге.",
+  "editorUntitled": "(без названия)",
+  "editorBacklinksCount": "Сюда ссылаются ({count})",
+  "@editorBacklinksCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "editorSubtasksProgress": "Подзадачи — {done}/{total}",
+  "@editorSubtasksProgress": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "editorBodyHint": "Что у тебя на уме?\nФорматирование: жирный, курсив, заголовки, чек-листы, [[ссылки на заметки]].",
+  "editorToolH1": "Заголовок 1",
+  "editorToolH2": "Заголовок 2",
+  "editorToolH3": "Заголовок 3",
+  "editorToolBold": "Жирный",
+  "editorToolItalic": "Курсив",
+  "editorToolStrike": "Зачёркнутый",
+  "editorToolCode": "Код",
+  "editorToolBullet": "Маркированный список",
+  "editorToolNumber": "Нумерованный список",
+  "editorToolCheckbox": "Чек-лист",
+  "editorToolQuote": "Цитата",
+  "editorToolLink": "Ссылка",
+  "editorToolWikiLink": "Ссылка на заметку",
+  "editorToolTag": "Тег",
+  "editorWikiLinkTitle": "Ссылка на заметку",
+  "editorWikiLinkHint": "Начни печатать название…",
+  "editorCreateNote": "Создать «{title}»",
+  "@editorCreateNote": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "calendarNoTasks": "Задач нет",
+  "calendarPlanTask": "Запланировать задачу",
+  "calendarDeadlines": "Дедлайны",
+  "notesSearch": "Поиск заметок…",
+  "notesEmpty": "Заметок пока нет",
+  "notesNew": "Новая заметка",
+  "calendarNotes": "Заметки",
+  "dashboardOverdue": "просрочена · {date}",
+  "@dashboardOverdue": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "dashboardDueBy": "до {date}",
+  "@dashboardDueBy": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "dashboardPostpone15m": "+15 мин",
+  "dashboardPostpone1h": "+1 час",
+  "dashboardPostpone1d": "+1 день",
+  "dashboardPostpone3d": "+3 дня",
+  "dashboardTomorrow": "завтра {time}",
+  "@dashboardTomorrow": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "dashboardYesterday": "вчера {time}",
+  "@dashboardYesterday": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "dashboardReflectPrompt": "Заглянем коротко на пройденное?",
+  "dashboardGreetingAnon": "Привет",
+  "dashboardGreeting": "Привет, {name}",
+  "@dashboardGreeting": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dashboardOnboardingHint": "С чего начнём? Выбери действие ниже — это разово, потом дашборд оживёт твоими записями.",
+  "dashboardRoadmapNoGoal": "AI разложит твою цель на 4–10 конкретных задач, привязанных к осям пентаграммы.",
+  "dashboardRoadmapWithGoal": "AI разложит «{goal}» на 4–10 задач. Поле уже заполнено — можно редактировать.",
+  "@dashboardRoadmapWithGoal": {
+    "placeholders": {
+      "goal": {
+        "type": "String"
+      }
+    }
+  },
+  "dashboardGraphHint": "Граф второго мозга: цели, ограничения, рефлексии и заметки. Тапни ветку — отредактируй.",
+  "dashboardNoteHint": "Лёгкий старт: пара мыслей, наблюдение или идея. Заметку можно потом превратить в задачу.",
+  "dashboardRoadmapTitle": "Сгенерируй план задач",
+  "dashboardGenerate": "Сгенерировать",
+  "dashboardGraphTitle": "Заглянь в базу знаний",
+  "dashboardOpenGraph": "Открыть граф",
+  "dashboardNoteTitle": "Запиши первую заметку",
+  "dashboardCreate": "Создать",
+  "dashboardWeekPassed": "Прошла неделя",
+  "pomodoroFocusDone": "Фокус завершён",
+  "pomodoroBreakDone": "Отдых завершён",
+  "pomodoroLongBreakBody": "Время длинного отдыха {min} мин — нажми «Поехали», когда готов.",
+  "@pomodoroLongBreakBody": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "pomodoroShortBreakBody": "Короткий отдых {min} мин — нажми «Поехали», когда готов.",
+  "@pomodoroShortBreakBody": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "pomodoroNextFocusBody": "Следующий фокус {min} мин — нажми «Поехали», когда готов.",
+  "@pomodoroNextFocusBody": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "@selfEpoch": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "selfEpochNoData": "Эпоха {n} · нет данных",
+  "@selfEpochNoData": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "selfToNextLevel": "до L{level}: {xp} xp",
+  "@selfToNextLevel": {
+    "placeholders": {
+      "level": {
+        "type": "int"
+      },
+      "xp": {
+        "type": "int"
+      }
+    }
+  },
+  "selfTreeHint": "Древо вырастает от 3 ветвей. Добавь хотя бы 3 ветви, чтобы увидеть древо.",
+  "axesSaveError": "Не удалось сохранить: {error}",
+  "@axesSaveError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "axesAiDrawing": "AI рисует новые ветви…",
+  "axesRegenError": "Не удалось перегенерировать: {error}",
+  "@axesRegenError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "axesProfileUpdated": "Профиль обновлён. Хочешь сразу перегенерировать ветви?",
+  "axesAiRedrawHint": "AI перерисует набор с новыми вводными",
+  "axesDragHint": "Перетаскивай, переименовывай, добавляй или удаляй (от {min} до {max}). Чтобы AI перерисовал ветви с нуля — Меню → «Перегенерировать».",
+  "@axesDragHint": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "axesMaxBranches": "Максимум {max} ветвей",
+  "@axesMaxBranches": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "axesRemoveTooltip": "Удалить",
+  "axesMinBranches": "Минимум 3 ветви",
+  "axesNameHint": "Например: Тело",
+  "axesAiNewSet": "AI составит новый набор. Опиши, что хочешь изменить",
+  "axesAiExample": "например: больше про здоровье и творчество",
+  "axisXpTotal": "XP ВСЕГО",
+  "axisToEpoch": "ДО Э{n}",
+  "@axisToEpoch": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "axisLevelHint": "Уровень L{level} — от всех закрытых задач. Эпоха Э{epoch} — от XP именно этой оси, растёт и после того как древо заполнено на 100 %.",
+  "@axisLevelHint": {
+    "placeholders": {
+      "level": {
+        "type": "int"
+      },
+      "epoch": {
+        "type": "int"
+      }
+    }
+  },
+  "pomodoroCompleted": "✦ {n}",
+  "@pomodoroCompleted": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "pomodoroLongBreakEvery": "Длинный отдых каждые N фокусов",
+  "knowledgeContextHint": "Кратко: кто ты, чем занят, что важно",
+  "knowledgePrefHint": "ключ: значение",
+  "navBranches": "Ветви",
+  "settingsMore": "Ещё",
+  "settingsOnboardAgain": "Пройти онбординг заново",
+  "settingsOnboardAgainHint": "Обновить интересы, боли, цели и пересобрать ветви",
+  "settingsAddBranch": "Добавить ветвь",
+  "editorSymbol": "Символ",
+  "roadmapMinAxes": "Нужно минимум 3 оси, чтобы построить план.",
+  "roadmapImported": "Импортировано задач: {n}",
+  "@roadmapImported": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "roadmapImportError": "Не удалось импортировать: {error}",
+  "@roadmapImportError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "roadmapGoalHint": "Чем конкретнее — тем точнее план. Например: «Хочу пробежать полумарафон через 3 месяца, текущая форма средняя».",
+  "roadmapInputHint": "Чего хочешь достичь?",
+  "roadmapNeedAxes": "Нужно хотя бы 3 оси. Добавь их на вкладке «Я».",
+  "roadmapGenerating": "Генерируем план…",
+  "roadmapImportBtn": "Импортировать ({n})",
+  "@roadmapImportBtn": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "pomodoroRunning": "Pomodoro запущен",
+  "pomodoroFocusStarted": "Фокус {min} мин: {title}",
+  "@pomodoroFocusStarted": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "axisXpForAxis": "+{xp} XP",
+  "@axisXpForAxis": {
+    "placeholders": {
+      "xp": {
+        "type": "int"
+      }
+    }
+  },
+  "dashboardXpToday": "XP СЕГОДНЯ",
+  "dashboardXpWeek": "{xp} за неделю",
+  "@dashboardXpWeek": {
+    "placeholders": {
+      "xp": {
+        "type": "int"
+      }
+    }
+  },
+  "dashboardBestAxis": "{name} · +{xp} XP",
+  "@dashboardBestAxis": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "xp": {
+        "type": "int"
+      }
+    }
+  },
+  "dashboardDescribeGoal": "Опиши цель",
+  "dashboardOverdueCount": "{n} просрочено",
+  "@dashboardOverdueCount": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "dashboardTodayCount": "{n} на сегодня",
+  "@dashboardTodayCount": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "dashboardThinking": "Думаю над планом…",
+  "aboutApp": "О тебе",
+  "knowledgePrefs": "Предпочтения",
+  "actionClear": "Очистить",
+  "roadmapHorizon": "Горизонт",
+  "roadmapWeek": "Неделя",
+  "roadmapMonth": "Месяц",
+  "roadmapQuarter": "Квартал",
+  "roadmapTaskCount": "Кол-во задач",
+  "pomodoroTooltip": "Pomodoro",
+  "pulseStreak": "СТРИК",
+  "pulseStartToday": "начни сегодня",
+  "pulseQuiet": "пока тихо",
+  "pulseBestAxis": "ЛУЧШАЯ ОСЬ",
+  "pulseNoData": "нет данных",
+  "pulseDeadline": "до {date}",
+  "pulseNoDeadline": "нет дедлайнов",
+  "pulseDeadlineHours": "{h}ч",
+  "@pulseDeadlineHours": {
+    "placeholders": {
+      "h": {
+        "type": "int"
+      }
+    }
+  },
+  "pulseDeadlineDays": "{d}д",
+  "@pulseDeadlineDays": {
+    "placeholders": {
+      "d": {
+        "type": "int"
+      }
+    }
+  },
+  "onboardQ1": "Привет. Я твой ассистент роста. Как тебя зовут?",
+  "onboardQ2": "Окей, {name}. Чего ты хочешь достичь в ближайший год?",
+  "@onboardQ2": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "onboardQ2NoName": "Чего ты хочешь достичь в ближайший год?",
+  "onboardQ3": "В каких сферах ты уже что-то делаешь? Выбери 3–8.",
+  "onboardQ4": "Сколько часов в неделю реально готов уделять?",
+  "onboardHoursWeek": "ч/нед",
+  "onboardWeeklyTime": "В неделю на развитие: ~{h} ч",
+  "@onboardWeeklyTime": {
+    "placeholders": {
+      "h": {
+        "type": "int"
+      }
+    }
+  },
+  "onboardSaveError": "Не удалось сохранить профиль: {error}",
+  "@onboardSaveError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "onboardSelectOne": "Выбери хотя бы одну",
+  "onboardSelectMore": "Выбери ещё {n}",
+  "@onboardSelectMore": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "onboardCustomOpen": "× своё",
+  "onboardCustomClosed": "+ своё",
+  "onboardHoursLabel": "{h} ч",
+  "@onboardHoursLabel": {
+    "placeholders": {
+      "h": {
+        "type": "int"
+      }
+    }
+  },
+  "onboardLevelNovice": "новичок",
+  "onboardLevelLearning": "учусь",
+  "onboardLevelConfident": "уверенно",
+  "onboardLevelExpert": "эксперт",
+  "onboardProfileName": "Зовут {name}.",
+  "@onboardProfileName": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "onboardProfileGoal": "Цель: {goal}.",
+  "@onboardProfileGoal": {
+    "placeholders": {
+      "goal": {
+        "type": "String"
+      }
+    }
+  },
+  "onboardProfileNow": "Сейчас: {text}.",
+  "@onboardProfileNow": {
+    "placeholders": {
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "onboardProfileHours": "Готов уделять около {h} ч/нед.",
+  "@onboardProfileHours": {
+    "placeholders": {
+      "h": {
+        "type": "int"
+      }
+    }
+  },
+  "actionNext": "Далее",
+  "onboardPlanTitle": "Сразу набросать план?",
+  "onboardPlanBody": "AI разложит «{goal}» на 4–10 конкретных задач, привязанных к осям, которые ты только что собрала. Промпт уже заполнен — можно отредактировать, прежде чем запускать генерацию.",
+  "@onboardPlanBody": {
+    "placeholders": {
+      "goal": {
+        "type": "String"
+      }
+    }
+  },
+  "actionLater": "Позже",
+  "onboardFillAxes": "Заполни хотя бы 3 оси, чтобы пентаграмма имела смысл",
+  "onboardTooManyAxes": "Слишком много осей: оставь не больше 8, иначе будет хаос",
+  "onboardSaveAxesError": "Не удалось сохранить оси: {error}",
+  "@onboardSaveAxesError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "onboardRegenTitle": "Перегенерация осей",
+  "onboardDescribeAxes": "Опиши свои оси роста",
+  "onboardAiGenerating": "AI придумывает оси…",
+  "onboardYourAxes": "Твои личные оси",
+  "onboardAxesHint": "От 3 до 8 направлений, по которым ты хочешь расти. К ним будут привязываться задачи и заметки. Их можно изменить позже.",
+  "onboardAiError": "Не удалось связаться с AI: {error}. Ниже — запасные оси, отредактируй как хочешь.",
+  "@onboardAiError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "onboardAiDrawingAxes": "Из {n} твоих направлений AI рисует персональную пентаграмму…",
+  "@onboardAiDrawingAxes": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "onboardAiGenerated": "Сгенерировано на {model}. Переименуй, убери лишние, добавь свои. От 3 до 8.",
+  "@onboardAiGenerated": {
+    "placeholders": {
+      "model": {
+        "type": "String"
+      }
+    }
+  },
+  "onboardRegenBtn": "Перегенерировать оси",
+  "onboardWaitSeconds": "Это занимает 5–25 секунд",
+  "onboardAddAxis": "Добавить ось",
+  "onboardCreatePentagram": "Создать пентаграмму",
+  "onboardAxisHint": "Название оси (#{n})",
+  "@onboardAxisHint": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "onboardAxesUpdated": "Оси обновлены",
+  "onboardAxesMigrated": "Оси обновлены, перенесено {n} связей с задачами",
+  "@onboardAxesMigrated": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "backendsTitle": "Бэкенды",
+  "backendsAdd": "Добавить",
+  "backendsError": "Ошибка: {error}",
+  "@backendsError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "backendsHint": "Активный бэкенд используется для AI, синхронизации и входа. Можно держать несколько (например, прод и личный сервер) и переключаться без перезапуска.",
+  "backendsDeleteTitle": "Удалить бэкенд?",
+  "backendsSaveError": "Не удалось сохранить: {error}",
+  "@backendsSaveError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "backendsPinging": "Пингую…",
+  "backendsOnline": "Бэкенд отвечает",
+  "backendsOffline": "Не отвечает: {error}",
+  "@backendsOffline": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "backendsPing": "Пинг",
+  "backendsMakeActive": "Сделать активным",
+  "backendsEdit": "Изменить",
+  "backendsLastOne": "Должен остаться хотя бы один бэкенд",
+  "backendsNewTitle": "Новый бэкенд",
+  "backendsEditTitle": "Изменить бэкенд",
+  "backendsName": "Имя",
+  "backendsNameHint": "Прод · Локалка · Запасной",
+  "backendsUrlError": "Введите валидный URL начинающийся с http(s)://",
+  "menuTitle": "Меню недели",
+  "menuNewConfirmTitle": "Создать новое меню?",
+  "menuNewConfirmBody": "Текущие задачи и рецепты останутся в базе знаний — их можно найти по тегу menu/… или открыть по ссылке.\n\nФорма генерации откроется заново.",
+  "actionCreate": "Создать",
+  "menuBreakfast": "Завтрак",
+  "menuLunch": "Обед",
+  "menuDinner": "Ужин",
+  "menuSnack": "Перекус",
+  "menuRecipeStubTitle": "Рецепт: {name}",
+  "@menuRecipeStubTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "menuRecipeStubBody": "_Рецепт ещё не сгенерирован._\n\nОткрой меню недели → нажми «Получить рецепт» рядом с этим блюдом.",
+  "menuShoppingTitle": "Список покупок · меню {range}",
+  "@menuShoppingTitle": {
+    "placeholders": {
+      "range": {
+        "type": "String"
+      }
+    }
+  },
+  "menuShoppingHeader": "Список покупок на неделю",
+  "menuGoalServings": "Цель: {goal} · {n} порций",
+  "@menuGoalServings": {
+    "placeholders": {
+      "goal": {
+        "type": "String"
+      },
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "menuImportError": "Не удалось импортировать меню: {error}",
+  "@menuImportError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "menuIngredients": "ИНГРЕДИЕНТЫ",
+  "menuFullRecipe": "Полный рецепт: [[{link}]]",
+  "@menuFullRecipe": {
+    "placeholders": {
+      "link": {
+        "type": "String"
+      }
+    }
+  },
+  "menuGenerating": "AI составляет меню…",
+  "menuImporting": "Создаю задачи и список покупок…",
+  "menuDateRange": "7 дней с {from} по {to}",
+  "@menuDateRange": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "menuWhatCreated": "Что я создам",
+  "menuBullet1": "21 задача (завтрак / обед / ужин на 7 дней)",
+  "menuBullet2": "1 заметка «Список покупок» с чек-листом",
+  "menuBullet3": "Рецепты подгрузятся по тапу и сохранятся в связанные заметки",
+  "menuRegenerate": "Перегенерировать",
+  "menuImportBtn": "Импортировать в задачи",
+  "menuImportedCount": "Меню импортировано · {n} задач",
+  "@menuImportedCount": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "menuNew": "Новое меню",
+  "menuImportedHint": "Тег #{tag} группирует все эти записи. Тапни блюдо — открой задачу. Нажми «Получить рецепт» на любом блюде — рецепт сохранится в связанной заметке.",
+  "@menuImportedHint": {
+    "placeholders": {
+      "tag": {
+        "type": "String"
+      }
+    }
+  },
+  "menuServings": "{n} порций",
+  "@menuServings": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "menuDailyCalories": "~{n} ккал в день",
+  "@menuDailyCalories": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "menuOpenRecipe": "Открыть",
+  "menuGetRecipe": "Получить рецепт",
+  "habitsTitle": "Микро-привычки",
+  "habitsIntentError": "Опиши, какую привычку хочешь освоить.",
+  "habitsDayOf": "День {day} из {total} · челлендж «{intent}»",
+  "@habitsDayOf": {
+    "placeholders": {
+      "day": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "intent": {
+        "type": "String"
+      }
+    }
+  },
+  "habitsImported": "Челлендж «{intent}» добавлен — {n} мини-задач в Задачах.",
+  "@habitsImported": {
+    "placeholders": {
+      "intent": {
+        "type": "String"
+      },
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "habitsImportError": "Не удалось импортировать челлендж: {error}",
+  "@habitsImportError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "habitsGenerating": "AI подбирает крошечные шаги…",
+  "habitsImporting": "Создаю задачи в Noetica…",
+  "habitsBullet1": "{n} задач — по одной на день, от лёгкой к закрепляющей",
+  "@habitsBullet1": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "habitsBullet2": "Каждое действие ≤ 2 минут реального усилия",
+  "habitsBullet3": "Появятся в Задачах в секциях «Сегодня» / «Завтра» / …",
+  "habitsDaysMini": "{n} дней · по одной мини-задаче",
+  "@habitsDaysMini": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "habitsAddTasks": "Добавить {n} задач",
+  "@habitsAddTasks": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "coachMorningTitle": "Утренний план",
+  "coachEveningTitle": "Вечерний разбор",
+  "coachRefresh": "Обновить",
+  "coachError": "Не удалось получить совет",
+  "coachRetry": "Повторить",
+  "coachFocus": "Фокус дня",
+  "coachPlanToday": "План на сегодня",
+  "coachMotivation": "Мотивация",
+  "coachDayResults": "Итоги дня",
+  "coachSummary": "Резюме",
+  "coachWins": "Что получилось",
+  "coachImprove": "Что улучшить",
+  "coachTomorrow": "На завтра",
+  "reflectionResult": "Что получилось / результат",
+  "reflectionDifficulties": "Что мешало / сложности",
+  "reflectionMinutes": "Сколько потратил, мин",
+  "reflectionCanSkip": "Можно пропустить",
+  "toolsTitle": "Ассистент",
+  "toolsAvailable": "Доступно",
+  "toolsSoon": "Скоро",
+  "toolsDescriptionFull": "AI собирает готовые планы и раскладывает их по твоим дням, осям и тегам. Меню на неделю, программа тренировок, учебный курс — всё попадает в Календарь и Задачи как обычные записи.",
+  "toolsOpening": "Открываю «{title}»…",
+  "@toolsOpening": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "toolsComingSoon": "Скоро: «{title}»",
+  "@toolsComingSoon": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "authLoginError": "Не удалось войти: {error}",
+  "@authLoginError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "authWait": "Подождите…",
+  "authLoginGoogle": "Войти через Google",
+  "authSyncHint": "Ваши данные синхронизируются между устройствами под одним Google-аккаунтом. Без входа приложение не работает.",
+  "dayCalendar": "Календарь",
+  "dayPlanTask": "Запланировать задачу",
+  "dayEmpty": "В этот день ничего не закрыто и не запланировано.",
+  "dayNoEntries": "Без записей.",
+  "dayToday": "Сегодня",
+  "dayYesterday": "Вчера",
+  "dayTomorrow": "Завтра",
+  "dayMonths": "янв,фев,мар,апр,мая,июн,июл,авг,сен,окт,ноя,дек",
+  "dayWeekdays": "пн,вт,ср,чт,пт,сб,вс",
+  "dayDone": "✓ Выполнено ({n})",
+  "@dayDone": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "dayDeadlines": "⏳ Дедлайны ({n})",
+  "@dayDeadlines": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "daySummaryClosed": "{n} закрыто · +{xp} XP",
+  "@daySummaryClosed": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "xp": {
+        "type": "int"
+      }
+    }
+  },
+  "daySummaryDeadline": "{n} дедлайн",
+  "@daySummaryDeadline": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "untitled": "(без названия)",
+  "weeklyTitle": "Недельный обзор",
+  "weeklyAxis": "Ось",
+  "weeklyCompleted": "Завершено",
+  "weeklyXP": "Опыт",
+  "weeklyTasks": "Задач",
+  "weeklyNotes": "Заметок",
+  "weeklyStreak": "Стрик",
+  "weeklyBestDay": "Лучший день",
+  "weeklyWorstDay": "Слабый день",
+  "weeklyHighlights": "Главное за неделю",
+  "weeklyAdvice": "Совет на следующую",
+  "weeklyNoData": "Недостаточно данных",
+  "weeklyDays": "пн,вт,ср,чт,пт,сб,вс",
+  "weeklyMonths": "янв,фев,мар,апр,мая,июн,июл,авг,сен,окт,ноя,дек",
+  "weeklyDone": "выполнено",
+  "weeklyCreated": "создано",
+  "weeklyGenerating": "AI анализирует неделю…",
+  "weeklyShare": "Поделиться",
+  "weeklyClose": "Закрыть",
+  "weeklyTotal": "итого",
+  "weeklyReflTitle": "Итог недели",
+  "weeklyReflSubtitle": "Заглянем коротко: что было, что нет, и куда дальше.",
+  "weeklyWinsLabel": "Что получилось",
+  "weeklyLossesLabel": "Что не получилось",
+  "weeklyFocusLabel": "Куда смотрю на следующую",
+  "weeklyMoodLabel": "Самочувствие",
+  "weeklyLater": "Позже",
+  "weeklySubmit": "Записать",
+  "weeklyCustomHint": "Своё (необязательно)",
+  "weeklySaveError": "Не сохранилось: {error}",
+  "@weeklySaveError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "weeklyMoodSummary": "самочувствие {n}/5",
+  "@weeklyMoodSummary": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "weeklyWin1": "выполнил план",
+  "weeklyWin2": "новые привычки",
+  "weeklyWin3": "продвинулся в проекте",
+  "weeklyWin4": "отдых был",
+  "weeklyWin5": "дисциплина держалась",
+  "weeklyWin6": "разобрался в новой теме",
+  "weeklyWin7": "хорошие отношения",
+  "weeklyLoss1": "прокрастинация",
+  "weeklyLoss2": "усталость",
+  "weeklyLoss3": "отвлечения",
+  "weeklyLoss4": "не уделил время важному",
+  "weeklyLoss5": "выгорание",
+  "weeklyLoss6": "болел",
+  "weeklyLoss7": "конфликты",
+  "weeklyFocus1": "добить незавершённое",
+  "weeklyFocus2": "новая привычка",
+  "weeklyFocus3": "фокус на главном",
+  "weeklyFocus4": "отдых",
+  "weeklyFocus5": "учёба",
+  "weeklyFocus6": "спорт",
+  "weeklyFocus7": "отношения",
+  "epochPeak": "ЭПОХА {n} · ПИК",
+  "@epochPeak": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "epochPostpone": "Отложить",
+  "epochTreeFull": "Ты заполнил древо.",
+  "epochTwoPaths": "Два пути дальше — можешь обновить сам набор осей и начать Эпоху {n} с чистого листа, либо остаться в текущем фокусе и взять следующий, более трудный тир задач.",
+  "@epochTwoPaths": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "epochNewEpoch": "Новая эпоха",
+  "epochNewEpochSub": "Перерисовать ветви — Эпоха {n}. XP и уровень остаются.",
+  "@epochNewEpochSub": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "epochGoDeeper": "Углубиться",
+  "epochGoDeeperSub": "Тир {n} в той же Эпохе — задачи станут сложнее, древо обнулится.",
+  "@epochGoDeeperSub": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "graphBranchGoals": "Цели",
+  "graphBranchConstraints": "Ограничения",
+  "graphBranchHighlights": "Достижения",
+  "graphBranchReflections": "Рефлексии",
+  "graphBranchPreferences": "Предпочтения",
+  "graphFilterAll": "Все",
+  "graphFilterNotes": "Заметки",
+  "graphFilterTasks": "Задачи",
+  "graphFilterBookmarks": "Закладки",
+  "graphFilterDaily": "Дневник",
+  "graphFilterKnowledge": "Знания о себе",
+  "pomodoroStop": "Стоп",
+  "pomodoroSeries": "Серия фокус-сессий",
+  "pomodoroSeriesReset": "Серия фокус-сессий — нажми чтобы сбросить",
+  "pomodoroSettings": "Настройки",
+  "pomodoroFocusMin": "Фокус, мин",
+  "pomodoroShortBreak": "Короткий отдых, мин",
+  "pomodoroLongBreak": "Длинный отдых",
+  "pomodoroAutoStart": "Авто-старт следующей фазы",
+  "pomodoroAutoStartSub": "После окончания фокуса/отдыха таймер продолжается сам",
+  "pomodoroSoundVibro": "Звук + вибрация",
+  "pomodoroSoundVibroSub": "Системный «дзынь» и хаптик при смене фазы (уведомление приходит в любом случае)",
+  "graphCentreLabel": "я",
+  "graphGoalsHint": "Что хочешь достичь",
+  "graphConstraintsHint": "Что мешает или ограничивает",
+  "graphHighlightsHint": "Что уже получилось",
+  "graphReflectionsHint": "Заметки о пройденном",
+  "graphDelete": "Удалить",
+  "graphSearchHint": "Поиск по базе знаний…",
+  "graphKnowledgeBase": "База знаний",
+  "graphSearchTooltip": "Поиск",
+  "graphDailyTooltip": "Дневник",
+  "graphShowRecipes": "Показывать рецепты",
+  "graphHideRecipes": "Скрывать рецепты",
+  "graphGlobalTooltip": "Глобальный граф",
+  "graphNewNote": "Новая заметка",
+  "graphResetView": "Сбросить вид",
+  "graphShuffle": "Перемешать",
+  "graphEmptyTitle1": "Записывай",
+  "graphEmptyBody1": "Заметки, задачи, дневник — всё становится узлами графа.",
+  "graphEmptyTitle2": "Связывай",
+  "graphEmptyBody2": "Упоминай [[заголовок]] в тексте — Noetica построит ребро.",
+  "graphEmptyTitle3": "Изучай",
+  "graphEmptyBody3": "Граф покажет, какие темы пересекаются и где пусто.",
+  "graphEmptyTitle4": "О себе",
+  "graphEmptyBody4": "Цели, ограничения, достижения — эти ветки помогут AI.",
+  "graphEmptyTitle5": "Первая запись",
+  "graphEmptyBody5": "Нажми +, чтобы создать заметку и увидеть граф в действии.",
+  "graphEmptyTitle6": "Теги",
+  "graphEmptyBody6": "Добавляй теги к записям — они тоже станут узлами.",
+  "graphResetFilter": "Сбросить фильтр",
+  "graphEmptyAllTitle": "База знаний пока пуста",
+  "graphEmptyAllBody": "Создайте первую заметку или задачу — они появятся здесь как узлы графа.",
+  "graphEmptyAllAction": "Создать запись",
+  "graphEmptyNotesTitle": "Заметок пока нет",
+  "graphEmptyNotesBody": "Заметки будут видны как отдельные узлы. Связи появляются автоматически, когда в теле есть [[ссылка]] на другую заметку.",
+  "graphEmptyNotesAction": "Создать заметку",
+  "graphEmptyTasksTitle": "Задач в графе нет",
+  "graphEmptyTasksBody": "Создайте задачу через «+» или сгенерируйте план задач из вашей цели.",
+  "graphEmptyBookmarksTitle": "Закладок пока нет",
+  "graphEmptyBookmarksBody": "Долгое нажатие на узел графа добавит его в закладки.",
+  "graphEmptyDailyTitle": "Дневник пуст",
+  "graphEmptyDailyBody": "Тапните иконку календаря в шапке, чтобы создать запись на сегодня.",
+  "graphEmptyKnowledgeTitle": "Знания о себе пусты",
+  "graphEmptyKnowledgeBody": "Заполните цели, ограничения и достижения через тапы по веткам графа — это даст AI больше контекста для генерации планов.",
+  "editListAdd": "Добавить",
+  "editListRemove": "Удалить",
+  "editListSave": "Сохранить",
+  "graphConnections": "связей",
+  "selfBranchesTooltip": "Ветви",
+  "selfSettingsTooltip": "Настройки",
+  "selfTreeBranches": "ДРЕВО · ВЕТКИ",
+  "selfGeneratePlan": "Сгенерировать план",
+  "selfScoreExplain": "Очки начисляются за выполнение задач, привязанных к осям. Со временем затухают — пентаграмма отражает тебя за последний месяц.",
+  "selfEpochArchive": "ЭПОХА {n} · АРХИВ",
+  "@selfEpochArchive": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "selfArchiveReadonly": "Древо этой эпохи на момент перехода. Только просмотр.",
+  "selfArchiveEmpty": "Архив этой эпохи пустой — она завершилась до того, как мы начали записывать историю. Будущие переходы сохранятся целиком.",
+  "selfArchiveBranches": "ВЕТВИ ТОЙ ЭПОХИ",
+  "selfEpochLabel": "ЭПОХА",
+  "selfEpochShort": "Э{epoch}",
+  "@selfEpochShort": {
+    "placeholders": {
+      "epoch": {
+        "type": "String"
+      }
+    }
+  },
+  "selfEpochTierShort": "Э{epoch}.{tier}",
+  "@selfEpochTierShort": {
+    "placeholders": {
+      "epoch": {
+        "type": "String"
+      },
+      "tier": {
+        "type": "String"
+      }
+    }
+  },
+  "selfLevelLabel": "УРОВЕНЬ",
+  "selfStreakLabel": "СТРИК",
+  "selfStreakDays": "{n} д.",
+  "@selfStreakDays": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "selfReadyTransition": "Готов к переходу — тапни, чтобы открыть",
+  "selfStreakBroken": "Стрик прервался. Закрой одну задачу сегодня — начнём заново.",
+  "axisEpochPrefix": "Э{n}",
+  "@axisEpochPrefix": {
+    "placeholders": {
+      "n": {
+        "type": "String"
+      }
+    }
+  },
+  "axisState": "СОСТОЯНИЕ",
+  "axisCompletedByAxis": "ВЫПОЛНЕНО ПО ОСИ",
+  "axisNoTasks": "Здесь появятся выполненные задачи, привязанные к этой оси.",
+  "axesOnboardingFirst": "Сначала пройди онбординг.",
+  "axesYes": "Да",
+  "axesAxis": "Ось",
+  "axesDone": "Готово",
+  "dashNoActiveTasks": "Активных задач нет — отдохни или создай новую.",
+  "dashDone": "Готово",
+  "dashPostpone": "Отложить",
+  "dashFocusTimer": "Запустить таймер фокуса",
+  "dashPostponeBy": "ОТЛОЖИТЬ НА",
+  "dashViewPentagram": "Посмотреть свою пентаграмму",
+  "heatmapWeekdays": "Пн,,Ср,,Пт,,",
+  "heatmapMonths": "янв,фев,мар,апр,май,июн,июл,авг,сен,окт,ноя,дек",
+  "heatmapEmptyYear": "в {year} году пока пусто",
+  "@heatmapEmptyYear": {
+    "placeholders": {
+      "year": {
+        "type": "int"
+      }
+    }
+  },
+  "heatmapYearSummary": "{total} закрыто в {year} — тапни день",
+  "@heatmapYearSummary": {
+    "placeholders": {
+      "total": {
+        "type": "String"
+      },
+      "year": {
+        "type": "int"
+      }
+    }
+  },
+  "heatmapLess": "меньше",
+  "heatmapMore": "больше",
+  "miniTreeEmpty": "Древо появится после первой ветви",
+  "miniTreeXp": "всего {xp} XP · тап — древо целиком",
+  "@miniTreeXp": {
+    "placeholders": {
+      "xp": {
+        "type": "int"
+      }
+    }
+  },
+  "@pulseDeadline": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "pulseStreakDay": "{n} день",
+  "@pulseStreakDay": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "pulseStreakDays": "{n} дня",
+  "@pulseStreakDays": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "pulseStreakDaysMany": "{n} дней",
+  "@pulseStreakDaysMany": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "notesQuickHint": "Быстрая заметка…",
+  "notesSearchHint": "Поиск",
+  "notesNotFound": "Ничего не найдено",
+  "notesEmptyHint": "Запиши мысль одной строкой выше или открой полный редактор кнопкой «+».",
+  "notesNotFoundHint": "Попробуй другой запрос.",
+  "calMonths": "Январь,Февраль,Март,Апрель,Май,Июнь,Июль,Август,Сентябрь,Октябрь,Ноябрь,Декабрь",
+  "calWeekdays": "Пн,Вт,Ср,Чт,Пт,Сб,Вс",
+  "calToday": "Сегодня",
+  "calPlanDay": "Запланировать на этот день",
+  "calNothingRecorded": "Ничего не записано.",
+  "calMonthsShort": "янв,фев,мар,мая,июн,июл,авг,сен,окт,ноя,дек",
+  "calDaysShort": "пн,вт,ср,чт,пт,сб,вс",
+  "calTodayPrefix": "Сегодня",
+  "calYesterday": "Вчера",
+  "calTomorrow": "Завтра",
+  "calDayEmpty": "В этот день ничего не записано.",
+  "taskOverdue": "Просрочено",
+  "taskNoTasks": "Задач нет — все выполнены или не созданы.",
+  "settingsSync": "Синхронизация",
+  "settingsSyncSub": "Google Drive для бэкапа",
+  "settingsExportSub": "JSON в буфер обмена",
+  "settingsImportSub": "Вставить JSON",
+  "settingsAboutSub": "Версия, лицензии",
+  "roadmapTitle": "AI-План",
+  "roadmapGenerateFirst": "Сгенерируй первый план",
+  "roadmapAxis": "Ось",
+  "roadmapGoal": "Цель",
+  "roadmapGenerate": "Сгенерировать",
+  "roadmapWeek1": "Неделя 1",
+  "roadmapWeek2": "Неделя 2",
+  "roadmapWeek3": "Неделя 3",
+  "roadmapWeek4": "Неделя 4",
+  "roadmapError": "Ошибка",
+  "homeMore": "Ещё",
+  "onboardingActiveHours": "Активные часы",
+  "menuRecipeSteps": "ШАГИ РЕЦЕПТА",
+  "menuGenerateRecipe": "Сгенерировать рецепт",
+  "entryUntitled": "Без названия",
+  "axisTileFocusTasks": "фокусных задач",
+  "backendsNoKey": "ключ не задан",
+  "editListAddItem": "Добавить",
+  "editListHint": "Новый пункт",
+  "editListAddFirst": "Добавить первую запись",
+  "entryTaskDone": "✓ задача",
+  "entryTask": "задача",
+  "backendsActive": "Активный",
+  "debugFillAxes": "Заполнить все оси до 100%",
+  "debugFillAxesSub": "Создаёт синтетические задачи, чтобы пентагон встал на пик",
+  "debugFillAxesDone": "Готово. Открой «Я» — оверлей должен появиться.",
+  "debugResetAck": "Сбросить ack эпохи",
+  "debugResetAckSub": "Обнуляет epochAckedAt — оверлей снова пустит при пике",
+  "debugResetAckDone": "Ack сброшен.",
+  "debugBumpEpoch": "Форсировать +1 эпоху",
+  "debugBumpEpochDone": "Эпоха увеличена.",
+  "debugResetEpoch": "Сбросить эпоху на 1",
+  "debugResetEpochSub": "Полный откат прогрессии до Эпохи 1",
+  "debugResetEpochDone": "Сброс до Эпохи 1.",
+  "roadmapRegenerate": "Перегенерировать",
+  "roadmapFailed": "Не получилось",
+  "roadmapGenericError": "Что-то пошло не так",
+  "roadmapBack": "Назад",
+  "roadmapToday": "сегодня",
+  "roadmapTomorrow": "завтра",
+  "roadmapInDays": "через {n} дн.",
+  "@roadmapInDays": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "roadmapDueDate": "до {date}",
+  "@roadmapDueDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "roadmapFromOnboarding": "Из онбординга",
+  "pomodoroStopAction": "Стоп",
+  "pomodoroGoAction": "Поехали",
+  "onboardGoals": "поправить здоровье,сменить профессию,выучить новое,стать дисциплинированнее,развить отношения,найти баланс,запустить проект",
+  "onboardInterests": "учёба,код,дизайн,спорт,медитация,чтение,музыка,языки,кулинария,отношения,финансы,творчество,карьера,семья",
+  "onboardTimePrefix": "Время",
+  "onboardPainPrefix": "Что мешает",
+  "onboardComfortTime": "Удобное время",
+  "onboardNameHint": "Имя",
+  "onboardCustomValue": "Своё значение",
+  "onboardVolumeMini": "мини-объём, по чуть-чуть",
+  "onboardVolumeComfort": "комфортный темп",
+  "onboardVolumeSerious": "серьёзная вовлечённость",
+  "onboardVolumeAlmost": "почти второй джоб",
+  "onboardVolumeMax": "максимальный режим",
+  "onboardPainSummary": "Что мешает: {pain}.",
+  "@onboardPainSummary": {
+    "placeholders": {
+      "pain": {
+        "type": "String"
+      }
+    }
+  },
+  "onboardTimeSummary": "Удобное время: {time}.",
+  "@onboardTimeSummary": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "pulseDeadlineLabel": "Дедлайн",
+  "pluralTaskOne": "задача",
+  "pluralTaskFew": "задачи",
+  "pluralTaskMany": "задач",
+  "pluralDeadlineOne": "дедлайн",
+  "pluralDeadlineFew": "дедлайна",
+  "pluralDeadlineMany": "дедлайнов",
+  "pluralNoteOne": "заметка",
+  "pluralNoteFew": "заметки",
+  "pluralNoteMany": "заметок",
+  "pluralBranchOne": "ветвь",
+  "pluralBranchFew": "ветви",
+  "pluralBranchMany": "ветвей",
+  "heatmapNothing": "ничего",
+  "miniTreeBest": "лучшая: {symbol} {name} · L{level}",
+  "@miniTreeBest": {
+    "placeholders": {
+      "symbol": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      },
+      "level": {
+        "type": "int"
+      }
+    }
+  },
+  "timeJustNow": "только что",
+  "timeNow": "сейчас",
+  "timeAgoFmt": "{value} {unit} назад",
+  "@timeAgoFmt": {
+    "placeholders": {
+      "value": {
+        "type": "int"
+      },
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "timeInFmt": "через {value} {unit}",
+  "@timeInFmt": {
+    "placeholders": {
+      "value": {
+        "type": "int"
+      },
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "timeRightAfter": "сразу после",
+  "timePlusFmt": "+ {value} {unit}",
+  "@timePlusFmt": {
+    "placeholders": {
+      "value": {
+        "type": "int"
+      },
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "pluralDayOne": "день",
+  "pluralDayFew": "дня",
+  "pluralDayMany": "дней",
+  "pluralHourOne": "час",
+  "pluralHourFew": "часа",
+  "pluralHourMany": "часов",
+  "pluralMinuteOne": "минута",
+  "pluralMinuteFew": "минуты",
+  "pluralMinuteMany": "минут",
+  "pluralMonthOne": "месяц",
+  "pluralMonthFew": "месяца",
+  "pluralMonthMany": "месяцев",
+  "pluralYearOne": "год",
+  "pluralYearFew": "года",
+  "pluralYearMany": "лет",
+  "pomodoroFocus": "Фокус",
+  "pomodoroBreak": "Короткий отдых",
+  "pomodoroLongBreakHint": "Длинный отдых {min} мин",
+  "@pomodoroLongBreakHint": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "pomodoroShortBreakHint": "Короткий отдых {min} мин",
+  "@pomodoroShortBreakHint": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "pomodoroNextFocusAuto": "Поехали — следующий фокус {min} мин",
+  "@pomodoroNextFocusAuto": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "pomodoroNextFocusManual": "Запусти следующий фокус когда готов",
+  "pomodoroTimeToRest": "Время передохнуть",
+  "pomodoroBackToFocus": "Возвращаемся к фокусу",
+  "pomodoroReadyAgain": "Готов снова работать?",
+  "notifChannelName": "Дедлайны и напоминания",
+  "notifChannelDesc": "Напоминания о приближающихся и просроченных задачах.",
+  "notifWindowsHint": "Тосты Windows + иконка в трее. Чтобы напоминания приходили, не закрывай приложение полностью — сворачивай в трей (крестик это и делает).",
+  "notifUnsupported": "Эта платформа не поддерживается.",
+  "notifMorningTitle": "Утренний план",
+  "notifMorningBody": "Загляни в AI-коуч — спланируй свой день",
+  "notifEveningTitle": "Вечерний разбор",
+  "notifEveningBody": "Подведём итоги дня — что получилось, что улучшить?",
+  "notifDeadlineTomorrow": "Завтра дедлайн",
+  "notifDeadlineToday": "Сегодня дедлайн",
+  "notifDeadlinePassed": "Дедлайн прошёл",
+  "notifWeeklyTitle": "Время недельной рефлексии",
+  "notifWeeklyBody": "Заглянем как прошла неделя?",
+  "trayOpen": "Открыть Noetica",
+  "trayExit": "Выйти",
+  "genMenuGoal": "Цель питания",
+  "genMenuClassic": "Сбалансированно",
+  "genMenuLoseWeight": "Похудение",
+  "genMenuHealth": "Здоровье",
+  "genMenuMuscle": "Набор мышц",
+  "genMenuEnergy": "Энергия / спорт",
+  "genMenuServings": "Порций",
+  "genMenuStart": "Старт меню",
+  "genMenuAxis": "Ось роста",
+  "genMenuAxisHelp": "21 задача добавится к выбранной оси и будет давать XP при отметке «выполнено».",
+  "genMenuRestrictions": "Ограничения (опционально)",
+  "genMenuRestrictionsHint": "без глютена; без свинины; вегетарианец",
+  "genMenuNotes": "Доп. пожелания (опционально)",
+  "genMenuNotesHint": "минимум готовки в будни; больше рыбы; быстрые завтраки",
+  "genHabitIntent": "Какую привычку хочешь освоить?",
+  "genHabitIntentHint": "хочу засыпать раньше · перестать залипать в телефон утром · пить больше воды",
+  "genHabitDays": "Сколько дней",
+  "genHabitAxis": "Ось роста",
+  "genHabitAxisHelp": "Все мини-задачи получат XP от выполнения и будут расти вместе с этой осью.",
+  "genHabitNotes": "Доп. пожелания (опционально)",
+  "genHabitNotesHint": "буду делать утром · уже пробовал, не получалось · хочу без приложений",
+  "genMenuTitle": "Меню недели",
+  "genMenuDesc": "7 дней × завтрак / обед / ужин с КБЖУ под твою цель питания.",
+  "genMenuBullet1": "21 задача на оси «Тело» с дедлайнами",
+  "genMenuBullet2": "Список покупок отдельной заметкой-чеклистом",
+  "genMenuBullet3": "Полные рецепты подгружаются по тапу",
+  "genTrainingTitle": "План тренировок",
+  "genTrainingDesc": "Программа на 4 недели под цель: сила, выносливость, рекомпозиция.",
+  "genTrainingBullet1": "Учитывает доступное оборудование",
+  "genTrainingBullet2": "Каждое занятие — задача с подходами в подзадачах",
+  "genStudyTitle": "Учебный план",
+  "genStudyDesc": "Декомпозиция «выучить X» на занятия с заметками-конспектами.",
+  "genStudyBullet1": "Уроки = задачи на оси «Разум»",
+  "genStudyBullet2": "Конспекты — заметки, связанные [[wiki-ссылками]]",
+  "genHabitsTitle": "Микро-привычки",
+  "genHabitsDesc": "7-дневный челлендж из коротких ежедневных задач.",
+  "genHabitsBullet1": "Каждое действие ≤ 2 минут — реально доходишь",
+  "genHabitsBullet2": "Подбираем под выбранную ось, идут по нарастающей",
+  "genHabitsBullet3": "Появятся в Задачах с дедлайнами по дням",
+
+  "reflectionEasy": "Легко",
+  "reflectionNormal": "Норм",
+  "reflectionHard": "Сложно",
+  "reflectionBlocked": "Не пошло",
+
+  "menuGoalLoseWeight": "Похудение",
+  "menuGoalHealth": "Здоровье",
+  "menuGoalMuscle": "Набор мышц",
+  "menuGoalEnergy": "Энергия / спорт",
+  "menuGoalClassic": "Классическое сбалансированное",
+
+  "apiErrNotLoggedIn": "Не выполнен вход в Google. Перезайдите и попробуйте снова.",
+  "apiErrServerUnreachable": "Не удалось связаться с сервером: {details}",
+  "@apiErrServerUnreachable": {
+    "placeholders": { "details": { "type": "String" } }
+  },
+  "apiErrSessionExpired": "Сессия истекла. Зайдите через Google ещё раз.",
+  "apiErrInvalidJson": "Сервер вернул некорректный JSON: {details}",
+  "@apiErrInvalidJson": {
+    "placeholders": { "details": { "type": "String" } }
+  },
+
+  "validationRequired": "Поле обязательно",
+  "validationRange": "Должно быть от {min} до {max}",
+  "@validationRange": {
+    "placeholders": {
+      "min": { "type": "int" },
+      "max": { "type": "int" }
+    }
+  },
+
+  "backendDefault": "По умолчанию",
+  "backendCantDeleteLast": "Нельзя удалить единственный бэкенд. Сначала добавь другой.",
+
+  "trayOpen": "Открыть Noetica",
+  "trayExit": "Выйти",
+
+  "menuRecipePrefix": "Рецепт: {name}",
+  "@menuRecipePrefix": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "menuRecipeNotGenerated": "Рецепт ещё не сгенерирован",
+  "menuSummary": "{goal} · {servings} порций · {range}",
+  "@menuSummary": {
+    "placeholders": {
+      "goal": { "type": "String" },
+      "servings": { "type": "int" },
+      "range": { "type": "String" }
+    }
+  },
+
+  "androidChannelName": "Дедлайны и напоминания",
+  "androidChannelDesc": "Напоминания о приближающихся и просроченных задачах.",
+
+  "interestSport": "Спорт",
+  "interestReading": "Чтение",
+  "interestLanguages": "Изучение языков",
+  "interestProgramming": "Программирование",
+  "interestMusic": "Музыка",
+  "interestDrawing": "Рисование",
+  "interestMeditation": "Медитация",
+  "interestFriendship": "Дружба",
+  "interestFamily": "Семья",
+  "interestFinance": "Финансы",
+  "interestCareer": "Карьера",
+  "interestBusiness": "Предпринимательство",
+  "interestNutrition": "Питание",
+  "interestSleep": "Сон",
+  "interestTravel": "Путешествия",
+  "interestWriting": "Письмо",
+  "interestCrafts": "Ремесла",
+
+  "skillNovice": "Новичок",
+  "skillLearning": "Учусь",
+  "skillConfident": "Уверенно",
+  "skillExpert": "Эксперт",
+
+  "onboardAxisBody": "Тело",
+  "onboardAxisMind": "Ум",
+  "onboardAxisWork": "Дело",
+  "onboardAxisRelations": "Связи",
+  "onboardAxisSoul": "Душа",
+
+  "menuMacroLine": "{cal} ккал · {p}б/{f}ж/{c}у",
+  "@menuMacroLine": {
+    "placeholders": {
+      "cal": { "type": "int" },
+      "p": { "type": "int" },
+      "f": { "type": "int" },
+      "c": { "type": "int" }
+    }
+  },
+
+  "backendUrlEmpty": "URL не должен быть пустым."
+}

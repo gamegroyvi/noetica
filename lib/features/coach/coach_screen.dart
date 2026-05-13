@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../l10n/generated/app_localizations.dart';
 import '../../data/models.dart';
 import '../../providers.dart';
 import '../../services/coach_api.dart';
@@ -38,7 +39,8 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
     });
     try {
       final authService = ref.read(authServiceProvider);
-      final api = CoachApi(auth: authService);
+      final api = CoachApi(auth: authService)
+        ..updateLocale(S.of(context)!);
       final profileAsync = ref.read(profileProvider);
       final profile = profileAsync.valueOrNull;
       final entries = ref.read(entriesProvider).valueOrNull ?? [];
@@ -109,10 +111,10 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
     final palette = context.palette;
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isMorning ? 'Утренний план' : 'Вечерний разбор'),
+        title: Text(_isMorning ? S.of(context)!.coachMorningTitle : S.of(context)!.coachEveningTitle),
         actions: [
           IconButton(
-            tooltip: 'Обновить',
+            tooltip: S.of(context)!.coachRefresh,
             icon: const Icon(Icons.refresh),
             onPressed: _loading ? null : _generate,
           ),
@@ -140,7 +142,7 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
             Icon(Icons.error_outline, color: palette.muted, size: 48),
             const SizedBox(height: 12),
             Text(
-              'Не удалось получить совет',
+              S.of(context)!.coachError,
               style: TextStyle(
                 color: palette.fg,
                 fontSize: 16,
@@ -156,7 +158,7 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
             const SizedBox(height: 16),
             FilledButton(
               onPressed: _generate,
-              child: const Text('Повторить'),
+              child: Text(S.of(context)!.coachRetry),
             ),
           ],
         ),
@@ -181,14 +183,14 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
         _CoachCard(
           palette: palette,
           icon: Icons.center_focus_strong,
-          title: 'Фокус дня',
+          title: S.of(context)!.coachFocus,
           content: plan.focus,
         ),
         const SizedBox(height: 12),
         _CoachCard(
           palette: palette,
           icon: Icons.checklist,
-          title: 'План на сегодня',
+          title: S.of(context)!.coachPlanToday,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -237,7 +239,7 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
         _CoachCard(
           palette: palette,
           icon: Icons.local_fire_department,
-          title: 'Мотивация',
+          title: S.of(context)!.coachMotivation,
           content: plan.motivation,
         ),
       ],
@@ -250,7 +252,7 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
       children: [
         Text(
-          'Итоги дня',
+          S.of(context)!.coachDayResults,
           style: TextStyle(
             color: palette.fg,
             fontSize: 22,
@@ -261,7 +263,7 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
         _CoachCard(
           palette: palette,
           icon: Icons.summarize,
-          title: 'Резюме',
+          title: S.of(context)!.coachSummary,
           content: reflection.summary,
         ),
         if (reflection.wins.isNotEmpty) ...[
@@ -269,7 +271,7 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
           _CoachCard(
             palette: palette,
             icon: Icons.emoji_events,
-            title: 'Что получилось',
+            title: S.of(context)!.coachWins,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: reflection.wins
@@ -307,7 +309,7 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
           _CoachCard(
             palette: palette,
             icon: Icons.trending_up,
-            title: 'Что улучшить',
+            title: S.of(context)!.coachImprove,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: reflection.improvements
@@ -344,7 +346,7 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
         _CoachCard(
           palette: palette,
           icon: Icons.nightlight_round,
-          title: 'На завтра',
+          title: S.of(context)!.coachTomorrow,
           content: reflection.encouragement,
         ),
       ],

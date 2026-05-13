@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../l10n/generated/app_localizations.dart';
 import 'analytics_service.dart';
 import 'notifications.dart';
 
@@ -31,11 +32,11 @@ extension PomodoroPhaseX on PomodoroPhase {
         PomodoroPhase.longBreak => 'long_break',
       };
 
-  String get label => switch (this) {
+  String localizedLabel(S tr) => switch (this) {
         PomodoroPhase.idle => 'Pomodoro',
-        PomodoroPhase.focus => 'Фокус',
-        PomodoroPhase.breakTime => 'Короткий отдых',
-        PomodoroPhase.longBreak => 'Длинный отдых',
+        PomodoroPhase.focus => tr.pomodoroFocus,
+        PomodoroPhase.breakTime => tr.pomodoroBreak,
+        PomodoroPhase.longBreak => tr.pomodoroLongBreak,
       };
 }
 
@@ -51,6 +52,9 @@ PomodoroPhase _parsePhase(String? raw) => switch (raw) {
 class PomodoroService extends ChangeNotifier {
   PomodoroService._();
   static final PomodoroService instance = PomodoroService._();
+
+  S? _tr;
+  void updateLocale(S tr) => _tr = tr;
 
   Timer? _ticker;
   DateTime? _endAt;
@@ -300,14 +304,17 @@ class PomodoroService extends ChangeNotifier {
     required bool wasBreak,
     bool loopMelody = false,
   }) {
-    final title = wasFocus ? 'Фокус завершён' : 'Отдых завершён';
+    final tr = _tr;
+    final title = wasFocus
+        ? (tr?.pomodoroFocusDone ?? 'Focus done')
+        : (tr?.pomodoroBreakDone ?? 'Break done');
     final body = wasFocus
         ? (_phase == PomodoroPhase.longBreak
-            ? 'Длинный отдых $_longBreakMinutes мин'
-            : 'Короткий отдых $_breakMinutes мин')
+            ? (tr?.pomodoroLongBreakHint(_longBreakMinutes) ?? 'Long break $_longBreakMinutes min')
+            : (tr?.pomodoroShortBreakHint(_breakMinutes) ?? 'Short break $_breakMinutes min'))
         : (_autoNext
-            ? 'Поехали — следующий фокус $_focusMinutes мин'
-            : 'Запусти следующий фокус когда готов');
+            ? (tr?.pomodoroNextFocusAuto(_focusMinutes) ?? 'Next focus $_focusMinutes min')
+            : (tr?.pomodoroNextFocusManual ?? 'Start next focus when ready'));
 
     // Always fire the OS notification — independent of "sound" toggle.
     // The toggle only affects in-app haptic / melody.
@@ -349,12 +356,15 @@ class PomodoroService extends ChangeNotifier {
   /// the background and our in-process Timer is paused.
   void _scheduleEndOfPhaseNotification() {
     if (_endAt == null || _phase == PomodoroPhase.idle) return;
+    final tr = _tr;
     final title = _phase == PomodoroPhase.focus
-        ? 'Фокус завершён'
-        : 'Отдых завершён';
+        ? (tr?.pomodoroFocusDone ?? 'Focus done')
+        : (tr?.pomodoroBreakDone ?? 'Break done');
     final body = _phase == PomodoroPhase.focus
-        ? 'Время передохнуть'
-        : (_autoNext ? 'Возвращаемся к фокусу' : 'Готов снова работать?');
+        ? (tr?.pomodoroTimeToRest ?? 'Time to rest')
+        : (_autoNext
+            ? (tr?.pomodoroBackToFocus ?? 'Back to focus')
+            : (tr?.pomodoroReadyAgain ?? 'Ready to work again?'));
     final delay = _endAt!.difference(DateTime.now());
     if (delay.inMilliseconds <= 0) return;
     unawaited(NotificationsService.instance.scheduleTest(

@@ -1,0 +1,1795 @@
+{
+  "@@locale": "en",
+  "appTitle": "NOETICA",
+  "tabDashboard": "Now",
+  "tabSelf": "Self",
+  "tabTasks": "Tasks",
+  "tabMore": "More",
+  "navJournal": "Journal",
+  "navCalendar": "Calendar",
+  "navKnowledge": "Graph",
+  "navAssistant": "Assistant",
+  "navSettings": "Settings",
+  "navPomodoro": "Pomodoro",
+  "navRoadmap": "AI-Plan",
+  "navCoach": "AI Coach",
+  "sectionNow": "NOW",
+  "sectionToday": "TODAY",
+  "sectionPulse": "PULSE",
+  "sectionRecent": "RECENT",
+  "sectionOverdue": "OVERDUE",
+  "sectionTomorrow": "TOMORROW",
+  "sectionThisWeek": "THIS WEEK",
+  "sectionLater": "LATER",
+  "sectionDone": "DONE",
+  "sectionHeatmap": "ACTIVITY",
+  "sectionTree": "TREE",
+  "sectionRecentlyClosed": "RECENTLY CLOSED",
+  "linkCalendar": "calendar →",
+  "linkAll": "all →",
+  "linkTasks": "tasks →",
+  "freeDay": "free day",
+  "filterAll": "All",
+  "filterOpen": "Open",
+  "filterOverdue": "Overdue",
+  "filterDone": "Done",
+  "actionSave": "Save",
+  "actionCancel": "Cancel",
+  "actionDelete": "Delete",
+  "actionUndo": "Undo",
+  "actionDone": "Done",
+  "actionAdd": "Add",
+  "actionEdit": "Edit",
+  "actionSearch": "Search",
+  "actionExport": "Export",
+  "actionImport": "Import",
+  "taskNew": "New entry",
+  "taskComplete": "Done",
+  "taskSubtasks": "Subtasks",
+  "taskDueDate": "Due date",
+  "taskXp": "XP",
+  "editorTitle": "Title",
+  "editorBody": "Body",
+  "editorTags": "Tags",
+  "editorAddTag": "add tag…",
+  "editorAxes": "Axes",
+  "editorBacklinks": "Backlinks",
+  "editorSubtasks": "Subtasks",
+  "selfBranches": "Branches",
+  "selfSettings": "Settings",
+  "selfEpoch": "Epoch {n}",
+  "selfLevel": "Level",
+  "selfStreak": "Streak",
+  "selfNewEpoch": "New epoch",
+  "selfDeepen": "Deepen",
+  "axisBody": "Body",
+  "axisMind": "Mind",
+  "axisWork": "Work",
+  "axisSocial": "Social",
+  "axisSoul": "Soul",
+  "onboardingName": "What's your name?",
+  "onboardingGoals": "What are your goals?",
+  "onboardingInterests": "Interests",
+  "onboardingHours": "Hours per week?",
+  "onboardingContinue": "Next",
+  "onboardingFinish": "Start",
+  "pomodoroTitle": "Pomodoro",
+  "pomodoroStart": "Start focus",
+  "pomodoroPause": "Pause",
+  "pomodoroReset": "Reset",
+  "settingsTitle": "Settings",
+  "settingsAbout": "About",
+  "settingsAccount": "Account",
+  "settingsExport": "Export data",
+  "settingsImport": "Import from clipboard",
+  "settingsTheme": "Theme",
+  "settingsDarkMode": "Dark mode",
+  "settingsLightMode": "Light mode",
+  "knowledgeEmpty": "Knowledge base is empty",
+  "knowledgeEmptyHint": "Create your first note or task — they will appear here as graph nodes.",
+  "knowledgeCreateEntry": "Create entry",
+  "knowledgeGoals": "Goals",
+  "knowledgeConstraints": "Constraints",
+  "knowledgeHighlights": "Highlights",
+  "knowledgeReflections": "Reflections",
+  "knowledgePreferences": "Preferences",
+  "calendarTitle": "Calendar",
+  "notesTitle": "Journal",
+  "deleteConfirm": "Entry deleted",
+  "deleteUndone": "Restored",
+  "emptyTasks": "No tasks yet",
+  "emptyNotes": "No notes yet",
+  "greetingMorning": "Good morning",
+  "greetingDay": "Good afternoon",
+  "greetingEvening": "Good evening",
+  "greetingNight": "Good night",
+  "reflectionHow": "How did it go?",
+  "reflectionEasy": "Easy",
+  "reflectionNormal": "Normal",
+  "reflectionHard": "Hard",
+  "reflectionSkip": "Skip",
+  "weeklyReflection": "Weekly reflection",
+  "daysTotalStreak": "{count, plural, =0{0 days} =1{1 day} other{{count} days}}",
+  "@daysTotalStreak": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sortSmart": "Smart",
+  "sortDueAsc": "Due ↑",
+  "sortCreatedDesc": "Recent",
+  "sortXpDesc": "Heaviest first",
+  "tooltipSort": "Sort",
+  "tooltipSettings": "Settings",
+  "noDate": "No date",
+  "allAxes": "All axes",
+  "noAxis": "No axis",
+  "expandPlans": "Expand plans",
+  "collapsePlans": "Collapse plans",
+  "weeklyMenu": "Weekly menu",
+  "tasksInPlan": "{count} {count, plural, =1{task} other{tasks}} in plan",
+  "@tasksInPlan": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "plansCount": "Plans ({count})",
+  "@plansCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "emptyFilterTitle": "Nothing matches the filter",
+  "emptyFilterHint": "Reset filters or change sort order to see other tasks.",
+  "emptyTasksTitle": "No tasks",
+  "emptyTasksHint": "Create a task via \"+\". Link it to axes — completion earns points on the pentagon.",
+  "sectionAccount": "Account",
+  "sectionProfile": "Profile",
+  "sectionAxes": "Growth axes",
+  "sectionNotifications": "Notifications",
+  "sectionBackend": "Backend",
+  "sectionData": "Data",
+  "sectionAbout": "About",
+  "sectionDeveloper": "⚙ Developer",
+  "settingsLogout": "Log out",
+  "settingsSyncNow": "Sync now",
+  "settingsSyncHint": "Pull data from cloud and push local changes",
+  "settingsNotLoggedIn": "Not logged in",
+  "settingsNotLoggedInHint": "Restart the app to log in.",
+  "settingsNoName": "No name",
+  "settingsNoGoal": "No goal set",
+  "settingsRegenAxes": "Regenerate axes",
+  "settingsRegenAxesNoInterests": "Add interests in profile so AI can generate axes",
+  "settingsRegenAxesHint": "AI will rebuild axes from {count} interests",
+  "@settingsRegenAxesHint": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsNotificationsUnsupported": "Notifications not supported here",
+  "settingsLocalNotifications": "Local notifications",
+  "settingsLocalNotificationsHint": "1 day before, morning, and 1 hour after deadline",
+  "settingsMorningReminder": "Morning reminder",
+  "settingsCoachReminders": "AI coach reminders",
+  "settingsCoachRemindersHint": "Morning plan and evening review",
+  "settingsEveningReview": "Evening review",
+  "settingsExportJson": "Export to JSON",
+  "settingsExportJsonHint": "Save profile, axes and entries to file",
+  "settingsImportJson": "Import from JSON",
+  "settingsImportJsonHint": "Restore data from clipboard",
+  "settingsEraseAll": "Erase all data",
+  "settingsEraseAllHint": "Return to onboarding screen",
+  "settingsSourceCode": "Source code",
+  "settingsVersion": "v0.1.0 — minimalist growth tracker",
+  "dialogImportTitle": "Import data",
+  "dialogImportBody": "Paste export JSON from clipboard. Existing data will be merged (entry ID used for deduplication).",
+  "dialogPasteClipboard": "Paste from clipboard",
+  "dialogEraseTitle": "Erase all data?",
+  "dialogEraseBody": "Profile, axes, tasks, notes and settings will be deleted. This action is irreversible.",
+  "dialogErase": "Erase",
+  "dialogLogoutTitle": "Log out?",
+  "dialogLogoutBody": "Local data will remain on device. To sync again, log in with the same Google account.",
+  "snackExportSaved": "Saved: {path}",
+  "@snackExportSaved": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "snackCopy": "Copy",
+  "snackExportError": "Export failed: {error}",
+  "@snackExportError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "snackClipboardEmpty": "Clipboard is empty.",
+  "snackImportSuccess": "Imported {count} entries.",
+  "@snackImportSuccess": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "snackImportError": "Import failed: {error}",
+  "@snackImportError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "snackEraseError": "Erase failed: {error}",
+  "@snackEraseError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "snackSyncing": "Syncing…",
+  "snackSyncDone": "Done. Data pulled from cloud.",
+  "snackSyncError": "Failed: {error}",
+  "@snackSyncError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "snackLogoutError": "Logout failed: {error}",
+  "@snackLogoutError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "loadingBackends": "Loading…",
+  "loadingBackendsHint": "Loading backend list…",
+  "reflectionDidNotGo": "Didn't work",
+  "reflectionDifficult": "Hard",
+  "reflectionOk": "OK",
+  "reflectionEasyShort": "Easy",
+  "entryKindTask": "Task",
+  "entryKindNote": "Note",
+  "entryKindHabit": "Habit",
+  "editorSaveError": "Failed to save entry: {error}",
+  "@editorSaveError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "editorDeletedMsg": "«{title}» deleted",
+  "@editorDeletedMsg": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "editorHintTask": "What needs to be done?",
+  "editorNewEntry": "New entry",
+  "editorEntry": "Entry",
+  "editorExpand": "Expand",
+  "editorClose": "Close",
+  "editorParams": "Parameters",
+  "editorMakeTask": "Make a task",
+  "editorTaskModeHint": "Deadline and XP on completion",
+  "editorNoteModeHint": "Default — note",
+  "editorNoDeadline": "No deadline",
+  "editorXpOnComplete": "XP on completion",
+  "editorAddAxesHint": "Add axes in onboarding first.",
+  "editorUntitled": "(untitled)",
+  "editorBacklinksCount": "Backlinks ({count})",
+  "@editorBacklinksCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "editorSubtasksProgress": "Subtasks — {done}/{total}",
+  "@editorSubtasksProgress": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "editorBodyHint": "What's on your mind?\nFormatting: bold, italic, headings, checklists, [[note links]].",
+  "editorToolH1": "Heading 1",
+  "editorToolH2": "Heading 2",
+  "editorToolH3": "Heading 3",
+  "editorToolBold": "Bold",
+  "editorToolItalic": "Italic",
+  "editorToolStrike": "Strikethrough",
+  "editorToolCode": "Code",
+  "editorToolBullet": "Bulleted list",
+  "editorToolNumber": "Numbered list",
+  "editorToolCheckbox": "Checklist",
+  "editorToolQuote": "Quote",
+  "editorToolLink": "Link",
+  "editorToolWikiLink": "Note link",
+  "editorToolTag": "Tag",
+  "editorWikiLinkTitle": "Note link",
+  "editorWikiLinkHint": "Start typing a name…",
+  "editorCreateNote": "Create «{title}»",
+  "@editorCreateNote": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "calendarNoTasks": "No tasks",
+  "calendarPlanTask": "Plan a task",
+  "calendarDeadlines": "Deadlines",
+  "notesSearch": "Search notes…",
+  "notesEmpty": "No notes yet",
+  "notesNew": "New note",
+  "calendarNotes": "Notes",
+  "dashboardOverdue": "overdue · {date}",
+  "@dashboardOverdue": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "dashboardDueBy": "due {date}",
+  "@dashboardDueBy": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "dashboardPostpone15m": "+15 min",
+  "dashboardPostpone1h": "+1 hour",
+  "dashboardPostpone1d": "+1 day",
+  "dashboardPostpone3d": "+3 days",
+  "dashboardTomorrow": "tomorrow {time}",
+  "@dashboardTomorrow": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "dashboardYesterday": "yesterday {time}",
+  "@dashboardYesterday": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "dashboardReflectPrompt": "Quick look at what you’ve done?",
+  "dashboardGreetingAnon": "Hi",
+  "dashboardGreeting": "Hi, {name}",
+  "@dashboardGreeting": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dashboardOnboardingHint": "Where to start? Pick an action below — this is a one-time setup, then your dashboard will fill with your records.",
+  "dashboardRoadmapNoGoal": "AI will break your goal into 4–10 specific tasks linked to pentagon axes.",
+  "dashboardRoadmapWithGoal": "AI will break «{goal}» into 4–10 tasks. The field is prefilled — you can edit.",
+  "@dashboardRoadmapWithGoal": {
+    "placeholders": {
+      "goal": {
+        "type": "String"
+      }
+    }
+  },
+  "dashboardGraphHint": "Second brain graph: goals, constraints, reflections, and notes. Tap a branch to edit.",
+  "dashboardNoteHint": "Easy start: a few thoughts, an observation, or an idea. A note can later become a task.",
+  "dashboardRoadmapTitle": "Generate a task plan",
+  "dashboardGenerate": "Generate",
+  "dashboardGraphTitle": "Explore knowledge base",
+  "dashboardOpenGraph": "Open graph",
+  "dashboardNoteTitle": "Write your first note",
+  "dashboardCreate": "Create",
+  "dashboardWeekPassed": "A week has passed",
+  "pomodoroFocusDone": "Focus done",
+  "pomodoroBreakDone": "Break done",
+  "pomodoroLongBreakBody": "Long break {min} min — press «Go» when ready.",
+  "@pomodoroLongBreakBody": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "pomodoroShortBreakBody": "Short break {min} min — press «Go» when ready.",
+  "@pomodoroShortBreakBody": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "pomodoroNextFocusBody": "Next focus {min} min — press «Go» when ready.",
+  "@pomodoroNextFocusBody": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "@selfEpoch": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "selfEpochNoData": "Epoch {n} · no data",
+  "@selfEpochNoData": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "selfToNextLevel": "to L{level}: {xp} xp",
+  "@selfToNextLevel": {
+    "placeholders": {
+      "level": {
+        "type": "int"
+      },
+      "xp": {
+        "type": "int"
+      }
+    }
+  },
+  "selfTreeHint": "The tree grows from 3 branches. Add at least 3 branches to see the tree.",
+  "axesSaveError": "Failed to save: {error}",
+  "@axesSaveError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "axesAiDrawing": "AI is drawing new branches…",
+  "axesRegenError": "Failed to regenerate: {error}",
+  "@axesRegenError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "axesProfileUpdated": "Profile updated. Regenerate branches now?",
+  "axesAiRedrawHint": "AI will redraw the set with new inputs",
+  "axesDragHint": "Drag, rename, add or remove ({min} to {max}). To have AI redraw branches from scratch — Menu → «Regenerate».",
+  "@axesDragHint": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "axesMaxBranches": "Maximum {max} branches",
+  "@axesMaxBranches": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "axesRemoveTooltip": "Remove",
+  "axesMinBranches": "Minimum 3 branches",
+  "axesNameHint": "e.g. Body",
+  "axesAiNewSet": "AI will create a new set. Describe what to change",
+  "axesAiExample": "e.g. more about health and creativity",
+  "axisXpTotal": "TOTAL XP",
+  "axisToEpoch": "TO E{n}",
+  "@axisToEpoch": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "axisLevelHint": "Level L{level} — from all completed tasks. Epoch E{epoch} — from XP of this axis only, grows even after the tree is 100% full.",
+  "@axisLevelHint": {
+    "placeholders": {
+      "level": {
+        "type": "int"
+      },
+      "epoch": {
+        "type": "int"
+      }
+    }
+  },
+  "pomodoroCompleted": "✦ {n}",
+  "@pomodoroCompleted": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "pomodoroLongBreakEvery": "Long break every N focuses",
+  "knowledgeContextHint": "Briefly: who you are, what you do, what matters",
+  "knowledgePrefHint": "key: value",
+  "navBranches": "Branches",
+  "settingsMore": "More",
+  "settingsOnboardAgain": "Re-run onboarding",
+  "settingsOnboardAgainHint": "Update interests, goals, and regenerate branches",
+  "settingsAddBranch": "Add branch",
+  "editorSymbol": "Symbol",
+  "roadmapMinAxes": "Need at least 3 axes to build a plan.",
+  "roadmapImported": "Imported tasks: {n}",
+  "@roadmapImported": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "roadmapImportError": "Failed to import: {error}",
+  "@roadmapImportError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "roadmapGoalHint": "The more specific, the better the plan. Example: «I want to run a half marathon in 3 months, current fitness is average».",
+  "roadmapInputHint": "What do you want to achieve?",
+  "roadmapNeedAxes": "Need at least 3 axes. Add them in the «Self» tab.",
+  "roadmapGenerating": "Generating plan…",
+  "roadmapImportBtn": "Import ({n})",
+  "@roadmapImportBtn": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "pomodoroRunning": "Pomodoro running",
+  "pomodoroFocusStarted": "Focus {min} min: {title}",
+  "@pomodoroFocusStarted": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "axisXpForAxis": "+{xp} XP",
+  "@axisXpForAxis": {
+    "placeholders": {
+      "xp": {
+        "type": "int"
+      }
+    }
+  },
+  "dashboardXpToday": "XP TODAY",
+  "dashboardXpWeek": "{xp} this week",
+  "@dashboardXpWeek": {
+    "placeholders": {
+      "xp": {
+        "type": "int"
+      }
+    }
+  },
+  "dashboardBestAxis": "{name} · +{xp} XP",
+  "@dashboardBestAxis": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "xp": {
+        "type": "int"
+      }
+    }
+  },
+  "dashboardDescribeGoal": "Describe your goal",
+  "dashboardOverdueCount": "{n} overdue",
+  "@dashboardOverdueCount": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "dashboardTodayCount": "{n} today",
+  "@dashboardTodayCount": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "dashboardThinking": "Thinking about the plan…",
+  "aboutApp": "About you",
+  "knowledgePrefs": "Preferences",
+  "actionClear": "Clear",
+  "roadmapHorizon": "Horizon",
+  "roadmapWeek": "Week",
+  "roadmapMonth": "Month",
+  "roadmapQuarter": "Quarter",
+  "roadmapTaskCount": "Task count",
+  "pomodoroTooltip": "Pomodoro",
+  "pulseStreak": "STREAK",
+  "pulseStartToday": "start today",
+  "pulseQuiet": "quiet so far",
+  "pulseBestAxis": "BEST AXIS",
+  "pulseNoData": "no data",
+  "pulseDeadline": "by {date}",
+  "pulseNoDeadline": "no deadlines",
+  "pulseDeadlineHours": "{h}h",
+  "@pulseDeadlineHours": {
+    "placeholders": {
+      "h": {
+        "type": "int"
+      }
+    }
+  },
+  "pulseDeadlineDays": "{d}d",
+  "@pulseDeadlineDays": {
+    "placeholders": {
+      "d": {
+        "type": "int"
+      }
+    }
+  },
+  "onboardQ1": "Hi. I'm your growth assistant. What's your name?",
+  "onboardQ2": "Okay, {name}. What do you want to achieve in the next year?",
+  "@onboardQ2": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "onboardQ2NoName": "What do you want to achieve in the next year?",
+  "onboardQ3": "Which areas are you already active in? Pick 3–8.",
+  "onboardQ4": "How many hours per week can you realistically dedicate?",
+  "onboardHoursWeek": "h/wk",
+  "onboardWeeklyTime": "Weekly for growth: ~{h} h",
+  "@onboardWeeklyTime": {
+    "placeholders": {
+      "h": {
+        "type": "int"
+      }
+    }
+  },
+  "onboardSaveError": "Failed to save profile: {error}",
+  "@onboardSaveError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "onboardSelectOne": "Select at least one",
+  "onboardSelectMore": "Select {n} more",
+  "@onboardSelectMore": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "onboardCustomOpen": "× custom",
+  "onboardCustomClosed": "+ custom",
+  "onboardHoursLabel": "{h} h",
+  "@onboardHoursLabel": {
+    "placeholders": {
+      "h": {
+        "type": "int"
+      }
+    }
+  },
+  "onboardLevelNovice": "novice",
+  "onboardLevelLearning": "learning",
+  "onboardLevelConfident": "confident",
+  "onboardLevelExpert": "expert",
+  "onboardProfileName": "Name: {name}.",
+  "@onboardProfileName": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "onboardProfileGoal": "Goal: {goal}.",
+  "@onboardProfileGoal": {
+    "placeholders": {
+      "goal": {
+        "type": "String"
+      }
+    }
+  },
+  "onboardProfileNow": "Current: {text}.",
+  "@onboardProfileNow": {
+    "placeholders": {
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "onboardProfileHours": "Ready to dedicate about {h} h/wk.",
+  "@onboardProfileHours": {
+    "placeholders": {
+      "h": {
+        "type": "int"
+      }
+    }
+  },
+  "actionNext": "Next",
+  "onboardPlanTitle": "Generate a plan right away?",
+  "onboardPlanBody": "AI will break «{goal}» into 4–10 concrete tasks tied to the axes you just set up. The prompt is pre-filled — you can edit it before generating.",
+  "@onboardPlanBody": {
+    "placeholders": {
+      "goal": {
+        "type": "String"
+      }
+    }
+  },
+  "actionLater": "Later",
+  "onboardFillAxes": "Fill at least 3 axes for the pentagram to make sense",
+  "onboardTooManyAxes": "Too many axes: keep no more than 8, or it will be chaos",
+  "onboardSaveAxesError": "Failed to save axes: {error}",
+  "@onboardSaveAxesError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "onboardRegenTitle": "Regenerate axes",
+  "onboardDescribeAxes": "Describe your growth axes",
+  "onboardAiGenerating": "AI is generating axes…",
+  "onboardYourAxes": "Your personal axes",
+  "onboardAxesHint": "3 to 8 directions you want to grow in. Tasks and notes will be tied to them. You can change them later.",
+  "onboardAiError": "Failed to reach AI: {error}. Below are fallback axes, edit as you like.",
+  "@onboardAiError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "onboardAiDrawingAxes": "From your {n} interests AI is drawing a personal pentagram…",
+  "@onboardAiDrawingAxes": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "onboardAiGenerated": "Generated by {model}. Rename, remove extras, add your own. 3 to 8.",
+  "@onboardAiGenerated": {
+    "placeholders": {
+      "model": {
+        "type": "String"
+      }
+    }
+  },
+  "onboardRegenBtn": "Regenerate axes",
+  "onboardWaitSeconds": "This takes 5–25 seconds",
+  "onboardAddAxis": "Add axis",
+  "onboardCreatePentagram": "Create pentagram",
+  "onboardAxisHint": "Axis name (#{n})",
+  "@onboardAxisHint": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "onboardAxesUpdated": "Axes updated",
+  "onboardAxesMigrated": "Axes updated, migrated {n} task links",
+  "@onboardAxesMigrated": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "backendsTitle": "Backends",
+  "backendsAdd": "Add",
+  "backendsError": "Error: {error}",
+  "@backendsError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "backendsHint": "The active backend is used for AI, sync and login. You can keep several (e.g. prod and a personal server) and switch without restarting.",
+  "backendsDeleteTitle": "Delete backend?",
+  "backendsSaveError": "Failed to save: {error}",
+  "@backendsSaveError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "backendsPinging": "Pinging…",
+  "backendsOnline": "Backend is responding",
+  "backendsOffline": "Not responding: {error}",
+  "@backendsOffline": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "backendsPing": "Ping",
+  "backendsMakeActive": "Make active",
+  "backendsEdit": "Edit",
+  "backendsLastOne": "At least one backend must remain",
+  "backendsNewTitle": "New backend",
+  "backendsEditTitle": "Edit backend",
+  "backendsName": "Name",
+  "backendsNameHint": "Prod · Local · Backup",
+  "backendsUrlError": "Enter a valid URL starting with http(s)://",
+  "menuTitle": "Weekly menu",
+  "menuNewConfirmTitle": "Create a new menu?",
+  "menuNewConfirmBody": "Current tasks and recipes will stay in the knowledge base — you can find them by tag menu/… or open by link.\n\nThe generation form will reopen.",
+  "actionCreate": "Create",
+  "menuBreakfast": "Breakfast",
+  "menuLunch": "Lunch",
+  "menuDinner": "Dinner",
+  "menuSnack": "Snack",
+  "menuRecipeStubTitle": "Recipe: {name}",
+  "@menuRecipeStubTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "menuRecipeStubBody": "_Recipe not yet generated._\n\nOpen the weekly menu → tap «Get recipe» next to this dish.",
+  "menuShoppingTitle": "Shopping list · menu {range}",
+  "@menuShoppingTitle": {
+    "placeholders": {
+      "range": {
+        "type": "String"
+      }
+    }
+  },
+  "menuShoppingHeader": "Shopping list for the week",
+  "menuGoalServings": "Goal: {goal} · {n} servings",
+  "@menuGoalServings": {
+    "placeholders": {
+      "goal": {
+        "type": "String"
+      },
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "menuImportError": "Failed to import menu: {error}",
+  "@menuImportError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "menuIngredients": "INGREDIENTS",
+  "menuFullRecipe": "Full recipe: [[{link}]]",
+  "@menuFullRecipe": {
+    "placeholders": {
+      "link": {
+        "type": "String"
+      }
+    }
+  },
+  "menuGenerating": "AI is creating the menu…",
+  "menuImporting": "Creating tasks and shopping list…",
+  "menuDateRange": "7 days from {from} to {to}",
+  "@menuDateRange": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "menuWhatCreated": "What I will create",
+  "menuBullet1": "21 tasks (breakfast / lunch / dinner for 7 days)",
+  "menuBullet2": "1 note «Shopping list» with a checklist",
+  "menuBullet3": "Recipes will load on tap and be saved to linked notes",
+  "menuRegenerate": "Regenerate",
+  "menuImportBtn": "Import to tasks",
+  "menuImportedCount": "Menu imported · {n} tasks",
+  "@menuImportedCount": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "menuNew": "New menu",
+  "menuImportedHint": "Tag #{tag} groups all these entries. Tap a dish — open the task. Tap «Get recipe» on any dish — the recipe will be saved to the linked note.",
+  "@menuImportedHint": {
+    "placeholders": {
+      "tag": {
+        "type": "String"
+      }
+    }
+  },
+  "menuServings": "{n} servings",
+  "@menuServings": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "menuDailyCalories": "~{n} kcal per day",
+  "@menuDailyCalories": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "menuOpenRecipe": "Open",
+  "menuGetRecipe": "Get recipe",
+  "habitsTitle": "Micro-habits",
+  "habitsIntentError": "Describe the habit you want to build.",
+  "habitsDayOf": "Day {day} of {total} · challenge «{intent}»",
+  "@habitsDayOf": {
+    "placeholders": {
+      "day": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "intent": {
+        "type": "String"
+      }
+    }
+  },
+  "habitsImported": "Challenge «{intent}» added — {n} mini-tasks in Tasks.",
+  "@habitsImported": {
+    "placeholders": {
+      "intent": {
+        "type": "String"
+      },
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "habitsImportError": "Failed to import challenge: {error}",
+  "@habitsImportError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "habitsGenerating": "AI is finding tiny steps…",
+  "habitsImporting": "Creating tasks in Noetica…",
+  "habitsBullet1": "{n} tasks — one per day, from easy to reinforcing",
+  "@habitsBullet1": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "habitsBullet2": "Each action ≤ 2 minutes of real effort",
+  "habitsBullet3": "Will appear in Tasks under «Today» / «Tomorrow» / …",
+  "habitsDaysMini": "{n} days · one mini-task each",
+  "@habitsDaysMini": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "habitsAddTasks": "Add {n} tasks",
+  "@habitsAddTasks": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "coachMorningTitle": "Morning plan",
+  "coachEveningTitle": "Evening review",
+  "coachRefresh": "Refresh",
+  "coachError": "Could not get advice",
+  "coachRetry": "Retry",
+  "coachFocus": "Focus of the day",
+  "coachPlanToday": "Plan for today",
+  "coachMotivation": "Motivation",
+  "coachDayResults": "Day results",
+  "coachSummary": "Summary",
+  "coachWins": "What went well",
+  "coachImprove": "What to improve",
+  "coachTomorrow": "For tomorrow",
+  "reflectionResult": "What went well / result",
+  "reflectionDifficulties": "What was difficult / obstacles",
+  "reflectionMinutes": "Time spent, min",
+  "reflectionCanSkip": "Can skip",
+  "toolsTitle": "Assistant",
+  "toolsAvailable": "Available",
+  "toolsSoon": "Coming soon",
+  "toolsDescriptionFull": "AI compiles ready-made plans and distributes them across your days, axes and tags. Weekly menu, workout program, study course — everything goes to Calendar and Tasks as regular entries.",
+  "toolsOpening": "Opening «{title}»…",
+  "@toolsOpening": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "toolsComingSoon": "Coming soon: «{title}»",
+  "@toolsComingSoon": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "authLoginError": "Login failed: {error}",
+  "@authLoginError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "authWait": "Please wait…",
+  "authLoginGoogle": "Sign in with Google",
+  "authSyncHint": "Your data syncs between devices under one Google account. The app doesn't work without signing in.",
+  "dayCalendar": "Calendar",
+  "dayPlanTask": "Plan a task",
+  "dayEmpty": "Nothing closed or planned for this day.",
+  "dayNoEntries": "No entries.",
+  "dayToday": "Today",
+  "dayYesterday": "Yesterday",
+  "dayTomorrow": "Tomorrow",
+  "dayMonths": "Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec",
+  "dayWeekdays": "Mon,Tue,Wed,Thu,Fri,Sat,Sun",
+  "dayDone": "✓ Completed ({n})",
+  "@dayDone": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "dayDeadlines": "⏳ Deadlines ({n})",
+  "@dayDeadlines": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "daySummaryClosed": "{n} closed · +{xp} XP",
+  "@daySummaryClosed": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "xp": {
+        "type": "int"
+      }
+    }
+  },
+  "daySummaryDeadline": "{n} deadline",
+  "@daySummaryDeadline": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "untitled": "(untitled)",
+  "weeklyTitle": "Weekly review",
+  "weeklyAxis": "Axis",
+  "weeklyCompleted": "Completed",
+  "weeklyXP": "XP",
+  "weeklyTasks": "Tasks",
+  "weeklyNotes": "Notes",
+  "weeklyStreak": "Streak",
+  "weeklyBestDay": "Best day",
+  "weeklyWorstDay": "Weakest day",
+  "weeklyHighlights": "Week highlights",
+  "weeklyAdvice": "Advice for next week",
+  "weeklyNoData": "Not enough data",
+  "weeklyDays": "Mon,Tue,Wed,Thu,Fri,Sat,Sun",
+  "weeklyMonths": "Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec",
+  "weeklyDone": "completed",
+  "weeklyCreated": "created",
+  "weeklyGenerating": "AI is analyzing your week…",
+  "weeklyShare": "Share",
+  "weeklyClose": "Close",
+  "weeklyTotal": "total",
+  "weeklyReflTitle": "Week summary",
+  "weeklyReflSubtitle": "A quick look: what went well, what didn't, and where to next.",
+  "weeklyWinsLabel": "What went well",
+  "weeklyLossesLabel": "What didn't work",
+  "weeklyFocusLabel": "Focus for next week",
+  "weeklyMoodLabel": "Well-being",
+  "weeklyLater": "Later",
+  "weeklySubmit": "Save",
+  "weeklyCustomHint": "Custom (optional)",
+  "weeklySaveError": "Failed to save: {error}",
+  "@weeklySaveError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "weeklyMoodSummary": "well-being {n}/5",
+  "@weeklyMoodSummary": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "weeklyWin1": "completed plan",
+  "weeklyWin2": "new habits",
+  "weeklyWin3": "project progress",
+  "weeklyWin4": "had rest",
+  "weeklyWin5": "discipline held",
+  "weeklyWin6": "learned new topic",
+  "weeklyWin7": "good relationships",
+  "weeklyLoss1": "procrastination",
+  "weeklyLoss2": "fatigue",
+  "weeklyLoss3": "distractions",
+  "weeklyLoss4": "didn't prioritize important",
+  "weeklyLoss5": "burnout",
+  "weeklyLoss6": "was sick",
+  "weeklyLoss7": "conflicts",
+  "weeklyFocus1": "finish unfinished",
+  "weeklyFocus2": "new habit",
+  "weeklyFocus3": "focus on main",
+  "weeklyFocus4": "rest",
+  "weeklyFocus5": "study",
+  "weeklyFocus6": "sport",
+  "weeklyFocus7": "relationships",
+  "epochPeak": "EPOCH {n} · PEAK",
+  "@epochPeak": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "epochPostpone": "Postpone",
+  "epochTreeFull": "You've filled the tree.",
+  "epochTwoPaths": "Two paths ahead — you can refresh your axes and start Epoch {n} with a clean slate, or stay focused and take on a harder tier of tasks.",
+  "@epochTwoPaths": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "epochNewEpoch": "New epoch",
+  "epochNewEpochSub": "Redraw branches — Epoch {n}. XP and level remain.",
+  "@epochNewEpochSub": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "epochGoDeeper": "Go deeper",
+  "epochGoDeeperSub": "Tier {n} in the same Epoch — tasks will be harder, tree resets.",
+  "@epochGoDeeperSub": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "graphBranchGoals": "Goals",
+  "graphBranchConstraints": "Constraints",
+  "graphBranchHighlights": "Highlights",
+  "graphBranchReflections": "Reflections",
+  "graphBranchPreferences": "Preferences",
+  "graphFilterAll": "All",
+  "graphFilterNotes": "Notes",
+  "graphFilterTasks": "Tasks",
+  "graphFilterBookmarks": "Bookmarks",
+  "graphFilterDaily": "Daily",
+  "graphFilterKnowledge": "Self-knowledge",
+  "pomodoroStop": "Stop",
+  "pomodoroSeries": "Focus session series",
+  "pomodoroSeriesReset": "Focus session series — tap to reset",
+  "pomodoroSettings": "Settings",
+  "pomodoroFocusMin": "Focus, min",
+  "pomodoroShortBreak": "Short break, min",
+  "pomodoroLongBreak": "Long break",
+  "pomodoroAutoStart": "Auto-start next phase",
+  "pomodoroAutoStartSub": "Timer continues automatically after focus/break ends",
+  "pomodoroSoundVibro": "Sound + vibration",
+  "pomodoroSoundVibroSub": "System ding and haptic on phase change (notification always comes)",
+  "graphCentreLabel": "me",
+  "graphGoalsHint": "What do you want to achieve",
+  "graphConstraintsHint": "What holds you back",
+  "graphHighlightsHint": "What you have achieved",
+  "graphReflectionsHint": "Notes on the past",
+  "graphDelete": "Delete",
+  "graphSearchHint": "Search knowledge base…",
+  "graphKnowledgeBase": "Knowledge base",
+  "graphSearchTooltip": "Search",
+  "graphDailyTooltip": "Daily",
+  "graphShowRecipes": "Show recipes",
+  "graphHideRecipes": "Hide recipes",
+  "graphGlobalTooltip": "Global graph",
+  "graphNewNote": "New note",
+  "graphResetView": "Reset view",
+  "graphShuffle": "Shuffle",
+  "graphEmptyTitle1": "Write",
+  "graphEmptyBody1": "Notes, tasks, daily — everything becomes graph nodes.",
+  "graphEmptyTitle2": "Connect",
+  "graphEmptyBody2": "Mention [[title]] in text — Noetica builds an edge.",
+  "graphEmptyTitle3": "Explore",
+  "graphEmptyBody3": "Graph shows which topics overlap and where gaps are.",
+  "graphEmptyTitle4": "About you",
+  "graphEmptyBody4": "Goals, constraints, achievements — these branches help AI.",
+  "graphEmptyTitle5": "First entry",
+  "graphEmptyBody5": "Tap + to create a note and see the graph in action.",
+  "graphEmptyTitle6": "Tags",
+  "graphEmptyBody6": "Add tags to entries — they become nodes too.",
+  "graphResetFilter": "Reset filter",
+  "graphEmptyAllTitle": "Knowledge base is empty",
+  "graphEmptyAllBody": "Create your first note or task — they will appear here as graph nodes.",
+  "graphEmptyAllAction": "Create entry",
+  "graphEmptyNotesTitle": "No notes yet",
+  "graphEmptyNotesBody": "Notes appear as individual nodes. Links are created automatically when the body contains a [[reference]] to another note.",
+  "graphEmptyNotesAction": "Create note",
+  "graphEmptyTasksTitle": "No tasks in graph",
+  "graphEmptyTasksBody": "Create a task via \"+\" or generate a task plan from your goal.",
+  "graphEmptyBookmarksTitle": "No bookmarks yet",
+  "graphEmptyBookmarksBody": "Long-press a graph node to bookmark it.",
+  "graphEmptyDailyTitle": "Daily is empty",
+  "graphEmptyDailyBody": "Tap the calendar icon in the header to create an entry for today.",
+  "graphEmptyKnowledgeTitle": "Self-knowledge is empty",
+  "graphEmptyKnowledgeBody": "Fill in goals, constraints and achievements via branch taps — this gives AI more context for plan generation.",
+  "editListAdd": "Add",
+  "editListRemove": "Remove",
+  "editListSave": "Save",
+  "graphConnections": "connections",
+  "selfBranchesTooltip": "Branches",
+  "selfSettingsTooltip": "Settings",
+  "selfTreeBranches": "TREE · BRANCHES",
+  "selfGeneratePlan": "Generate plan",
+  "selfScoreExplain": "Points are awarded for completing tasks linked to axes. They decay over time — the pentagram reflects you over the last month.",
+  "selfEpochArchive": "EPOCH {n} · ARCHIVE",
+  "@selfEpochArchive": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "selfArchiveReadonly": "Tree of this epoch at the time of transition. Read only.",
+  "selfArchiveEmpty": "Archive of this epoch is empty — it ended before we started recording history. Future transitions will be saved completely.",
+  "selfArchiveBranches": "BRANCHES OF THAT EPOCH",
+  "selfEpochLabel": "EPOCH",
+  "selfEpochShort": "E{epoch}",
+  "@selfEpochShort": {
+    "placeholders": {
+      "epoch": {
+        "type": "String"
+      }
+    }
+  },
+  "selfEpochTierShort": "E{epoch}.{tier}",
+  "@selfEpochTierShort": {
+    "placeholders": {
+      "epoch": {
+        "type": "String"
+      },
+      "tier": {
+        "type": "String"
+      }
+    }
+  },
+  "selfLevelLabel": "LEVEL",
+  "selfStreakLabel": "STREAK",
+  "selfStreakDays": "{n} d.",
+  "@selfStreakDays": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "selfReadyTransition": "Ready for transition — tap to open",
+  "selfStreakBroken": "Streak broken. Close one task today — start over.",
+  "axisEpochPrefix": "E{n}",
+  "@axisEpochPrefix": {
+    "placeholders": {
+      "n": {
+        "type": "String"
+      }
+    }
+  },
+  "axisState": "STATE",
+  "axisCompletedByAxis": "COMPLETED BY AXIS",
+  "axisNoTasks": "Completed tasks linked to this axis will appear here.",
+  "axesOnboardingFirst": "Complete onboarding first.",
+  "axesYes": "Yes",
+  "axesAxis": "Axis",
+  "axesDone": "Done",
+  "dashNoActiveTasks": "No active tasks — rest or create a new one.",
+  "dashDone": "Done",
+  "dashPostpone": "Postpone",
+  "dashFocusTimer": "Start focus timer",
+  "dashPostponeBy": "POSTPONE BY",
+  "dashViewPentagram": "View your pentagram",
+  "heatmapWeekdays": "Mo,,We,,Fr,,",
+  "heatmapMonths": "Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec",
+  "heatmapEmptyYear": "nothing in {year} yet",
+  "@heatmapEmptyYear": {
+    "placeholders": {
+      "year": {
+        "type": "int"
+      }
+    }
+  },
+  "heatmapYearSummary": "{total} closed in {year} — tap a day",
+  "@heatmapYearSummary": {
+    "placeholders": {
+      "total": {
+        "type": "String"
+      },
+      "year": {
+        "type": "int"
+      }
+    }
+  },
+  "heatmapLess": "less",
+  "heatmapMore": "more",
+  "miniTreeEmpty": "Tree appears after the first branch",
+  "miniTreeXp": "total {xp} XP · tap for full tree",
+  "@miniTreeXp": {
+    "placeholders": {
+      "xp": {
+        "type": "int"
+      }
+    }
+  },
+  "@pulseDeadline": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "pulseStreakDay": "{n} day",
+  "@pulseStreakDay": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "pulseStreakDays": "{n} days",
+  "@pulseStreakDays": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "pulseStreakDaysMany": "{n} days",
+  "@pulseStreakDaysMany": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "notesQuickHint": "Quick note…",
+  "notesSearchHint": "Search",
+  "notesNotFound": "Nothing found",
+  "notesEmptyHint": "Write a thought in the line above or open the full editor with \"+\".",
+  "notesNotFoundHint": "Try a different query.",
+  "calMonths": "January,February,March,April,May,June,July,August,September,October,November,December",
+  "calWeekdays": "Mon,Tue,Wed,Thu,Fri,Sat,Sun",
+  "calToday": "Today",
+  "calPlanDay": "Plan for this day",
+  "calNothingRecorded": "Nothing recorded.",
+  "calMonthsShort": "Jan,Feb,Mar,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec",
+  "calDaysShort": "Mon,Tue,Wed,Thu,Fri,Sat,Sun",
+  "calTodayPrefix": "Today",
+  "calYesterday": "Yesterday",
+  "calTomorrow": "Tomorrow",
+  "calDayEmpty": "Nothing recorded for this day.",
+  "taskOverdue": "Overdue",
+  "taskNoTasks": "No tasks — all completed or none created.",
+  "settingsSync": "Sync",
+  "settingsSyncSub": "Google Drive for backup",
+  "settingsExportSub": "JSON to clipboard",
+  "settingsImportSub": "Paste JSON",
+  "settingsAboutSub": "Version, licenses",
+  "roadmapTitle": "AI Plan",
+  "roadmapGenerateFirst": "Generate your first plan",
+  "roadmapAxis": "Axis",
+  "roadmapGoal": "Goal",
+  "roadmapGenerate": "Generate",
+  "roadmapWeek1": "Week 1",
+  "roadmapWeek2": "Week 2",
+  "roadmapWeek3": "Week 3",
+  "roadmapWeek4": "Week 4",
+  "roadmapError": "Error",
+  "homeMore": "More",
+  "onboardingActiveHours": "Active hours",
+  "menuRecipeSteps": "RECIPE STEPS",
+  "menuGenerateRecipe": "Generate recipe",
+  "entryUntitled": "Untitled",
+  "axisTileFocusTasks": "focus tasks",
+  "backendsNoKey": "key not set",
+  "editListAddItem": "Add",
+  "editListHint": "New item",
+  "editListAddFirst": "Add first entry",
+  "entryTaskDone": "✓ task",
+  "entryTask": "task",
+  "backendsActive": "Active",
+  "debugFillAxes": "Fill all axes to 100%",
+  "debugFillAxesSub": "Creates synthetic tasks so the pentagon hits peak",
+  "debugFillAxesDone": "Done. Open Self — overlay should appear.",
+  "debugResetAck": "Reset epoch ack",
+  "debugResetAckSub": "Clears epochAckedAt — overlay will trigger again at peak",
+  "debugResetAckDone": "Ack reset.",
+  "debugBumpEpoch": "Force +1 epoch",
+  "debugBumpEpochDone": "Epoch incremented.",
+  "debugResetEpoch": "Reset epoch to 1",
+  "debugResetEpochSub": "Full progression rollback to Epoch 1",
+  "debugResetEpochDone": "Reset to Epoch 1.",
+  "roadmapRegenerate": "Regenerate",
+  "roadmapFailed": "Failed",
+  "roadmapGenericError": "Something went wrong",
+  "roadmapBack": "Back",
+  "roadmapToday": "today",
+  "roadmapTomorrow": "tomorrow",
+  "roadmapInDays": "in {n} days",
+  "@roadmapInDays": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "roadmapDueDate": "by {date}",
+  "@roadmapDueDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "roadmapFromOnboarding": "From onboarding",
+  "pomodoroStopAction": "Stop",
+  "pomodoroGoAction": "Let's go",
+  "onboardGoals": "improve health,switch career,learn something new,become disciplined,develop relationships,find balance,launch project",
+  "onboardInterests": "studying,code,design,sports,meditation,reading,music,languages,cooking,relationships,finance,creativity,career,family",
+  "onboardTimePrefix": "Time",
+  "onboardPainPrefix": "What blocks you",
+  "onboardComfortTime": "Comfortable time",
+  "onboardNameHint": "Name",
+  "onboardCustomValue": "Custom value",
+  "onboardVolumeMini": "mini volume, bit by bit",
+  "onboardVolumeComfort": "comfortable pace",
+  "onboardVolumeSerious": "serious involvement",
+  "onboardVolumeAlmost": "almost a second job",
+  "onboardVolumeMax": "maximum mode",
+  "onboardPainSummary": "Obstacles: {pain}.",
+  "@onboardPainSummary": {
+    "placeholders": {
+      "pain": {
+        "type": "String"
+      }
+    }
+  },
+  "onboardTimeSummary": "Comfortable time: {time}.",
+  "@onboardTimeSummary": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "pulseDeadlineLabel": "Deadline",
+  "pluralTaskOne": "task",
+  "pluralTaskFew": "tasks",
+  "pluralTaskMany": "tasks",
+  "pluralDeadlineOne": "deadline",
+  "pluralDeadlineFew": "deadlines",
+  "pluralDeadlineMany": "deadlines",
+  "pluralNoteOne": "note",
+  "pluralNoteFew": "notes",
+  "pluralNoteMany": "notes",
+  "pluralBranchOne": "branch",
+  "pluralBranchFew": "branches",
+  "pluralBranchMany": "branches",
+  "heatmapNothing": "nothing",
+  "miniTreeBest": "best: {symbol} {name} · L{level}",
+  "@miniTreeBest": {
+    "placeholders": {
+      "symbol": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      },
+      "level": {
+        "type": "int"
+      }
+    }
+  },
+  "timeJustNow": "just now",
+  "timeNow": "now",
+  "timeAgoFmt": "{value} {unit} ago",
+  "@timeAgoFmt": {
+    "placeholders": {
+      "value": {
+        "type": "int"
+      },
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "timeInFmt": "in {value} {unit}",
+  "@timeInFmt": {
+    "placeholders": {
+      "value": {
+        "type": "int"
+      },
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "timeRightAfter": "right after",
+  "timePlusFmt": "+ {value} {unit}",
+  "@timePlusFmt": {
+    "placeholders": {
+      "value": {
+        "type": "int"
+      },
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "pluralDayOne": "day",
+  "pluralDayFew": "days",
+  "pluralDayMany": "days",
+  "pluralHourOne": "hour",
+  "pluralHourFew": "hours",
+  "pluralHourMany": "hours",
+  "pluralMinuteOne": "minute",
+  "pluralMinuteFew": "minutes",
+  "pluralMinuteMany": "minutes",
+  "pluralMonthOne": "month",
+  "pluralMonthFew": "months",
+  "pluralMonthMany": "months",
+  "pluralYearOne": "year",
+  "pluralYearFew": "years",
+  "pluralYearMany": "years",
+  "pomodoroFocus": "Focus",
+  "pomodoroBreak": "Short break",
+  "pomodoroLongBreakHint": "Long break {min} min",
+  "@pomodoroLongBreakHint": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "pomodoroShortBreakHint": "Short break {min} min",
+  "@pomodoroShortBreakHint": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "pomodoroNextFocusAuto": "Let's go — next focus {min} min",
+  "@pomodoroNextFocusAuto": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "pomodoroNextFocusManual": "Start next focus when ready",
+  "pomodoroTimeToRest": "Time to rest",
+  "pomodoroBackToFocus": "Back to focus",
+  "pomodoroReadyAgain": "Ready to work again?",
+  "notifChannelName": "Deadlines & reminders",
+  "notifChannelDesc": "Reminders about upcoming and overdue tasks.",
+  "notifWindowsHint": "Windows toasts + tray icon. Keep the app minimized to tray for notifications to work.",
+  "notifUnsupported": "This platform is not supported.",
+  "notifMorningTitle": "Morning plan",
+  "notifMorningBody": "Open AI coach — plan your day",
+  "notifEveningTitle": "Evening review",
+  "notifEveningBody": "Let's review the day — what went well, what to improve?",
+  "notifDeadlineTomorrow": "Deadline tomorrow",
+  "notifDeadlineToday": "Deadline today",
+  "notifDeadlinePassed": "Deadline passed",
+  "notifWeeklyTitle": "Weekly reflection time",
+  "notifWeeklyBody": "How was your week?",
+  "trayOpen": "Open Noetica",
+  "trayExit": "Exit",
+  "genMenuGoal": "Nutrition goal",
+  "genMenuClassic": "Balanced",
+  "genMenuLoseWeight": "Lose weight",
+  "genMenuHealth": "Health",
+  "genMenuMuscle": "Muscle gain",
+  "genMenuEnergy": "Energy / sport",
+  "genMenuServings": "Servings",
+  "genMenuStart": "Menu start",
+  "genMenuAxis": "Growth axis",
+  "genMenuAxisHelp": "21 tasks will be added to the chosen axis and grant XP when completed.",
+  "genMenuRestrictions": "Restrictions (optional)",
+  "genMenuRestrictionsHint": "gluten-free; no pork; vegetarian",
+  "genMenuNotes": "Extra wishes (optional)",
+  "genMenuNotesHint": "less cooking on weekdays; more fish; quick breakfasts",
+  "genHabitIntent": "What habit do you want to build?",
+  "genHabitIntentHint": "sleep earlier · less phone in the morning · drink more water",
+  "genHabitDays": "How many days",
+  "genHabitAxis": "Growth axis",
+  "genHabitAxisHelp": "All mini-tasks will earn XP and grow with this axis.",
+  "genHabitNotes": "Extra wishes (optional)",
+  "genHabitNotesHint": "morning routine · tried before, didn't stick · no apps needed",
+  "genMenuTitle": "Weekly menu",
+  "genMenuDesc": "7 days × breakfast / lunch / dinner with macros for your goal.",
+  "genMenuBullet1": "21 tasks on the Body axis with deadlines",
+  "genMenuBullet2": "Shopping list as a separate checklist note",
+  "genMenuBullet3": "Full recipes loaded on tap",
+  "genTrainingTitle": "Training plan",
+  "genTrainingDesc": "4-week program for strength, endurance, or recomposition.",
+  "genTrainingBullet1": "Takes available equipment into account",
+  "genTrainingBullet2": "Each session is a task with sets as sub-tasks",
+  "genStudyTitle": "Study plan",
+  "genStudyDesc": "Break down \"learn X\" into lessons with note summaries.",
+  "genStudyBullet1": "Lessons = tasks on the Mind axis",
+  "genStudyBullet2": "Summaries are notes linked via [[wiki-links]]",
+  "genHabitsTitle": "Micro-habits",
+  "genHabitsDesc": "7-day challenge of short daily tasks.",
+  "genHabitsBullet1": "Each action ≤ 2 min — you actually follow through",
+  "genHabitsBullet2": "Tailored to your axis, progressively harder",
+  "genHabitsBullet3": "Appear in Tasks with daily deadlines",
+
+  "reflectionEasy": "Easy",
+  "reflectionNormal": "Normal",
+  "reflectionHard": "Hard",
+  "reflectionBlocked": "Stuck",
+
+  "menuGoalLoseWeight": "Weight loss",
+  "menuGoalHealth": "Health",
+  "menuGoalMuscle": "Muscle gain",
+  "menuGoalEnergy": "Energy / sport",
+  "menuGoalClassic": "Classic balanced",
+
+  "apiErrNotLoggedIn": "Not signed in to Google. Please sign in and try again.",
+  "apiErrServerUnreachable": "Could not reach the server: {details}",
+  "@apiErrServerUnreachable": {
+    "placeholders": { "details": { "type": "String" } }
+  },
+  "apiErrSessionExpired": "Session expired. Please sign in with Google again.",
+  "apiErrInvalidJson": "Server returned invalid JSON: {details}",
+  "@apiErrInvalidJson": {
+    "placeholders": { "details": { "type": "String" } }
+  },
+
+  "validationRequired": "Field is required",
+  "validationRange": "Must be between {min} and {max}",
+  "@validationRange": {
+    "placeholders": {
+      "min": { "type": "int" },
+      "max": { "type": "int" }
+    }
+  },
+
+  "backendDefault": "Default",
+  "backendCantDeleteLast": "Cannot delete the only backend. Add another one first.",
+
+  "trayOpen": "Open Noetica",
+  "trayExit": "Exit",
+
+  "menuRecipePrefix": "Recipe: {name}",
+  "@menuRecipePrefix": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "menuRecipeNotGenerated": "Recipe not yet generated",
+  "menuSummary": "{goal} · {servings} servings · {range}",
+  "@menuSummary": {
+    "placeholders": {
+      "goal": { "type": "String" },
+      "servings": { "type": "int" },
+      "range": { "type": "String" }
+    }
+  },
+
+  "androidChannelName": "Deadlines and reminders",
+  "androidChannelDesc": "Reminders for approaching and overdue tasks.",
+
+  "interestSport": "Sports",
+  "interestReading": "Reading",
+  "interestLanguages": "Language learning",
+  "interestProgramming": "Programming",
+  "interestMusic": "Music",
+  "interestDrawing": "Drawing",
+  "interestMeditation": "Meditation",
+  "interestFriendship": "Friendship",
+  "interestFamily": "Family",
+  "interestFinance": "Finance",
+  "interestCareer": "Career",
+  "interestBusiness": "Entrepreneurship",
+  "interestNutrition": "Nutrition",
+  "interestSleep": "Sleep",
+  "interestTravel": "Travel",
+  "interestWriting": "Writing",
+  "interestCrafts": "Crafts",
+
+  "skillNovice": "Novice",
+  "skillLearning": "Learning",
+  "skillConfident": "Confident",
+  "skillExpert": "Expert",
+
+  "onboardAxisBody": "Body",
+  "onboardAxisMind": "Mind",
+  "onboardAxisWork": "Work",
+  "onboardAxisRelations": "Relationships",
+  "onboardAxisSoul": "Soul",
+
+  "menuMacroLine": "{cal} kcal · {p}P/{f}F/{c}C",
+  "@menuMacroLine": {
+    "placeholders": {
+      "cal": { "type": "int" },
+      "p": { "type": "int" },
+      "f": { "type": "int" },
+      "c": { "type": "int" }
+    }
+  },
+
+  "backendUrlEmpty": "URL must not be empty."
+}

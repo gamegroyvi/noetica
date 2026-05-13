@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:noetica/l10n/generated/app_localizations.dart';
 import 'package:noetica/features/dashboard/dashboard_screen.dart';
 import 'package:noetica/features/home/home_shell.dart';
 
@@ -18,8 +20,18 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
 
     await tester.pumpWidget(
-      const ProviderScope(
-        child: MaterialApp(home: DashboardScreen()),
+      ProviderScope(
+        child: MaterialApp(
+          localizationsDelegates: const [
+            S.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: S.supportedLocales,
+          locale: const Locale('ru'),
+          home: const DashboardScreen(),
+        ),
       ),
     );
     await tester.pump();
@@ -35,8 +47,18 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
 
     await tester.pumpWidget(
-      const ProviderScope(
-        child: MaterialApp(home: DashboardScreen()),
+      ProviderScope(
+        child: MaterialApp(
+          localizationsDelegates: const [
+            S.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: S.supportedLocales,
+          locale: const Locale('ru'),
+          home: const DashboardScreen(),
+        ),
       ),
     );
     await tester.pump();
@@ -51,8 +73,18 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
 
     await tester.pumpWidget(
-      const ProviderScope(
-        child: MaterialApp(home: HomeShell()),
+      ProviderScope(
+        child: MaterialApp(
+          localizationsDelegates: const [
+            S.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: S.supportedLocales,
+          locale: const Locale('ru'),
+          home: const HomeShell(),
+        ),
       ),
     );
     await tester.pump();

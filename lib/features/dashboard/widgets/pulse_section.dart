@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../data/models.dart';
 import '../../../theme/app_theme.dart';
 import '../../../utils/plural.dart';
@@ -28,24 +29,24 @@ class PulseSection extends StatelessWidget {
     final dlValue = dl == null
         ? '—'
         : (dl.difference(DateTime.now()).inHours < 24
-            ? '${dl.difference(DateTime.now()).inHours}ч'
-            : '${dl.difference(DateTime.now()).inDays}д');
+            ? S.of(context)!.pulseDeadlineHours(dl.difference(DateTime.now()).inHours)
+            : S.of(context)!.pulseDeadlineDays(dl.difference(DateTime.now()).inDays));
     final dlHint = dl == null
-        ? 'нет дедлайнов'
-        : 'до ${formatTimestamp(dl)}';
+        ? S.of(context)!.pulseNoDeadline
+        : S.of(context)!.pulseDeadline(formatTimestamp(dl));
     final bestAxis =
         stats.bestAxis != null ? axesById[stats.bestAxis!] : null;
     final xpWeekHint = stats.totalXpWeek > 0
-        ? '${stats.totalXpWeek} за неделю'
-        : 'пока тихо';
+        ? S.of(context)!.dashboardXpWeek(stats.totalXpWeek)
+        : S.of(context)!.pulseQuiet;
 
     final streak = _StatCard(
       palette: palette,
       value: stats.streak.toString(),
-      label: 'СТРИК',
+      label: S.of(context)!.pulseStreak,
       hint: stats.streak == 0
-          ? 'начни сегодня'
-          : plural(stats.streak, 'день', 'дня', 'дней'),
+          ? S.of(context)!.pulseStartToday
+          : plural(stats.streak, S.of(context)!.pulseStreakDay(stats.streak), S.of(context)!.pulseStreakDays(stats.streak), S.of(context)!.pulseStreakDaysMany(stats.streak)),
       footer: SizedBox(
         height: 24,
         child: _WeekBars(perDay: stats.perDay, palette: palette),
@@ -54,21 +55,21 @@ class PulseSection extends StatelessWidget {
     final xpToday = _StatCard(
       palette: palette,
       value: stats.totalXpToday.toString(),
-      label: 'XP СЕГОДНЯ',
+      label: S.of(context)!.dashboardXpToday,
       hint: xpWeekHint,
     );
     final bestAxisCard = _StatCard(
       palette: palette,
       value: bestAxis?.symbol ?? '—',
-      label: 'ЛУЧШАЯ ОСЬ',
+      label: S.of(context)!.pulseBestAxis,
       hint: bestAxis == null
-          ? 'нет данных'
-          : '${bestAxis.name} · +${stats.bestAxisXp} XP',
+          ? S.of(context)!.pulseNoData
+          : S.of(context)!.dashboardBestAxis(bestAxis.name, stats.bestAxisXp),
     );
     final deadlineCard = _StatCard(
       palette: palette,
       value: dlValue,
-      label: 'БЛИЖАЙШИЙ',
+      label: S.of(context)!.pulseDeadlineLabel,
       hint: dlHint,
       onTap: onTapDeadline,
     );

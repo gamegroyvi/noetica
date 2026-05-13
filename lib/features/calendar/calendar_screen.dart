@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../../providers.dart';
 import '../../theme/app_theme.dart';
 import '../entry/entry_editor_sheet.dart';
@@ -24,11 +25,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   late DateTime _visibleMonth;
   late DateTime _selectedDay;
 
-  static const _monthNames = [
-    'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
-    'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь',
-  ];
-  static const _weekdayShort = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+  List<String> _monthNames(BuildContext context) => S.of(context)!.calMonths.split(',');
+  List<String> _weekdayShort(BuildContext context) => S.of(context)!.calWeekdays.split(',');
 
   @override
   void initState() {
@@ -70,10 +68,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Календарь'),
+        title: Text(S.of(context)!.calendarTitle),
         actions: [
           IconButton(
-            tooltip: 'Сегодня',
+            tooltip: S.of(context)!.calToday,
             icon: const Icon(Icons.today),
             onPressed: _gotoToday,
           ),
@@ -91,8 +89,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               onPrev: _previousMonth,
               onNext: _nextMonth,
               onSelect: (d) => setState(() => _selectedDay = d),
-              weekdayShort: _weekdayShort,
-              monthNames: _monthNames,
+              weekdayShort: _weekdayShort(context),
+              monthNames: _monthNames(context),
             );
             final detail = _DayDetail(
               day: _selectedDay,
@@ -400,7 +398,7 @@ class _DayDetail extends ConsumerWidget {
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
     final xpSum = completed.fold<int>(0, (a, e) => a + e.xp);
-    final headline = _formatDay(day);
+    final headline = _formatDay(context, day);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -421,7 +419,7 @@ class _DayDetail extends ConsumerWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            _summaryLine(completed.length, xpSum, dueOpen.length, createdNotes.length),
+            _summaryLine(context, completed.length, xpSum, dueOpen.length, createdNotes.length),
             style: TextStyle(color: palette.muted, fontSize: 12),
           ),
           const SizedBox(height: 10),
@@ -442,7 +440,7 @@ class _DayDetail extends ConsumerWidget {
                 );
               },
               icon: const Icon(Icons.add, size: 18),
-              label: const Text('Запланировать на этот день'),
+              label: Text(S.of(context)!.calPlanDay),
               style: OutlinedButton.styleFrom(
                 foregroundColor: palette.fg,
                 side: BorderSide(color: palette.line),
@@ -457,7 +455,7 @@ class _DayDetail extends ConsumerWidget {
             _EmptyDay(palette: palette)
           else ...[
             if (completed.isNotEmpty) ...[
-              _Heading('✓ Выполнено (${completed.length})', palette: palette),
+              _Heading(S.of(context)!.dayDone(completed.length), palette: palette),
               const SizedBox(height: 4),
               for (final e in completed)
                 _EntryRow(
@@ -469,7 +467,7 @@ class _DayDetail extends ConsumerWidget {
               const SizedBox(height: 12),
             ],
             if (dueOpen.isNotEmpty) ...[
-              _Heading('⏳ Дедлайны (${dueOpen.length})', palette: palette),
+              _Heading('⏳ ${S.of(context)!.calendarDeadlines} (${dueOpen.length})', palette: palette),
               const SizedBox(height: 4),
               for (final e in dueOpen)
                 _EntryRow(
@@ -482,7 +480,7 @@ class _DayDetail extends ConsumerWidget {
               const SizedBox(height: 12),
             ],
             if (createdNotes.isNotEmpty) ...[
-              _Heading('✎ Заметки (${createdNotes.length})', palette: palette),
+              _Heading('✎ ${S.of(context)!.calendarNotes} (${createdNotes.length})', palette: palette),
               const SizedBox(height: 4),
               for (final e in createdNotes)
                 _EntryRow(
@@ -498,12 +496,13 @@ class _DayDetail extends ConsumerWidget {
     );
   }
 
-  String _summaryLine(int done, int xp, int due, int notes) {
+  String _summaryLine(BuildContext context, int done, int xp, int due, int notes) {
+    final tr = S.of(context)!;
     final parts = <String>[];
-    if (done > 0) parts.add('$done ${_pluralize(done, "задача", "задачи", "задач")} · +$xp XP');
-    if (due > 0) parts.add('$due ${_pluralize(due, "дедлайн", "дедлайна", "дедлайнов")}');
-    if (notes > 0) parts.add('$notes ${_pluralize(notes, "заметка", "заметки", "заметок")}');
-    if (parts.isEmpty) return 'Ничего не записано.';
+    if (done > 0) parts.add('$done ${_pluralize(done, tr.pluralTaskOne, tr.pluralTaskFew, tr.pluralTaskMany)} · +$xp XP');
+    if (due > 0) parts.add('$due ${_pluralize(due, tr.pluralDeadlineOne, tr.pluralDeadlineFew, tr.pluralDeadlineMany)}');
+    if (notes > 0) parts.add('$notes ${_pluralize(notes, tr.pluralNoteOne, tr.pluralNoteFew, tr.pluralNoteMany)}');
+    if (parts.isEmpty) return tr.calNothingRecorded;
     return parts.join(' · ');
   }
 
@@ -515,20 +514,17 @@ class _DayDetail extends ConsumerWidget {
     return many;
   }
 
-  String _formatDay(DateTime d) {
+  String _formatDay(BuildContext context, DateTime d) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final target = DateTime(d.year, d.month, d.day);
     final diff = target.difference(today).inDays;
-    const months = [
-      'янв', 'фев', 'мар', 'апр', 'мая', 'июн',
-      'июл', 'авг', 'сен', 'окт', 'ноя', 'дек',
-    ];
-    const days = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'];
+    final months = S.of(context)!.calMonthsShort.split(',');
+    final days = S.of(context)!.calDaysShort.split(',');
     final label = '${d.day} ${months[d.month - 1]}  ·  ${days[d.weekday - 1]}';
-    if (diff == 0) return 'Сегодня · $label';
-    if (diff == -1) return 'Вчера · $label';
-    if (diff == 1) return 'Завтра · $label';
+    if (diff == 0) return '${S.of(context)!.calTodayPrefix} · $label';
+    if (diff == -1) return '${S.of(context)!.calYesterday} · $label';
+    if (diff == 1) return '${S.of(context)!.calTomorrow} · $label';
     return label;
   }
 
@@ -601,7 +597,7 @@ class _EntryRow extends ConsumerWidget {
             ],
             Expanded(
               child: Text(
-                entry.title.isEmpty ? '(без названия)' : entry.title,
+                entry.title.isEmpty ? S.of(context)!.untitled : entry.title,
                 style: TextStyle(
                   color: palette.fg,
                   fontSize: 14,
@@ -640,7 +636,7 @@ class _EmptyDay extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 24),
         child: Center(
           child: Text(
-            'В этот день ничего не записано.',
+            S.of(context)!.calDayEmpty,
             style: TextStyle(color: palette.muted, fontSize: 13),
           ),
         ),

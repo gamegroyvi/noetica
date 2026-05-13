@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../l10n/generated/app_localizations.dart';
 import '../../data/models.dart';
 import '../../data/personal_knowledge_service.dart';
 import '../../providers.dart';
@@ -80,7 +81,7 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
     if (axes.length < 3) {
       setState(() {
         _stage = _Stage.error;
-        _error = 'Нужно минимум 3 оси, чтобы построить план.';
+        _error = S.of(context)!.roadmapMinAxes;
       });
       return;
     }
@@ -151,14 +152,14 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
       HapticFeedback.mediumImpact();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Импортировано задач: $imported')),
+        SnackBar(content: Text(S.of(context)!.roadmapImported(imported))),
       );
       Navigator.of(context).pop();
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _stage = _Stage.error;
-        _error = 'Не удалось импортировать: $e';
+        _error = S.of(context)!.roadmapImportError('$e');
       });
     } finally {
       if (mounted) setState(() => _importing = false);
@@ -173,7 +174,7 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Сгенерировать план'),
+        title: Text(S.of(context)!.selfGeneratePlan),
       ),
       body: SafeArea(
         child: AnimatedSwitcher(
@@ -199,12 +200,12 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
       padding: const EdgeInsets.all(20),
       children: [
         Text(
-          'Опиши цель',
+          S.of(context)!.dashboardDescribeGoal,
           style: Theme.of(context).textTheme.headlineSmall,
         ),
         const SizedBox(height: 6),
         Text(
-          'Чем конкретнее — тем точнее план. Например: «Хочу пробежать полумарафон через 3 месяца, текущая форма средняя».',
+          S.of(context)!.roadmapGoalHint,
           style: Theme.of(context)
               .textTheme
               .bodyMedium
@@ -216,8 +217,8 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
           maxLines: 5,
           minLines: 3,
           textInputAction: TextInputAction.newline,
-          decoration: const InputDecoration(
-            hintText: 'Чего хочешь достичь?',
+          decoration: InputDecoration(
+            hintText: S.of(context)!.roadmapInputHint,
           ),
           onChanged: (_) => setState(() {}),
         ),
@@ -243,25 +244,25 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
                   });
                 },
                 icon: const Icon(Icons.close, size: 14),
-                label: const Text('Очистить'),
+                label: Text(S.of(context)!.actionClear),
               ),
             ],
           ),
         ],
         const SizedBox(height: 20),
-        _Section(label: 'Горизонт', palette: palette),
+        _Section(label: S.of(context)!.roadmapHorizon, palette: palette),
         const SizedBox(height: 8),
         _SegmentedRow(
-          options: const [
-            ('Неделя', 7),
-            ('Месяц', 30),
-            ('Квартал', 90),
+          options: [
+            (S.of(context)!.roadmapWeek, 7),
+            (S.of(context)!.roadmapMonth, 30),
+            (S.of(context)!.roadmapQuarter, 90),
           ],
           value: _horizonDays,
           onChanged: (v) => setState(() => _horizonDays = v),
         ),
         const SizedBox(height: 20),
-        _Section(label: 'Кол-во задач', palette: palette),
+        _Section(label: S.of(context)!.roadmapTaskCount, palette: palette),
         Row(
           children: [
             Expanded(
@@ -285,15 +286,15 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
         FilledButton(
           onPressed:
               hasAxes && _goalCtrl.text.trim().length >= 3 ? _generate : null,
-          child: const Padding(
-            padding: EdgeInsets.symmetric(vertical: 14),
-            child: Text('Сгенерировать'),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            child: Text(S.of(context)!.dashboardGenerate),
           ),
         ),
         if (!hasAxes) ...[
           const SizedBox(height: 12),
           Text(
-            'Нужно хотя бы 3 оси. Добавь их на вкладке «Я».',
+            S.of(context)!.roadmapNeedAxes,
             style: Theme.of(context)
                 .textTheme
                 .bodySmall
@@ -319,12 +320,12 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
           ),
           const SizedBox(height: 18),
           Text(
-            'Думаю над планом…',
+            S.of(context)!.dashboardThinking,
             style: Theme.of(context).textTheme.bodyLarge,
           ),
           const SizedBox(height: 6),
           Text(
-            'Это занимает 5–15 секунд',
+            S.of(context)!.roadmapGenerating,
             style: Theme.of(context)
                 .textTheme
                 .bodySmall
@@ -397,9 +398,9 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
                                   _result = null;
                                   _picked = null;
                                 }),
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          child: Text('Перегенерировать'),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Text(S.of(context)!.roadmapRegenerate),
                         ),
                       ),
                     ),
@@ -413,8 +414,8 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           child: Text(
                             _importing
-                                ? 'Импортирую…'
-                                : 'Импортировать ($pickedCount)',
+                                ? '...'
+                                : S.of(context)!.roadmapImportBtn(pickedCount),
                           ),
                         ),
                       ),
@@ -438,12 +439,12 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
           Icon(Icons.error_outline, color: palette.fg, size: 36),
           const SizedBox(height: 16),
           Text(
-            'Не получилось',
+            S.of(context)!.roadmapFailed,
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 8),
           Text(
-            _error ?? 'Что-то пошло не так',
+            _error ?? S.of(context)!.roadmapGenericError,
             textAlign: TextAlign.center,
             style: Theme.of(context)
                 .textTheme
@@ -453,9 +454,9 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
           const SizedBox(height: 18),
           OutlinedButton(
             onPressed: () => setState(() => _stage = _Stage.input),
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              child: Text('Назад'),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              child: Text(S.of(context)!.roadmapBack),
             ),
           ),
         ],
@@ -617,7 +618,7 @@ class _DraftCard extends StatelessWidget {
                             ),
                         if (draft.dueAt != null)
                           _Pill(
-                            text: _formatDue(draft.dueAt!),
+                            text: _formatDue(draft.dueAt!, context: context),
                             palette: palette,
                           ),
                       ],
@@ -632,15 +633,15 @@ class _DraftCard extends StatelessWidget {
     );
   }
 
-  static String _formatDue(DateTime due) {
+  static String _formatDue(DateTime due, {required BuildContext context}) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final d = DateTime(due.year, due.month, due.day);
     final diff = d.difference(today).inDays;
-    if (diff == 0) return 'сегодня';
-    if (diff == 1) return 'завтра';
-    if (diff <= 7) return 'через $diff дн.';
-    return 'до ${due.day}.${due.month.toString().padLeft(2, '0')}';
+    if (diff == 0) return S.of(context)!.roadmapToday;
+    if (diff == 1) return S.of(context)!.roadmapTomorrow;
+    if (diff <= 7) return S.of(context)!.roadmapInDays(diff);
+    return S.of(context)!.roadmapDueDate('${due.day}.${due.month.toString().padLeft(2, '0')}');
   }
 }
 
@@ -695,7 +696,7 @@ class _PrefillBadge extends StatelessWidget {
           Icon(Icons.auto_awesome, size: 12, color: palette.muted),
           const SizedBox(width: 6),
           Text(
-            'Из онбординга',
+            S.of(context)!.roadmapFromOnboarding,
             style: TextStyle(color: palette.muted, fontSize: 12),
           ),
         ],

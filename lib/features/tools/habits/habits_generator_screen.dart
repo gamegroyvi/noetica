@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../data/models.dart';
 import '../../../providers.dart';
 import '../../../services/builtin_generators.dart';
@@ -46,24 +47,29 @@ class _HabitsGeneratorScreenState extends ConsumerState<HabitsGeneratorScreen> {
   String? get _selectedAxisId => _values['axis_id'] as String?;
   String get _notes => ((_values['notes'] as String?) ?? '').trim();
 
-  void _seedValuesFromManifest() {
+  bool _seeded = false;
+
+  void _seedValuesFromManifest(S tr) {
     _values.clear();
-    for (final f in habitsInputs()) {
+    for (final f in habitsInputs(tr)) {
       _values[f.id] = f.defaultValue;
     }
   }
 
   @override
-  void initState() {
-    super.initState();
-    _seedValuesFromManifest();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_seeded) {
+      _seeded = true;
+      _seedValuesFromManifest(S.of(context)!);
+    }
   }
 
   // ----------------------------------------------------------- generate
 
   Future<void> _generate() async {
     if (_intent.length < 3) {
-      setState(() => _error = 'Опиши, какую привычку хочешь освоить.');
+      setState(() => _error = S.of(context)!.habitsIntentError);
       return;
     }
     setState(() {
@@ -103,6 +109,7 @@ class _HabitsGeneratorScreenState extends ConsumerState<HabitsGeneratorScreen> {
   Future<void> _import() async {
     final plan = _plan;
     if (plan == null) return;
+    final tr = S.of(context)!;
     setState(() {
       _stage = _Stage.importing;
       _error = null;
@@ -115,10 +122,6 @@ class _HabitsGeneratorScreenState extends ConsumerState<HabitsGeneratorScreen> {
           _selectedAxisId == null ? const <String>[] : [_selectedAxisId!];
 
       final today = DateTime.now();
-      // Anchor the first day at today; subsequent days roll forward by
-      // 1 calendar day each. We pin time to 09:00 local so the task
-      // shows up in "Сегодня" rather than as overdue if the user
-      // imports late in the evening.
       final startDate = DateTime(today.year, today.month, today.day, 9, 0);
 
       for (final day in plan.days) {
@@ -129,8 +132,7 @@ class _HabitsGeneratorScreenState extends ConsumerState<HabitsGeneratorScreen> {
           body.writeln();
         }
         body.writeln(
-          '_День ${day.dayIndex} из ${plan.days.length} · '
-          'челлендж «${plan.intent}»_',
+          '_${tr.habitsDayOf(day.dayIndex, plan.days.length, plan.intent)}_',
         );
         await repo.createEntry(
           title: day.title,
@@ -144,22 +146,18 @@ class _HabitsGeneratorScreenState extends ConsumerState<HabitsGeneratorScreen> {
       }
 
       if (!mounted) return;
-      // Hop back to the catalog. Tasks screen will show the new
-      // entries grouped under "Сегодня" / "Завтра" / etc. without us
-      // having to render an in-screen imported view.
       Navigator.of(context).maybePop();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Челлендж «${plan.intent}» добавлен — ${plan.days.length} '
-            'мини-задач в Задачах.',
+            tr.habitsImported(plan.intent, plan.days.length),
           ),
         ),
       );
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = 'Не удалось импортировать челлендж: $e';
+        _error = tr.habitsImportError('$e');
         _stage = _Stage.preview;
       });
     }
@@ -172,7 +170,7 @@ class _HabitsGeneratorScreenState extends ConsumerState<HabitsGeneratorScreen> {
     final palette = context.palette;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Микро-привычки'),
+        title: Text(S.of(context)!.habitsTitle),
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () => Navigator.of(context).maybePop(),
@@ -182,9 +180,9 @@ class _HabitsGeneratorScreenState extends ConsumerState<HabitsGeneratorScreen> {
         child: switch (_stage) {
           _Stage.form => _buildForm(palette),
           _Stage.generating =>
-            _buildBusy(palette, 'AI подбирает крошечные шаги…'),
+            _buildBusy(palette, S.of(context)!.habitsGenerating),
           _Stage.preview => _buildPreview(palette),
-          _Stage.importing => _buildBusy(palette, 'Создаю задачи в Noetica…'),
+          _Stage.importing => _buildBusy(palette, S.of(context)!.habitsImporting),
         },
       ),
     );
@@ -209,7 +207,7 @@ class _HabitsGeneratorScreenState extends ConsumerState<HabitsGeneratorScreen> {
             child: Text(_error!, style: TextStyle(color: palette.fg)),
           ),
         GeneratorFormView(
-          fields: habitsInputs(),
+          fields: habitsInputs(S.of(context)!),
           values: _values,
           axes: axes,
           onChanged: (id, v) => setState(() => _values[id] = v),
@@ -225,16 +223,16 @@ class _HabitsGeneratorScreenState extends ConsumerState<HabitsGeneratorScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Что я создам', style: theme.textTheme.labelLarge),
+              Text(S.of(context)!.menuWhatCreated, style: theme.textTheme.labelLarge),
               const SizedBox(height: 8),
               _bullet(
                 palette,
-                '$_durationDays задач — по одной на день, от лёгкой к закрепляющей',
+                S.of(context)!.habitsBullet1(_durationDays),
               ),
-              _bullet(palette, 'Каждое действие ≤ 2 минут реального усилия'),
+              _bullet(palette, S.of(context)!.habitsBullet2),
               _bullet(
                 palette,
-                'Появятся в Задачах в секциях «Сегодня» / «Завтра» / …',
+                S.of(context)!.habitsBullet3,
               ),
             ],
           ),
@@ -242,7 +240,7 @@ class _HabitsGeneratorScreenState extends ConsumerState<HabitsGeneratorScreen> {
         const SizedBox(height: 24),
         FilledButton.icon(
           icon: const Icon(Icons.auto_awesome, size: 18),
-          label: const Text('Сгенерировать'),
+          label: Text(S.of(context)!.dashboardGenerate),
           onPressed: _generate,
           style: FilledButton.styleFrom(
             minimumSize: const Size.fromHeight(48),
@@ -312,7 +310,7 @@ class _HabitsGeneratorScreenState extends ConsumerState<HabitsGeneratorScreen> {
                       ),
                     ),
                     Text(
-                      '${plan.days.length} дней · по одной мини-задаче',
+                      S.of(context)!.habitsDaysMini(plan.days.length),
                       style: TextStyle(color: palette.muted),
                     ),
                   ],
@@ -320,7 +318,7 @@ class _HabitsGeneratorScreenState extends ConsumerState<HabitsGeneratorScreen> {
               ),
               TextButton.icon(
                 icon: const Icon(Icons.refresh, size: 16),
-                label: const Text('Перегенерировать'),
+                label: Text(S.of(context)!.menuRegenerate),
                 onPressed: _generate,
               ),
             ],
@@ -348,7 +346,7 @@ class _HabitsGeneratorScreenState extends ConsumerState<HabitsGeneratorScreen> {
           minimum: const EdgeInsets.fromLTRB(16, 8, 16, 16),
           child: FilledButton.icon(
             icon: const Icon(Icons.playlist_add, size: 18),
-            label: Text('Добавить ${plan.days.length} задач'),
+            label: Text(S.of(context)!.habitsAddTasks(plan.days.length)),
             onPressed: _import,
             style: FilledButton.styleFrom(
               minimumSize: const Size.fromHeight(48),

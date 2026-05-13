@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../l10n/generated/app_localizations.dart';
 import '../../services/pomodoro_service.dart';
 import '../../theme/app_theme.dart';
 
@@ -51,6 +52,7 @@ class _PomodoroSheetState extends State<PomodoroSheet> {
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
+    _service.updateLocale(S.of(context)!);
     return AnimatedBuilder(
       animation: _service,
       builder: (context, _) {
@@ -124,12 +126,12 @@ class _PomodoroSheetState extends State<PomodoroSheet> {
                 if (_service.phase == PomodoroPhase.idle)
                   FilledButton(
                     onPressed: _service.startFocus,
-                    child: const Text('Начать фокус'),
+                    child: Text(S.of(context)!.pomodoroStart),
                   )
                 else
                   OutlinedButton(
                     onPressed: _service.stop,
-                    child: const Text('Стоп'),
+                    child: Text(S.of(context)!.pomodoroStop),
                   ),
                 const SizedBox(height: 8),
                 _SettingsPanel(
@@ -190,7 +192,7 @@ class _PhaseHeader extends StatelessWidget {
         const SizedBox(width: 28),
         Expanded(
           child: Text(
-            phase.label.toUpperCase(),
+            phase.localizedLabel(S.of(context)!).toUpperCase(),
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 12,
@@ -207,8 +209,8 @@ class _PhaseHeader extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             child: Tooltip(
               message: onResetCounter == null
-                  ? 'Серия фокус-сессий'
-                  : 'Серия фокус-сессий — нажми чтобы сбросить',
+                  ? S.of(context)!.pomodoroSeries
+                  : S.of(context)!.pomodoroSeriesReset,
               child: Text(
                 '✦ $completedFocus',
                 style: TextStyle(
@@ -278,7 +280,7 @@ class _SettingsPanel extends StatelessWidget {
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  'Настройки',
+                  S.of(context)!.pomodoroSettings,
                   style: TextStyle(
                     color: palette.muted,
                     fontSize: 13,
@@ -292,7 +294,7 @@ class _SettingsPanel extends StatelessWidget {
         ),
         if (expanded) ...[
           _Stepper(
-            label: 'Фокус, мин',
+            label: S.of(context)!.pomodoroFocusMin,
             value: focusMinutes,
             onChanged: (v) => onChange(focus: v),
             min: 1,
@@ -301,7 +303,7 @@ class _SettingsPanel extends StatelessWidget {
             palette: palette,
           ),
           _Stepper(
-            label: 'Короткий отдых, мин',
+            label: S.of(context)!.pomodoroShortBreak,
             value: breakMinutes,
             onChanged: (v) => onChange(brk: v),
             min: 1,
@@ -310,7 +312,7 @@ class _SettingsPanel extends StatelessWidget {
             palette: palette,
           ),
           _Stepper(
-            label: 'Длинный отдых, мин',
+            label: S.of(context)!.pomodoroLongBreak,
             value: longBreakMinutes,
             onChanged: (v) => onChange(longBrk: v),
             min: 1,
@@ -319,7 +321,7 @@ class _SettingsPanel extends StatelessWidget {
             palette: palette,
           ),
           _Stepper(
-            label: 'Длинный отдых каждые N фокусов',
+            label: S.of(context)!.pomodoroLongBreakEvery,
             value: longBreakEvery,
             onChanged: (v) => onChange(longEvery: v),
             min: 2,
@@ -330,9 +332,9 @@ class _SettingsPanel extends StatelessWidget {
           SwitchListTile.adaptive(
             contentPadding: EdgeInsets.zero,
             dense: true,
-            title: const Text('Авто-старт следующей фазы'),
+            title: Text(S.of(context)!.pomodoroAutoStart),
             subtitle: Text(
-              'После окончания фокуса/отдыха таймер продолжается сам',
+              S.of(context)!.pomodoroAutoStartSub,
               style: TextStyle(color: palette.muted, fontSize: 11),
             ),
             value: autoNext,
@@ -341,10 +343,9 @@ class _SettingsPanel extends StatelessWidget {
           SwitchListTile.adaptive(
             contentPadding: EdgeInsets.zero,
             dense: true,
-            title: const Text('Звук + вибрация'),
+            title: Text(S.of(context)!.pomodoroSoundVibro),
             subtitle: Text(
-              'Системный «дзынь» и хаптик при смене фазы '
-              '(уведомление приходит в любом случае)',
+              S.of(context)!.pomodoroSoundVibroSub,
               style: TextStyle(color: palette.muted, fontSize: 11),
             ),
             value: soundOn,

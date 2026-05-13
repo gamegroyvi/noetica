@@ -1,30 +1,25 @@
 import 'package:flutter/material.dart';
+import '../../l10n/generated/app_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models.dart';
 import '../../providers.dart';
-import '../../services/pomodoro_service.dart';
 import '../../theme/app_theme.dart';
-import '../../utils/body_utils.dart';
 import '../../utils/subtask_utils.dart';
-import '../../utils/time_utils.dart';
 import '../../widgets/brand_glyph.dart';
-import '../entry/entry_editor_sheet.dart';
-import '../entry/markdown_body_editor.dart';
 import '../home/home_shell.dart';
-import '../pomodoro/pomodoro_sheet.dart';
-import '../reflection/reflection_sheet.dart';
 import '../settings/settings_screen.dart';
+import 'widgets/task_tile.dart';
 
 /// Status filter applied to the visible task list.
 enum _StatusFilter { all, open, overdue, done }
 
 extension on _StatusFilter {
-  String get label => switch (this) {
-        _StatusFilter.all => 'Все',
-        _StatusFilter.open => 'Открытые',
-        _StatusFilter.overdue => 'Просрочены',
-        _StatusFilter.done => 'Готово',
+  String localLabel(S tr) => switch (this) {
+        _StatusFilter.all => tr.filterAll,
+        _StatusFilter.open => tr.filterOpen,
+        _StatusFilter.overdue => tr.filterOverdue,
+        _StatusFilter.done => tr.filterDone,
       };
 
   bool matches(Entry e) {
@@ -47,11 +42,11 @@ extension on _StatusFilter {
 enum _SortMode { smart, dueAsc, createdDesc, xpDesc }
 
 extension on _SortMode {
-  String get label => switch (this) {
-        _SortMode.smart => 'Умная',
-        _SortMode.dueAsc => 'Срок ↑',
-        _SortMode.createdDesc => 'Свежие',
-        _SortMode.xpDesc => 'Тяжёлые сверху',
+  String localLabel(S tr) => switch (this) {
+        _SortMode.smart => tr.sortSmart,
+        _SortMode.dueAsc => tr.sortDueAsc,
+        _SortMode.createdDesc => tr.sortCreatedDesc,
+        _SortMode.xpDesc => tr.sortXpDesc,
       };
 }
 
@@ -67,14 +62,14 @@ enum _DateBucket {
 }
 
 extension on _DateBucket {
-  String get label => switch (this) {
-        _DateBucket.overdue => 'Просрочено',
-        _DateBucket.today => 'Сегодня',
-        _DateBucket.tomorrow => 'Завтра',
-        _DateBucket.thisWeek => 'На этой неделе',
-        _DateBucket.later => 'Позже',
-        _DateBucket.noDate => 'Без даты',
-        _DateBucket.done => 'Готово',
+  String localLabel(S tr) => switch (this) {
+        _DateBucket.overdue => tr.sectionOverdue,
+        _DateBucket.today => tr.sectionToday,
+        _DateBucket.tomorrow => tr.sectionTomorrow,
+        _DateBucket.thisWeek => tr.sectionThisWeek,
+        _DateBucket.later => tr.sectionLater,
+        _DateBucket.noDate => tr.filterAll,
+        _DateBucket.done => tr.filterDone,
       };
 
   IconData get icon => switch (this) {
@@ -111,6 +106,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
+    final tr = S.of(context)!;
     final entriesAsync = ref.watch(entriesProvider);
     final axesAsync = ref.watch(axesProvider);
     final isMobile = MediaQuery.of(context).size.width < 900;
@@ -122,10 +118,10 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
           child: BrandGlyph(size: 24),
         ),
         leadingWidth: 48,
-        title: const Text('Задачи'),
+        title: Text(tr.tabTasks),
         actions: [
           PopupMenuButton<_SortMode>(
-            tooltip: 'Сортировка',
+            tooltip: tr.tooltipSort,
             icon: const Icon(Icons.sort),
             onSelected: (m) => setState(() => _sort = m),
             itemBuilder: (_) => [
@@ -133,13 +129,13 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                 CheckedPopupMenuItem(
                   value: m,
                   checked: m == _sort,
-                  child: Text(m.label),
+                  child: Text(m.localLabel(tr)),
                 ),
             ],
           ),
           if (isMobile)
             IconButton(
-              tooltip: 'Настройки',
+              tooltip: tr.tooltipSettings,
               icon: const Icon(Icons.settings_outlined),
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
@@ -305,7 +301,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
       return Padding(
         padding: const EdgeInsets.fromLTRB(0, 12, 0, 4),
         child: Text(
-          'Планы (${item.count})',
+          S.of(context)!.plansCount(item.count),
           style: Theme.of(context).textTheme.labelMedium?.copyWith(
                 color: palette.muted,
                 letterSpacing: 0.6,
@@ -361,7 +357,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
     if (item is _TaskItem) {
       return Padding(
         padding: EdgeInsets.fromLTRB(item.insideFolder ? 12 : 0, 0, 0, 6),
-        child: _TaskTile(task: item.task, axesById: axesById),
+        child: TaskTile(task: item.task, axesById: axesById),
       );
     }
     return const SizedBox.shrink();
@@ -392,12 +388,9 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
   }
 
   String _formatDay(DateTime d) {
-    if (d.millisecondsSinceEpoch == 0) return 'Без даты';
-    const days = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
-    const months = [
-      'янв', 'фев', 'мар', 'апр', 'май', 'июн',
-      'июл', 'авг', 'сен', 'окт', 'ноя', 'дек',
-    ];
+    if (d.millisecondsSinceEpoch == 0) return S.of(context)!.noDate;
+    final days = S.of(context)!.calWeekdays.split(',');
+    final months = S.of(context)!.calMonthsShort.split(',');
     return '${days[d.weekday - 1]}, ${d.day} ${months[d.month - 1]}';
   }
 
@@ -556,7 +549,7 @@ class _FilterBar extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(right: 6),
                 child: ChoiceChip(
-                  label: Text(s.label),
+                  label: Text(s.localLabel(S.of(context)!)),
                   selected: s == status,
                   onSelected: (_) => onStatus(s),
                 ),
@@ -571,7 +564,7 @@ class _FilterBar extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(right: 6),
                 child: ChoiceChip(
-                  label: const Text('Все оси'),
+                  label: Text(S.of(context)!.allAxes),
                   selected: axisId == null && !noAxisOnly,
                   onSelected: (_) => onAxis(null),
                 ),
@@ -579,7 +572,7 @@ class _FilterBar extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(right: 6),
                 child: FilterChip(
-                  label: const Text('Без оси'),
+                  label: Text(S.of(context)!.noAxis),
                   selected: noAxisOnly,
                   onSelected: onNoAxisOnly,
                 ),
@@ -604,7 +597,7 @@ class _FilterBar extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(right: 6),
                 child: FilterChip(
-                  label: Text(expandPlans ? 'Развернуть планы' : 'Свернуть планы'),
+                  label: Text(expandPlans ? S.of(context)!.expandPlans : S.of(context)!.collapsePlans),
                   selected: expandPlans,
                   avatar: Icon(
                     expandPlans
@@ -662,7 +655,7 @@ class _BucketHeader extends StatelessWidget {
             Icon(bucket.icon, size: 16, color: fg),
             const SizedBox(width: 8),
             Text(
-              bucket.label.toUpperCase(),
+              bucket.localLabel(S.of(context)!).toUpperCase(),
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
                     color: fg,
                     fontWeight: FontWeight.w700,
@@ -726,7 +719,7 @@ class _PlanFolderTile extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Меню недели',
+                    S.of(context)!.weeklyMenu,
                     style: Theme.of(context)
                         .textTheme
                         .bodyLarge
@@ -764,7 +757,7 @@ class _PlanFolderTile extends StatelessWidget {
                   const SizedBox(width: 12),
                 ],
                 Text(
-                  '${folder.total} ${_ruTask(folder.total)} в плане',
+                  S.of(context)!.tasksInPlan(folder.total),
                   style:
                       TextStyle(color: palette.muted, fontSize: 12),
                 ),
@@ -777,15 +770,6 @@ class _PlanFolderTile extends StatelessWidget {
   }
 }
 
-String _ruTask(int n) {
-  final n100 = n.abs() % 100;
-  final n10 = n100 % 10;
-  if (n100 >= 11 && n100 <= 14) return 'задач';
-  if (n10 == 1) return 'задача';
-  if (n10 >= 2 && n10 <= 4) return 'задачи';
-  return 'задач';
-}
-
 // ---------------------------------------------------------------- empty state
 
 class _EmptyState extends StatelessWidget {
@@ -795,10 +779,9 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final title = hasAnyTasks ? 'Под фильтр ничего не попало' : 'Задач нет';
-    final body = hasAnyTasks
-        ? 'Сбрось фильтры или поменяй сортировку, чтобы увидеть остальные задачи.'
-        : 'Создай задачу через «+». Привяжи её к осям — выполнение начислит очки в пентаграмму.';
+    final tr = S.of(context)!;
+    final title = hasAnyTasks ? tr.emptyFilterTitle : tr.emptyTasksTitle;
+    final body = hasAnyTasks ? tr.emptyFilterHint : tr.emptyTasksHint;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -822,317 +805,4 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-// ----------------------------------------------------------------- task tile
 
-class _TaskTile extends ConsumerWidget {
-  const _TaskTile({required this.task, required this.axesById});
-
-  final Entry task;
-  final Map<String, LifeAxis> axesById;
-
-  Future<void> _toggleSubtask(WidgetRef ref, int index) async {
-    final repo = await ref.read(repositoryProvider.future);
-    final next = toggleSubtask(task.body, index);
-    if (next == task.body) return;
-    await repo.upsertEntry(
-      task.copyWith(body: next, updatedAt: DateTime.now()),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final palette = context.palette;
-    final overdue = !task.isCompleted &&
-        task.dueAt != null &&
-        task.dueAt!.isBefore(DateTime.now());
-    // Bodies may be legacy Quill JSON; normalise to markdown so
-    // subtask parsing and the rendered prose preview both work.
-    // Strip metadata HTML comments (e.g. `<!-- noetica:meal -->`) so
-    // the menu task body doesn't leak machine-readable markers into
-    // the card text.
-    final markdownBody = stripDisplayMetadata(bodyToMarkdown(task.body));
-    final subtasks = parseSubtasks(markdownBody);
-    final prose = stripSubtasks(markdownBody).trim();
-    final prog = subtaskProgress(markdownBody);
-    return InkWell(
-      onTap: () => showEntryEditor(context, ref, existing: task),
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        decoration: BoxDecoration(
-          color: palette.surface,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: palette.line),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _Checkbox(
-              checked: task.isCompleted,
-              onTap: () => toggleTaskWithReflection(context, ref, task),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    task.title.isEmpty ? '—' : task.title,
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.w500,
-                          decoration: task.isCompleted
-                              ? TextDecoration.lineThrough
-                              : null,
-                          color: task.isCompleted
-                              ? palette.muted
-                              : palette.fg,
-                        ),
-                  ),
-                  if (prose.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    MarkdownPreview(
-                      // Render markdown so the user sees real bold /
-                      // italic / wiki links / tags instead of raw
-                      // markers like `**bold**` polluting the card.
-                      body: prose,
-                      maxLines: 2,
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodyMedium
-                          ?.copyWith(color: palette.muted),
-                    ),
-                  ],
-                  if (subtasks.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    for (var i = 0; i < subtasks.length; i++)
-                      _SubtaskRow(
-                        subtask: subtasks[i],
-                        palette: palette,
-                        onToggle: () => _toggleSubtask(ref, i),
-                      ),
-                  ],
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Wrap(
-                          spacing: 6,
-                          runSpacing: 4,
-                          children: [
-                            _Pill(
-                              text: '+${task.xp} XP',
-                              palette: palette,
-                              emphasised: true,
-                            ),
-                            if (subtasks.isNotEmpty)
-                              _Pill(
-                                text: '☑ ${prog.done}/${prog.total}',
-                                palette: palette,
-                                emphasised: prog.done == prog.total,
-                              ),
-                            for (final id in task.axisIds)
-                              if (axesById[id] != null)
-                                _Pill(
-                                  text:
-                                      '${axesById[id]!.symbol}  ${axesById[id]!.name}',
-                                  palette: palette,
-                                ),
-                            if (task.dueAt != null)
-                              _Pill(
-                                text: 'до ${formatTimestamp(task.dueAt!)}',
-                                palette: palette,
-                                warning: overdue,
-                              ),
-                          ],
-                        ),
-                      ),
-                      if (!task.isCompleted)
-                        _PomodoroButton(
-                          task: task,
-                          palette: palette,
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SubtaskRow extends StatelessWidget {
-  const _SubtaskRow({
-    required this.subtask,
-    required this.palette,
-    required this.onToggle,
-  });
-
-  final Subtask subtask;
-  final NoeticaPalette palette;
-  final VoidCallback onToggle;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onToggle,
-      borderRadius: BorderRadius.circular(6),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 3),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Compact checkbox — slightly smaller than the main task
-            // checkbox so hierarchy is visually obvious.
-            Container(
-              width: 16,
-              height: 16,
-              margin: const EdgeInsets.only(top: 2, right: 8),
-              decoration: BoxDecoration(
-                border: Border.all(color: palette.line, width: 1.2),
-                borderRadius: BorderRadius.circular(4),
-                color: subtask.checked ? palette.fg : Colors.transparent,
-              ),
-              child: subtask.checked
-                  ? Icon(Icons.check, size: 11, color: palette.bg)
-                  : null,
-            ),
-            Expanded(
-              child: subtask.text.isEmpty
-                  ? Text(
-                      '—',
-                      style: TextStyle(fontSize: 13, color: palette.muted),
-                    )
-                  : MarkdownPreview(
-                      // Subtask text often contains **bold**, [[wiki]],
-                      // tags etc. Render them so the row reads cleanly
-                      // instead of leaking raw markdown markers.
-                      body: subtask.text,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: subtask.checked ? palette.muted : palette.fg,
-                        decoration: subtask.checked
-                            ? TextDecoration.lineThrough
-                            : null,
-                      ),
-                    ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _Checkbox extends StatelessWidget {
-  const _Checkbox({required this.checked, required this.onTap});
-  final bool checked;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = context.palette;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
-      child: Container(
-        width: 22,
-        height: 22,
-        margin: const EdgeInsets.only(top: 2),
-        decoration: BoxDecoration(
-          border: Border.all(color: palette.line, width: 1.5),
-          borderRadius: BorderRadius.circular(6),
-          color: checked ? palette.fg : Colors.transparent,
-        ),
-        child: checked
-            ? Icon(Icons.check, size: 14, color: palette.bg)
-            : null,
-      ),
-    );
-  }
-}
-
-class _PomodoroButton extends StatelessWidget {
-  const _PomodoroButton({required this.task, required this.palette});
-
-  final Entry task;
-  final NoeticaPalette palette;
-
-  @override
-  Widget build(BuildContext context) {
-    final svc = PomodoroService.instance;
-    final isLinked = svc.linkedTaskId == task.id &&
-        svc.phase != PomodoroPhase.idle;
-    return IconButton(
-      icon: Icon(
-        isLinked ? Icons.timer : Icons.timer_outlined,
-        size: 18,
-        color: isLinked ? palette.fg : palette.muted,
-      ),
-      tooltip: isLinked ? 'Pomodoro запущен' : 'Pomodoro',
-      visualDensity: VisualDensity.compact,
-      padding: EdgeInsets.zero,
-      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-      onPressed: () async {
-        if (svc.phase == PomodoroPhase.idle) {
-          await svc.startFocus(
-            taskId: task.id,
-            taskTitle: task.title,
-          );
-          if (context.mounted) {
-            ScaffoldMessenger.of(context)
-              ..hideCurrentSnackBar()
-              ..showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'Фокус ${svc.focusMinutes} мин: ${task.title}',
-                  ),
-                ),
-              );
-          }
-        } else {
-          if (context.mounted) PomodoroSheet.show(context);
-        }
-      },
-    );
-  }
-}
-
-class _Pill extends StatelessWidget {
-  const _Pill({
-    required this.text,
-    required this.palette,
-    this.emphasised = false,
-    this.warning = false,
-  });
-
-  final String text;
-  final NoeticaPalette palette;
-  final bool emphasised;
-  final bool warning;
-
-  @override
-  Widget build(BuildContext context) {
-    final fg = warning
-        ? palette.fg
-        : (emphasised ? palette.fg : palette.muted);
-    final border = warning ? palette.fg : palette.line;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        border: Border.all(color: border),
-        borderRadius: BorderRadius.circular(99),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: fg,
-          fontSize: 11,
-          fontWeight: emphasised ? FontWeight.w600 : FontWeight.w400,
-        ),
-      ),
-    );
-  }
-}

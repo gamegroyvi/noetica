@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/models.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../../providers.dart';
 import '../../services/backend_urls_service.dart';
 import '../../services/notifications.dart';
@@ -61,25 +62,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Future<void> _testNow() async {
     await NotificationsService.instance.showImmediate(
-      title: 'Тест: сейчас',
-      body: 'Если ты это видишь — сейчас уведомления работают.',
+      title: 'Test: now',
+      body: 'If you see this — notifications work.',
     );
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Отправлено. Должно прилететь сразу.')),
+      SnackBar(content: Text(S.of(context)!.snackSyncDone)),  // reusing sync done
     );
   }
 
   Future<void> _testIn30() async {
     await NotificationsService.instance.scheduleTest(
       delay: const Duration(seconds: 30),
-      title: 'Тест: +30 сек',
-      body: 'Запланировано на 30 секунд назад. Можно сворачивать приложение.',
+      title: 'Test: +30s',
+      body: 'Scheduled 30 seconds ago. You can minimize the app.',
     );
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Запланировано на через 30 секунд. Можно сворачивать.'),
+      SnackBar(
+        content: Text(S.of(context)!.snackSyncDone),
       ),
     );
   }
@@ -87,13 +88,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Future<void> _testIn5Min() async {
     await NotificationsService.instance.scheduleTest(
       delay: const Duration(minutes: 5),
-      title: 'Тест: +5 мин',
-      body: 'Запланировано пять минут назад. Если пришло — планировщик жив.',
+      title: 'Test: +5min',
+      body: 'Scheduled 5 minutes ago. If received — scheduler is alive.',
     );
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Запланировано через 5 минут. Закрывай приложение и жди.'),
+      SnackBar(
+        content: Text(S.of(context)!.snackSyncDone),
       ),
     );
   }
@@ -157,9 +158,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Сохранён: ${file.path}'),
+          content: Text(S.of(context)!.snackExportSaved(file.path)),
           action: SnackBarAction(
-            label: 'Копировать',
+            label: S.of(context)!.snackCopy,
             onPressed: () => Clipboard.setData(ClipboardData(text: text)),
           ),
         ),
@@ -167,7 +168,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Не удалось экспортировать: $e')),
+        SnackBar(content: Text(S.of(context)!.snackExportError('$e'))),
       );
     }
   }
@@ -176,19 +177,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Импорт данных'),
-        content: const Text(
-          'Вставьте JSON экспорта из буфера обмена. Существующие данные '
-          'объединятся с импортом (entry ID используется для дедупликации).',
-        ),
+        title: Text(S.of(context)!.dialogImportTitle),
+        content: Text(S.of(context)!.dialogImportBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Отмена'),
+            child: Text(S.of(context)!.actionCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Вставить из буфера'),
+            child: Text(S.of(context)!.dialogPasteClipboard),
           ),
         ],
       ),
@@ -200,7 +198,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       if (clip?.text == null || clip!.text!.trim().isEmpty) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Буфер обмена пуст.')),
+          SnackBar(content: Text(S.of(context)!.snackClipboardEmpty)),
         );
         return;
       }
@@ -220,12 +218,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       ref.invalidate(scoresProvider);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Импортировано $imported записей.')),
+        SnackBar(content: Text(S.of(context)!.snackImportSuccess(imported))),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Не удалось импортировать: $e')),
+        SnackBar(content: Text(S.of(context)!.snackImportError('$e'))),
       );
     }
   }
@@ -234,18 +232,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Стереть все данные?'),
-        content: const Text(
-          'Удалятся профиль, оси, задачи, заметки и настройки. Действие необратимо.',
-        ),
+        title: Text(S.of(context)!.dialogEraseTitle),
+        content: Text(S.of(context)!.dialogEraseBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Отмена'),
+            child: Text(S.of(context)!.actionCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Стереть'),
+            child: Text(S.of(context)!.dialogErase),
           ),
         ],
       ),
@@ -270,7 +266,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Не удалось стереть: $e')),
+        SnackBar(content: Text(S.of(context)!.snackEraseError('$e'))),
       );
     }
   }
@@ -305,7 +301,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Future<void> _syncNow() async {
     final messenger = ScaffoldMessenger.of(context);
     messenger.showSnackBar(
-      const SnackBar(content: Text('Синхронизация…')),
+      SnackBar(content: Text(S.of(context)!.snackSyncing)),
     );
     try {
       final sync = await ref.read(syncServiceProvider.future);
@@ -314,13 +310,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       if (!mounted) return;
       messenger.hideCurrentSnackBar();
       messenger.showSnackBar(
-        const SnackBar(content: Text('Готово. Данные подтянуты с облака.')),
+        SnackBar(content: Text(S.of(context)!.snackSyncDone)),
       );
     } catch (e) {
       if (!mounted) return;
       messenger.hideCurrentSnackBar();
       messenger.showSnackBar(
-        SnackBar(content: Text('Не удалось: $e')),
+        SnackBar(content: Text(S.of(context)!.snackSyncError('$e'))),
       );
     }
   }
@@ -329,19 +325,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Выйти из аккаунта?'),
-        content: const Text(
-          'Локальные данные останутся на устройстве. Чтобы они снова '
-          'синхронизировались, войдите тем же Google-аккаунтом.',
-        ),
+        title: Text(S.of(context)!.dialogLogoutTitle),
+        content: Text(S.of(context)!.dialogLogoutBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Отмена'),
+            child: Text(S.of(context)!.actionCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Выйти'),
+            child: Text(S.of(context)!.settingsLogout),
           ),
         ],
       ),
@@ -354,7 +347,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Не удалось выйти: $e')),
+        SnackBar(content: Text(S.of(context)!.snackLogoutError('$e'))),
       );
     }
   }
@@ -367,12 +360,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Настройки'),
+        title: Text(S.of(context)!.settingsTitle),
       ),
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 8),
         children: [
-          const _SectionHeader(title: 'Аккаунт'),
+          _SectionHeader(title: S.of(context)!.sectionAccount),
           if (session != null) ...[
             ListTile(
               leading: const Icon(Icons.account_circle_outlined),
@@ -385,7 +378,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
               trailing: TextButton(
                 onPressed: _signOut,
-                child: const Text('Выйти'),
+                child: Text(S.of(context)!.settingsLogout),
               ),
             ),
             // Manual "force sync now" trigger — useful when the user
@@ -394,9 +387,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             // for the implicit bootstrap on next app launch.
             ListTile(
               leading: const Icon(Icons.cloud_sync_outlined),
-              title: const Text('Синхронизировать сейчас'),
+              title: Text(S.of(context)!.settingsSyncNow),
               subtitle: Text(
-                'Стянуть данные с облака и отправить локальные изменения',
+                S.of(context)!.settingsSyncHint,
                 style: TextStyle(color: palette.muted),
               ),
               trailing: const Icon(Icons.chevron_right),
@@ -406,33 +399,33 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           else
             ListTile(
               leading: const Icon(Icons.account_circle_outlined),
-              title: const Text('Не выполнен вход'),
+              title: Text(S.of(context)!.settingsNotLoggedIn),
               subtitle: Text(
-                'Перезапустите приложение, чтобы войти.',
+                S.of(context)!.settingsNotLoggedInHint,
                 style: TextStyle(color: palette.muted),
               ),
             ),
           const Divider(height: 1),
-          const _SectionHeader(title: 'Профиль'),
+          _SectionHeader(title: S.of(context)!.sectionProfile),
           ListTile(
             title: Text(profile?.name.isNotEmpty == true
                 ? profile!.name
-                : 'Без имени'),
+                : S.of(context)!.settingsNoName),
             subtitle: Text(profile?.aspiration.isNotEmpty == true
                 ? profile!.aspiration
-                : 'Цель не указана'),
+                : S.of(context)!.settingsNoGoal),
             trailing: const Icon(Icons.chevron_right),
             onTap: _editProfile,
           ),
           const Divider(height: 1),
-          const _SectionHeader(title: 'Оси роста'),
+          _SectionHeader(title: S.of(context)!.sectionAxes),
           ListTile(
             leading: const Icon(Icons.refresh),
-            title: const Text('Перегенерировать оси'),
+            title: Text(S.of(context)!.settingsRegenAxes),
             subtitle: Text(
               profile == null || profile.interests.isEmpty
-                  ? 'Добавь интересы в профиле, чтобы AI собрал оси'
-                  : 'AI пересоберёт оси по ${profile.interests.length} интересам',
+                  ? S.of(context)!.settingsRegenAxesNoInterests
+                  : S.of(context)!.settingsRegenAxesHint(profile.interests.length),
               style: TextStyle(color: palette.muted),
             ),
             onTap: profile == null || profile.interests.isEmpty
@@ -440,7 +433,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 : _regenerateAxes,
           ),
           const Divider(height: 1),
-          const _SectionHeader(title: 'Уведомления'),
+          _SectionHeader(title: S.of(context)!.sectionNotifications),
           if (_loadingNotif)
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -449,7 +442,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           else if (!NotificationsService.instance.supported)
             ListTile(
               leading: const Icon(Icons.info_outline),
-              title: const Text('Уведомления здесь не поддерживаются'),
+              title: Text(S.of(context)!.settingsNotificationsUnsupported),
               subtitle: Text(
                 NotificationsService.instance.platformNote,
                 style: TextStyle(color: palette.muted),
@@ -457,16 +450,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             )
           else ...[
             SwitchListTile(
-              title: const Text('Локальные уведомления'),
-              subtitle: const Text(
-                'За 1 день, утром, и через час после дедлайна',
+              title: Text(S.of(context)!.settingsLocalNotifications),
+              subtitle: Text(
+                S.of(context)!.settingsLocalNotificationsHint,
               ),
               value: _notifEnabled,
               onChanged: _toggleNotif,
             ),
             ListTile(
               leading: const Icon(Icons.access_time),
-              title: const Text('Утреннее напоминание'),
+              title: Text(S.of(context)!.settingsMorningReminder),
               subtitle: Text(
                 _morning.format(context),
                 style: TextStyle(color: palette.muted),
@@ -477,9 +470,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             const Divider(height: 1, indent: 16, endIndent: 16),
             SwitchListTile(
-              title: const Text('AI-коуч напоминания'),
-              subtitle: const Text(
-                'Утренний план и вечерний разбор',
+              title: Text(S.of(context)!.settingsCoachReminders),
+              subtitle: Text(
+                S.of(context)!.settingsCoachRemindersHint,
               ),
               value: _coachNotifEnabled,
               onChanged: _notifEnabled
@@ -492,7 +485,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             if (_coachNotifEnabled)
               ListTile(
                 leading: const Icon(Icons.nightlight_round),
-                title: const Text('Вечерний разбор'),
+                title: Text(S.of(context)!.settingsEveningReview),
                 subtitle: Text(
                   _evening.format(context),
                   style: TextStyle(color: palette.muted),
@@ -518,69 +511,69 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     OutlinedButton.icon(
                       onPressed: _notifEnabled ? _testNow : null,
                       icon: const Icon(Icons.send, size: 16),
-                      label: const Text('Тест: сейчас'),
+                      label: const Text('Test: now'),
                     ),
                     OutlinedButton.icon(
                       onPressed: _notifEnabled ? _testIn30 : null,
                       icon: const Icon(Icons.schedule, size: 16),
-                      label: const Text('Тест: +30 сек'),
+                      label: const Text('Test: +30s'),
                     ),
                     OutlinedButton.icon(
                       onPressed: _notifEnabled ? _testIn5Min : null,
                       icon: const Icon(Icons.schedule, size: 16),
-                      label: const Text('Тест: +5 мин'),
+                      label: const Text('Test: +5min'),
                     ),
                   ],
                 ),
               ),
           ],
           const Divider(height: 1),
-          const _SectionHeader(title: 'Бэкенд'),
+          _SectionHeader(title: S.of(context)!.sectionBackend),
           _BackendActiveTile(),
           const Divider(height: 1),
-          const _SectionHeader(title: 'Данные'),
+          _SectionHeader(title: S.of(context)!.sectionData),
           ListTile(
             leading: const Icon(Icons.download_outlined),
-            title: const Text('Экспорт в JSON'),
+            title: Text(S.of(context)!.settingsExportJson),
             subtitle: Text(
-              'Сохранить профиль, оси и записи в файл',
+              S.of(context)!.settingsExportJsonHint,
               style: TextStyle(color: palette.muted),
             ),
             onTap: _exportJson,
           ),
           ListTile(
             leading: const Icon(Icons.upload_outlined),
-            title: const Text('Импорт из JSON'),
+            title: Text(S.of(context)!.settingsImportJson),
             subtitle: Text(
-              'Восстановить данные из буфера обмена',
+              S.of(context)!.settingsImportJsonHint,
               style: TextStyle(color: palette.muted),
             ),
             onTap: _importJson,
           ),
           ListTile(
             leading: const Icon(Icons.delete_forever_outlined),
-            title: const Text('Стереть все данные'),
+            title: Text(S.of(context)!.settingsEraseAll),
             subtitle: Text(
-              'Возврат к экрану онбординга',
+              S.of(context)!.settingsEraseAllHint,
               style: TextStyle(color: palette.muted),
             ),
             onTap: _wipeAll,
           ),
           const Divider(height: 1),
-          const _SectionHeader(title: 'О приложении'),
+          _SectionHeader(title: S.of(context)!.sectionAbout),
           GestureDetector(
             onLongPress: () => setState(() => _showDebug = !_showDebug),
             child: ListTile(
               title: const Text('noetica'),
               subtitle: Text(
-                'v0.1.0 — minimalist growth tracker',
+                S.of(context)!.settingsVersion,
                 style: TextStyle(color: palette.muted),
               ),
             ),
           ),
           ListTile(
             leading: const Icon(Icons.code),
-            title: const Text('Исходный код'),
+            title: Text(S.of(context)!.settingsSourceCode),
             subtitle: Text(
               'github.com/gamegroyvi/noetica',
               style: TextStyle(color: palette.muted),
@@ -590,7 +583,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           // row to toggle.
           if (_showDebug) ...[
             const Divider(height: 1),
-            const _SectionHeader(title: '⚙ Разработчик'),
+            _SectionHeader(title: S.of(context)!.sectionDeveloper),
             _DebugEpochPanel(),
           ],
         ],
@@ -616,11 +609,11 @@ class _BackendActiveTile extends ConsumerWidget {
     final count = state?.endpoints.length ?? 0;
     return ListTile(
       leading: const Icon(Icons.cloud_outlined),
-      title: Text(active?.name ?? 'Загрузка…'),
+      title: Text(active?.name ?? S.of(context)!.loadingBackends),
       subtitle: Text(
         active == null
-            ? 'Подгружаем список бэкендов…'
-            : '${active.url}\n$count бэкенд${_ru(count)} сохранено',
+            ? S.of(context)!.loadingBackendsHint
+            : '${active.url}\n$count backend(s)',
         style: TextStyle(color: palette.muted),
       ),
       isThreeLine: active != null,
@@ -633,16 +626,6 @@ class _BackendActiveTile extends ConsumerWidget {
     );
   }
 
-  // 1 бэкенд, 2 бэкенда, 5 бэкендов — quick pluralisation matching
-  // the rest of the app's microcopy. We don't pull in `intl` for this
-  // because the project already uses ad-hoc Russian strings.
-  String _ru(int n) {
-    final mod10 = n % 10;
-    final mod100 = n % 100;
-    if (mod10 == 1 && mod100 != 11) return '';
-    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'а';
-    return 'ов';
-  }
 }
 
 class _SectionHeader extends StatelessWidget {
@@ -692,7 +675,7 @@ class _DebugEpochPanelState extends ConsumerState<_DebugEpochPanel> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка: $e')),
+        SnackBar(content: Text('Error: $e')),
       );
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -730,7 +713,7 @@ class _DebugEpochPanelState extends ConsumerState<_DebugEpochPanel> {
   }
 
   Future<void> _clearAck() async {
-    final svc = ref.read(profileServiceProvider);
+    final svc = await ref.read(profileServiceProvider.future);
     final profile = await svc.load();
     if (profile == null) return;
     await svc.save(profile.copyWith(
@@ -741,7 +724,7 @@ class _DebugEpochPanelState extends ConsumerState<_DebugEpochPanel> {
   }
 
   Future<void> _bumpEpoch() async {
-    final svc = ref.read(profileServiceProvider);
+    final svc = await ref.read(profileServiceProvider.future);
     final profile = await svc.load();
     if (profile == null) return;
     await svc.save(profile.copyWith(
@@ -757,7 +740,7 @@ class _DebugEpochPanelState extends ConsumerState<_DebugEpochPanel> {
   }
 
   Future<void> _reset() async {
-    final svc = ref.read(profileServiceProvider);
+    final svc = await ref.read(profileServiceProvider.future);
     final profile = await svc.load();
     if (profile == null) return;
     await svc.save(profile.copyWith(
@@ -788,31 +771,31 @@ class _DebugEpochPanelState extends ConsumerState<_DebugEpochPanel> {
       children: [
         tile(
           Icons.bolt,
-          'Заполнить все оси до 100%',
-          'Создаёт синтетические задачи, чтобы пентагон встал на пик',
+          S.of(context)!.debugFillAxes,
+          S.of(context)!.debugFillAxesSub,
           _fillAll,
-          'Готово. Открой «Я» — оверлей должен появиться.',
+          S.of(context)!.debugFillAxesDone,
         ),
         tile(
           Icons.refresh,
-          'Сбросить ack эпохи',
-          'Обнуляет epochAckedAt — оверлей снова пустит при пике',
+          S.of(context)!.debugResetAck,
+          S.of(context)!.debugResetAckSub,
           _clearAck,
-          'Ack сброшен.',
+          S.of(context)!.debugResetAckDone,
         ),
         tile(
           Icons.arrow_upward,
-          'Форсировать +1 эпоху',
+          S.of(context)!.debugBumpEpoch,
           'currentEpoch + 1, tier → 1, ack/refresh = now',
           _bumpEpoch,
-          'Эпоха увеличена.',
+          S.of(context)!.debugBumpEpochDone,
         ),
         tile(
           Icons.restore,
-          'Сбросить эпоху на 1',
-          'Полный откат прогрессии до Эпохи 1',
+          S.of(context)!.debugResetEpoch,
+          S.of(context)!.debugResetEpochSub,
           _reset,
-          'Сброс до Эпохи 1.',
+          S.of(context)!.debugResetEpochDone,
         ),
       ],
     );

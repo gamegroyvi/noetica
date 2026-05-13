@@ -18,11 +18,11 @@ Future<void> seedDemoDataIfNeeded() async {
   final prefs = await SharedPreferences.getInstance();
   if (prefs.getBool('noetica.demo_seeded') == true) return;
 
-  // 1. Save a user profile.
-  await _seedProfile(prefs);
-
-  // 2. Open the database and seed axes + entries.
+  // 1. Open the database.
   final db = await NoeticaDb.open();
+
+  // 2. Save a user profile.
+  await _seedProfile(db);
   final repo = NoeticaRepository(db);
 
   final axes = await _seedAxes(repo);
@@ -33,7 +33,7 @@ Future<void> seedDemoDataIfNeeded() async {
   await prefs.setBool('noetica.demo_seeded', true);
 }
 
-Future<void> _seedProfile(SharedPreferences prefs) async {
+Future<void> _seedProfile(NoeticaDb db) async {
   final profile = UserProfile(
     name: 'Алексей',
     aspiration: 'Стать лучшей версией себя: развивать тело, ум и душу',
@@ -58,7 +58,7 @@ Future<void> _seedProfile(SharedPreferences prefs) async {
     epochStartedAt: DateTime.now().subtract(const Duration(days: 30)),
     epochTier: 1,
   );
-  final svc = ProfileService();
+  final svc = ProfileService(db);
   await svc.save(profile);
 }
 

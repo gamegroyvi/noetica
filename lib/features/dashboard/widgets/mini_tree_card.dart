@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/models.dart';
 import '../../../providers.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../theme/app_theme.dart';
 import '../../../utils/plural.dart';
 import '../../self/pentagon_painter.dart';
@@ -39,7 +40,7 @@ class MiniTreeCard extends ConsumerWidget {
           data: (scores) {
             if (scores.isEmpty) {
               return Text(
-                'Древо появится после первой ветви',
+                S.of(context)!.miniTreeEmpty,
                 style: TextStyle(color: palette.muted, fontSize: 12),
               );
             }
@@ -57,7 +58,7 @@ class MiniTreeCard extends ConsumerWidget {
                   children: [
                     Text(
                       '${scores.length} '
-                      '${plural(scores.length, "ветвь", "ветви", "ветвей")}',
+                      '${plural(scores.length, S.of(context)!.pluralBranchOne, S.of(context)!.pluralBranchFew, S.of(context)!.pluralBranchMany)}',
                       style: TextStyle(
                         color: palette.fg,
                         fontSize: 14,
@@ -65,8 +66,7 @@ class MiniTreeCard extends ConsumerWidget {
                       ),
                     ),
                     Text(
-                      '  ·  лучшая: ${topAxis.axis.symbol} '
-                      '${topAxis.axis.name.toLowerCase()} · L$topLevel',
+                      '  ·  ${S.of(context)!.miniTreeBest(topAxis.axis.symbol, topAxis.axis.name.toLowerCase(), topLevel)}',
                       style: TextStyle(
                         color: palette.muted,
                         fontSize: 12,
@@ -111,7 +111,7 @@ class MiniTreeCard extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'всего $totalXp XP · тап — древо целиком',
+                  S.of(context)!.miniTreeXp(totalXp),
                   style: TextStyle(color: palette.muted, fontSize: 11),
                 ),
               ],

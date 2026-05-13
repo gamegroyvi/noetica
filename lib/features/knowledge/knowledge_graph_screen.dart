@@ -5,211 +5,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../l10n/generated/app_localizations.dart';
 import '../../data/models.dart';
 import '../../data/personal_knowledge_service.dart';
 import '../../providers.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/body_utils.dart';
 import '../entry/entry_editor_sheet.dart';
-
-// ---------------------------------------------------------------------------
-// Graph node — a single point in the force-directed simulation.
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// Branch enum — PersonalKnowledge categories shown as branch headers.
-// ---------------------------------------------------------------------------
-
-enum _Branch {
-  goals,
-  constraints,
-  highlights,
-  reflections,
-  preferences,
-}
-
-extension on _Branch {
-  String get title {
-    switch (this) {
-      case _Branch.goals:
-        return 'Цели';
-      case _Branch.constraints:
-        return 'Ограничения';
-      case _Branch.highlights:
-        return 'Достижения';
-      case _Branch.reflections:
-        return 'Рефлексии';
-      case _Branch.preferences:
-        return 'Предпочтения';
-    }
-  }
-
-  Color get color {
-    switch (this) {
-      case _Branch.goals:
-        return const Color(0xFF1A1A1A);
-      case _Branch.constraints:
-        return const Color(0xFF555555);
-      case _Branch.highlights:
-        return const Color(0xFF333333);
-      case _Branch.reflections:
-        return const Color(0xFF777777);
-      case _Branch.preferences:
-        return const Color(0xFF444444);
-    }
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Graph node — a single point in the force-directed simulation.
-// ---------------------------------------------------------------------------
-
-class _GraphNode {
-  _GraphNode({
-    required this.id,
-    required this.label,
-    required this.color,
-    required this.isCentre,
-    this.entry,
-    this.isBookmarked = false,
-    this.isBranchHeader = false,
-    this.isLeaf = false,
-    this.branch,
-    this.leafIndex = -1,
-    this.tags = const [],
-    Offset? position,
-  })  : pos = position ?? Offset.zero,
-        vel = Offset.zero;
-
-  final String id;
-  final String label;
-  final Color color;
-  final bool isCentre;
-  final Entry? entry;
-  final bool isBookmarked;
-  final bool isBranchHeader;
-  final bool isLeaf;
-  final _Branch? branch;
-  final int leafIndex;
-  final List<String> tags;
-  int linkCount = 0;
-  int childCount = 0;
-  Offset pos;
-  Offset vel;
-  bool pinned = false;
-
-  double get radius {
-    if (isCentre) return 18;
-    if (isBranchHeader) return 12;
-    if (isBookmarked) return 13;
-    if (isLeaf) return 7;
-    final base = 6.0 + math.min(linkCount * 1.5, 8.0);
-    return base;
-  }
-}
-
-class _GraphEdge {
-  const _GraphEdge(this.from, this.to);
-  final int from;
-  final int to;
-}
-
-// ---------------------------------------------------------------------------
-// Force-directed simulation parameters.
-// ---------------------------------------------------------------------------
-
-const double _kRepulsion = 8000;
-const double _kSpringK = 0.012;
-const double _kSpringLen = 140;
-const double _kDamping = 0.85;
-const double _kMinVelocity = 0.05;
-const double _kMaxForce = 80;
-const double _kCentreGravity = 0.0008;
-
-// ---------------------------------------------------------------------------
-// Color palette for entry types.
-// ---------------------------------------------------------------------------
-
-Color _entryColor(Entry? e) {
-  if (e == null) return const Color(0xFFAAAAAA);
-  if (e.bookmarked) return const Color(0xFFF59E0B);
-  if (e.tags.contains('daily')) return const Color(0xFF3B82F6);
-  if (e.isTask) return const Color(0xFF06B6D4);
-  return const Color(0xFF10B981);
-}
-
-// ---------------------------------------------------------------------------
-// Filter modes.
-// ---------------------------------------------------------------------------
-
-enum _FilterMode { all, notes, tasks, bookmarks, daily, knowledge }
-
-extension on _FilterMode {
-  String get label {
-    switch (this) {
-      case _FilterMode.all:
-        return 'Все';
-      case _FilterMode.notes:
-        return 'Заметки';
-      case _FilterMode.tasks:
-        return 'Задачи';
-      case _FilterMode.bookmarks:
-        return 'Закладки';
-      case _FilterMode.daily:
-        return 'Дневник';
-      case _FilterMode.knowledge:
-        return 'Знания о себе';
-    }
-  }
-
-  IconData get icon {
-    switch (this) {
-      case _FilterMode.all:
-        return Icons.blur_on;
-      case _FilterMode.notes:
-        return Icons.note_outlined;
-      case _FilterMode.tasks:
-        return Icons.checklist;
-      case _FilterMode.bookmarks:
-        return Icons.bookmark_outline;
-      case _FilterMode.daily:
-        return Icons.today;
-      case _FilterMode.knowledge:
-        return Icons.account_tree_outlined;
-    }
-  }
-
-  /// Whether this filter shows the PersonalKnowledge category branches
-  /// (Цели / Ограничения / Достижения / Рефлексии / Предпочтения).
-  /// Other filter modes hide them so the user actually sees a filtered
-  /// graph instead of the same star of branches dominating the view.
-  bool get showsKnowledgeBranches {
-    switch (this) {
-      case _FilterMode.all:
-      case _FilterMode.knowledge:
-        return true;
-      case _FilterMode.notes:
-      case _FilterMode.tasks:
-      case _FilterMode.bookmarks:
-      case _FilterMode.daily:
-        return false;
-    }
-  }
-
-  /// Whether this filter shows entry nodes (notes / tasks / journals).
-  bool get showsEntries {
-    switch (this) {
-      case _FilterMode.all:
-      case _FilterMode.notes:
-      case _FilterMode.tasks:
-      case _FilterMode.bookmarks:
-      case _FilterMode.daily:
-        return true;
-      case _FilterMode.knowledge:
-        return false;
-    }
-  }
-}
+import 'graph_models.dart';
+import 'widgets/edit_list_sheet.dart';
+import 'widgets/graph_empty_state.dart';
+import 'widgets/obsidian_graph_view.dart';
 
 // ---------------------------------------------------------------------------
 // Knowledge Graph Screen — Obsidian-style "Second Brain".
@@ -235,13 +41,13 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
   StreamSubscription<PersonalKnowledge>? _changesSub;
 
   // Graph state.
-  List<_GraphNode> _nodes = [];
-  List<_GraphEdge> _edges = [];
+  List<GraphNode> _nodes = [];
+  List<GraphEdge> _edges = [];
   int? _selectedNode;
   bool _settled = false;
 
   // Filters.
-  _FilterMode _filter = _FilterMode.all;
+  GraphFilterMode _filter = GraphFilterMode.all;
   String? _activeTag;
   String? _localGraphCentreId;
   bool _searchVisible = false;
@@ -320,6 +126,7 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
   // ======================== graph construction ========================
 
   Future<void> _rebuildGraph() async {
+    final tr = S.of(context)!;
     final repo = await ref.read(repositoryProvider.future);
 
     // Read entries directly from the repository instead of via
@@ -343,18 +150,18 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
       filtered = const <Entry>[];
     } else {
       switch (_filter) {
-        case _FilterMode.all:
+        case GraphFilterMode.all:
           break;
-        case _FilterMode.notes:
+        case GraphFilterMode.notes:
           filtered = filtered.where((e) => e.kind == EntryKind.note).toList();
-        case _FilterMode.tasks:
+        case GraphFilterMode.tasks:
           filtered = filtered.where((e) => e.kind == EntryKind.task).toList();
-        case _FilterMode.bookmarks:
+        case GraphFilterMode.bookmarks:
           filtered = filtered.where((e) => e.bookmarked).toList();
-        case _FilterMode.daily:
+        case GraphFilterMode.daily:
           filtered =
               filtered.where((e) => e.tags.contains('daily')).toList();
-        case _FilterMode.knowledge:
+        case GraphFilterMode.knowledge:
           // Already short-circuited above.
           filtered = const <Entry>[];
       }
@@ -395,14 +202,14 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
     }
 
     final rng = math.Random(42);
-    final nodes = <_GraphNode>[];
-    final graphEdges = <_GraphEdge>[];
+    final nodes = <GraphNode>[];
+    final graphEdges = <GraphEdge>[];
 
     // Centre node (user summary from PersonalKnowledge).
     final k = _knowledge;
-    nodes.add(_GraphNode(
+    nodes.add(GraphNode(
       id: '__centre__',
-      label: k?.summary.isEmpty != false ? 'я' : k!.summary,
+      label: k?.summary.isEmpty != false ? tr.graphCentreLabel : k!.summary,
       color: const Color(0xFFFFFFFF),
       isCentre: true,
       position: Offset.zero,
@@ -417,18 +224,18 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
     if (k != null &&
         _localGraphCentreId == null &&
         _filter.showsKnowledgeBranches) {
-      final branchItems = <_Branch, List<String>>{};
-      for (final b in _Branch.values) {
+      final branchItems = <GraphBranch, List<String>>{};
+      for (final b in GraphBranch.values) {
         switch (b) {
-          case _Branch.goals:
+          case GraphBranch.goals:
             branchItems[b] = k.goals;
-          case _Branch.constraints:
+          case GraphBranch.constraints:
             branchItems[b] = k.constraints;
-          case _Branch.highlights:
+          case GraphBranch.highlights:
             branchItems[b] = k.completedHighlights;
-          case _Branch.reflections:
+          case GraphBranch.reflections:
             branchItems[b] = k.recentReflections;
-          case _Branch.preferences:
+          case GraphBranch.preferences:
             branchItems[b] = [
               for (final e in k.preferences.entries) '${e.key}: ${e.value}',
             ];
@@ -443,9 +250,9 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
       // ALL branches so the user can discover and fill them via taps
       // (the empty-state CTA flow). Other modes ("all") show only the
       // branches that actually have content.
-      final renderedBranches = _filter == _FilterMode.knowledge
-          ? _Branch.values
-          : _Branch.values
+      final renderedBranches = _filter == GraphFilterMode.knowledge
+          ? GraphBranch.values
+          : GraphBranch.values
               .where((b) => (branchItems[b] ?? const []).isNotEmpty)
               .toList();
       final branchCount = renderedBranches.length;
@@ -455,9 +262,9 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
             ? 0.0
             : bi * 2 * math.pi / branchCount - math.pi / 2;
         final headerIdx = nodes.length;
-        nodes.add(_GraphNode(
+        nodes.add(GraphNode(
           id: '__branch_${b.name}__',
-          label: b.title,
+          label: b.localTitle(tr),
           color: b.color,
           isCentre: false,
           isBranchHeader: true,
@@ -467,7 +274,7 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
             math.sin(angle) * 200 + rng.nextDouble() * 20 - 10,
           ),
         ));
-        graphEdges.add(_GraphEdge(0, headerIdx));
+        graphEdges.add(GraphEdge(0, headerIdx));
 
         final items = branchItems[b] ?? [];
         nodes[headerIdx].childCount = items.length;
@@ -475,7 +282,7 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
           final leafAngle = angle +
               (li - items.length / 2) * 0.35;
           final leafIdx = nodes.length;
-          nodes.add(_GraphNode(
+          nodes.add(GraphNode(
             id: '__leaf_${b.name}_$li',
             label: items[li],
             color: b.color,
@@ -488,14 +295,14 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
               math.sin(leafAngle) * 340 + rng.nextDouble() * 20 - 10,
             ),
           ));
-          graphEdges.add(_GraphEdge(headerIdx, leafIdx));
+          graphEdges.add(GraphEdge(headerIdx, leafIdx));
         }
       }
     }
 
     // ---- Entry nodes (notes, tasks, etc.) ----
     final idToIndex = <String, int>{};
-    final entryStartAngle = _Branch.values.length * 2 * math.pi / 5;
+    final entryStartAngle = GraphBranch.values.length * 2 * math.pi / 5;
     for (var i = 0; i < filtered.length; i++) {
       final e = filtered[i];
       final angle = entryStartAngle +
@@ -503,7 +310,7 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
       final dist = 250.0 + rng.nextDouble() * 100;
       final idx = nodes.length;
       idToIndex[e.id] = idx;
-      nodes.add(_GraphNode(
+      nodes.add(GraphNode(
         id: e.id,
         label: e.title.isEmpty
             ? (() {
@@ -513,7 +320,7 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
                     : plain;
               })()
             : e.title,
-        color: _entryColor(e),
+        color: entryColor(e),
         isCentre: false,
         entry: e,
         isBookmarked: e.bookmarked,
@@ -530,7 +337,7 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
       final si = idToIndex[link.source];
       final ti = idToIndex[link.target];
       if (si != null && ti != null) {
-        graphEdges.add(_GraphEdge(si, ti));
+        graphEdges.add(GraphEdge(si, ti));
         nodes[si].linkCount++;
         nodes[ti].linkCount++;
       }
@@ -545,7 +352,7 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
     // note's connection to the core. Hub-and-spoke is fine — the force
     // simulation still renders the wiki-link edges clearly on top.
     for (final idx in idToIndex.values) {
-      graphEdges.add(_GraphEdge(0, idx));
+      graphEdges.add(GraphEdge(0, idx));
     }
 
     // `_rebuildGraph` is async and awaits repositoryProvider +
@@ -580,8 +387,8 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
               math.Random().nextDouble() - 0.5);
           dist = 1;
         }
-        final force = _kRepulsion / (dist * dist);
-        final clamped = math.min(force, _kMaxForce);
+        final force = kGraphRepulsion / (dist * dist);
+        final clamped = math.min(force, kGraphMaxForce);
         final f = delta / dist * clamped;
         forces[i] = forces[i] + f;
         forces[j] = forces[j] - f;
@@ -594,10 +401,10 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
       final delta = b.pos - a.pos;
       final dist = delta.distance;
       if (dist < 1) continue;
-      final displacement = dist - _kSpringLen;
-      final force = _kSpringK * displacement;
+      final displacement = dist - kGraphSpringLen;
+      final force = kGraphSpringK * displacement;
       final clamped =
-          force.abs() > _kMaxForce ? _kMaxForce * force.sign : force;
+          force.abs() > kGraphMaxForce ? kGraphMaxForce * force.sign : force;
       final f = delta / dist * clamped;
       forces[edge.from] = forces[edge.from] + f;
       forces[edge.to] = forces[edge.to] - f;
@@ -605,18 +412,18 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
 
     for (var i = 0; i < n; i++) {
       final toCenter = canvasCenter - _nodes[i].pos;
-      forces[i] = forces[i] + toCenter * _kCentreGravity;
+      forces[i] = forces[i] + toCenter * kGraphCentreGravity;
     }
 
     var totalKinetic = 0.0;
     for (var i = 0; i < n; i++) {
       if (_nodes[i].pinned) continue;
-      _nodes[i].vel = (_nodes[i].vel + forces[i]) * _kDamping;
+      _nodes[i].vel = (_nodes[i].vel + forces[i]) * kGraphDamping;
       _nodes[i].pos = _nodes[i].pos + _nodes[i].vel;
       totalKinetic += _nodes[i].vel.distanceSquared;
     }
 
-    if (totalKinetic < _kMinVelocity * n) {
+    if (totalKinetic < kGraphMinVelocity * n) {
       _settled = true;
     }
 
@@ -654,7 +461,7 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
 
   // ======================== node tap ========================
 
-  void _onTapNode(_GraphNode node) {
+  void _onTapNode(GraphNode node) {
     HapticFeedback.selectionClick();
     if (node.isCentre) {
       _editSummary(_knowledge?.summary ?? '');
@@ -676,50 +483,50 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
     }
   }
 
-  void _onTapBranch(_Branch branch) {
+  void _onTapBranch(GraphBranch branch) {
     switch (branch) {
-      case _Branch.goals:
+      case GraphBranch.goals:
         _editList(
-          title: 'Цели',
-          hint: 'Что хочешь достичь',
+          title: S.of(context)!.graphBranchGoals,
+          hint: S.of(context)!.graphGoalsHint,
           items: _knowledge!.goals,
           apply: (n) =>
               _knowledge!.copyWith(goals: n, updatedAt: DateTime.now()),
         );
-      case _Branch.constraints:
+      case GraphBranch.constraints:
         _editList(
-          title: 'Ограничения',
-          hint: 'Что мешает или ограничивает',
+          title: S.of(context)!.graphBranchConstraints,
+          hint: S.of(context)!.graphConstraintsHint,
           items: _knowledge!.constraints,
           apply: (n) =>
               _knowledge!.copyWith(constraints: n, updatedAt: DateTime.now()),
         );
-      case _Branch.highlights:
+      case GraphBranch.highlights:
         _editList(
-          title: 'Достижения',
-          hint: 'Что уже получилось',
+          title: S.of(context)!.graphBranchHighlights,
+          hint: S.of(context)!.graphHighlightsHint,
           items: _knowledge!.completedHighlights,
           maxItems: 20,
           apply: (n) => _knowledge!.copyWith(
               completedHighlights: n, updatedAt: DateTime.now()),
         );
-      case _Branch.reflections:
+      case GraphBranch.reflections:
         _editList(
-          title: 'Рефлексии',
-          hint: 'Заметки о пройденном',
+          title: S.of(context)!.graphBranchReflections,
+          hint: S.of(context)!.graphReflectionsHint,
           items: _knowledge!.recentReflections,
           maxItems: 10,
           apply: (n) => _knowledge!.copyWith(
               recentReflections: n, updatedAt: DateTime.now()),
         );
-      case _Branch.preferences:
+      case GraphBranch.preferences:
         final prefs = _knowledge!.preferences;
         final flat = [
           for (final e in prefs.entries) '${e.key}: ${e.value}',
         ];
         _editList(
-          title: 'Предпочтения',
-          hint: 'ключ: значение',
+          title: S.of(context)!.knowledgePrefs,
+          hint: S.of(context)!.knowledgePrefHint,
           items: flat,
           apply: (n) {
             final m = <String, String>{};
@@ -738,7 +545,7 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
     }
   }
 
-  void _onTapLeaf(_Branch branch, int index) {
+  void _onTapLeaf(GraphBranch branch, int index) {
     _onTapBranch(branch);
   }
 
@@ -765,7 +572,7 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
         initialChildSize: 0.7,
         minChildSize: 0.4,
         maxChildSize: 0.92,
-        builder: (context, scroll) => _EditListSheet(
+        builder: (context, scroll) => EditListSheet(
           title: title,
           hint: hint,
           initial: items,
@@ -818,8 +625,8 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
 
   Future<void> _editSummary(String current) async {
     final next = await _editSheet(
-      title: 'О тебе',
-      hint: 'Кратко: кто ты, чем занят, что важно',
+      title: S.of(context)!.aboutApp,
+      hint: S.of(context)!.knowledgeContextHint,
       initial: current,
       maxLines: 4,
     );
@@ -841,7 +648,7 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
   }) async {
     final ctrl = TextEditingController(text: initial);
     final palette = context.palette;
-    final r = await showModalBottomSheet<_EditResult>(
+    final r = await showModalBottomSheet<EditResult>(
       context: context,
       isScrollControlled: true,
       backgroundColor: palette.surface,
@@ -895,9 +702,9 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
                   if (allowDelete)
                     TextButton.icon(
                       onPressed: () =>
-                          Navigator.of(ctx).pop(const _EditResult(value: '')),
+                          Navigator.of(ctx).pop(const EditResult(value: '')),
                       icon: const Icon(Icons.delete_outline),
-                      label: const Text('Удалить'),
+                      label: Text(S.of(context)!.graphDelete),
                       style: TextButton.styleFrom(
                         foregroundColor: palette.fg,
                       ),
@@ -905,18 +712,18 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
                   const Spacer(),
                   TextButton(
                     onPressed: () => Navigator.of(ctx).pop(null),
-                    child: const Text('Отмена'),
+                    child: Text(S.of(context)!.actionCancel),
                   ),
                   const SizedBox(width: 6),
                   FilledButton(
                     onPressed: () => Navigator.of(ctx).pop(
-                      _EditResult(value: ctrl.text.trim()),
+                      EditResult(value: ctrl.text.trim()),
                     ),
                     style: FilledButton.styleFrom(
                       backgroundColor: palette.fg,
                       foregroundColor: palette.bg,
                     ),
-                    child: const Text('Сохранить'),
+                    child: Text(S.of(context)!.actionSave),
                   ),
                 ],
               ),
@@ -954,16 +761,16 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
                 autofocus: true,
                 style: TextStyle(color: palette.fg),
                 decoration: InputDecoration(
-                  hintText: 'Поиск по базе знаний…',
+                  hintText: S.of(context)!.graphSearchHint,
                   hintStyle: TextStyle(color: palette.muted),
                   border: InputBorder.none,
                 ),
                 onChanged: _performSearch,
               )
-            : const Text('База знаний'),
+            : Text(S.of(context)!.graphKnowledgeBase),
         actions: [
           IconButton(
-            tooltip: 'Поиск',
+            tooltip: S.of(context)!.graphSearchTooltip,
             icon: Icon(_searchVisible ? Icons.close : Icons.search),
             onPressed: () {
               setState(() {
@@ -976,14 +783,14 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
             },
           ),
           IconButton(
-            tooltip: 'Дневник',
+            tooltip: S.of(context)!.graphDailyTooltip,
             icon: const Icon(Icons.today),
             onPressed: _openDailyNote,
           ),
           IconButton(
             tooltip: _hideRecipes
-                ? 'Показывать рецепты'
-                : 'Скрывать рецепты',
+                ? S.of(context)!.graphShowRecipes
+                : S.of(context)!.graphHideRecipes,
             icon: Icon(
               _hideRecipes
                   ? Icons.restaurant_menu_outlined
@@ -996,7 +803,7 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
           ),
           if (_localGraphCentreId != null)
             IconButton(
-              tooltip: 'Глобальный граф',
+              tooltip: S.of(context)!.graphGlobalTooltip,
               icon: const Icon(Icons.public),
               onPressed: () {
                 setState(() => _localGraphCentreId = null);
@@ -1012,21 +819,21 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
               children: [
                 FloatingActionButton.small(
                   heroTag: 'new_note',
-                  tooltip: 'Новая заметка',
+                  tooltip: S.of(context)!.graphNewNote,
                   onPressed: _createNote,
                   child: const Icon(Icons.add),
                 ),
                 const SizedBox(height: 8),
                 FloatingActionButton.small(
                   heroTag: 'reset',
-                  tooltip: 'Сбросить вид',
+                  tooltip: S.of(context)!.graphResetView,
                   onPressed: _resetCamera,
                   child: const Icon(Icons.fit_screen_outlined),
                 ),
                 const SizedBox(height: 8),
                 FloatingActionButton.small(
                   heroTag: 'shake',
-                  tooltip: 'Перемешать',
+                  tooltip: S.of(context)!.graphShuffle,
                   onPressed: () {
                     final rng = math.Random();
                     for (final node in _nodes) {
@@ -1054,13 +861,13 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
                         scrollDirection: Axis.horizontal,
                         padding: const EdgeInsets.symmetric(horizontal: 8),
                         children: [
-                          for (final f in _FilterMode.values)
+                          for (final f in GraphFilterMode.values)
                             Padding(
                               padding:
                                   const EdgeInsets.symmetric(horizontal: 3),
                               child: FilterChip(
                                 selected: _filter == f && _activeTag == null,
-                                label: Text(f.label),
+                                label: Text(f.localLabel(S.of(context)!)),
                                 avatar: Icon(f.icon, size: 16),
                                 onSelected: (_) {
                                   setState(() {
@@ -1123,7 +930,7 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
                                 e.isTask
                                     ? Icons.checklist
                                     : Icons.note_outlined,
-                                color: _entryColor(e),
+                                color: entryColor(e),
                                 size: 20,
                               ),
                               title: Text(
@@ -1164,7 +971,7 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
                     // Graph view.
                     Expanded(
                       child: _isEffectivelyEmpty()
-                          ? _GraphEmptyState(
+                          ? GraphEmptyState(
                               filter: _filter,
                               palette: palette,
                               onCreateEntry: () =>
@@ -1173,7 +980,7 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
                               }),
                               onResetFilter: () {
                                 setState(() {
-                                  _filter = _FilterMode.all;
+                                  _filter = GraphFilterMode.all;
                                   _activeTag = null;
                                 });
                                 _rebuildGraph();
@@ -1203,7 +1010,7 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
                                               1600, viewSize.width * 3),
                                           height: math.max(
                                               1600, viewSize.height * 3),
-                                          child: _ObsidianGraphView(
+                                          child: ObsidianGraphView(
                                             nodes: _nodes,
                                             edges: _edges,
                                             zoomScale: zoomScale,
@@ -1257,667 +1064,5 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
                   ],
                 ),
     );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Obsidian-style graph view widget.
-// ---------------------------------------------------------------------------
-
-class _ObsidianGraphView extends StatelessWidget {
-  const _ObsidianGraphView({
-    required this.nodes,
-    required this.edges,
-    required this.zoomScale,
-    required this.selectedNode,
-    required this.onTapNode,
-    required this.onDragStart,
-    required this.onDragUpdate,
-    required this.onDragEnd,
-    required this.onBookmark,
-    required this.onLocalGraph,
-    required this.palette,
-  });
-
-  final List<_GraphNode> nodes;
-  final List<_GraphEdge> edges;
-  final double zoomScale;
-  final int? selectedNode;
-  final ValueChanged<int> onTapNode;
-  final ValueChanged<int> onDragStart;
-  final void Function(int, Offset) onDragUpdate;
-  final ValueChanged<int> onDragEnd;
-  final ValueChanged<int> onBookmark;
-  final ValueChanged<int> onLocalGraph;
-  final NoeticaPalette palette;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final canvasSize = Size(constraints.maxWidth, constraints.maxHeight);
-        final canvasCentre =
-            Offset(canvasSize.width / 2, canvasSize.height / 2);
-
-        return Stack(
-          clipBehavior: Clip.none,
-          children: [
-            CustomPaint(
-              size: canvasSize,
-              painter: _ObsidianEdgePainter(
-                nodes: nodes,
-                edges: edges,
-                centre: canvasCentre,
-                palette: palette,
-                selectedNode: selectedNode,
-              ),
-            ),
-            for (var i = 0; i < nodes.length; i++)
-              _PositionedNode(
-                node: nodes[i],
-                canvasCentre: canvasCentre,
-                palette: palette,
-                zoomScale: zoomScale,
-                isSelected: selectedNode == i,
-                onTap: () => onTapNode(i),
-                onDragStart: () => onDragStart(i),
-                onDragUpdate: (delta) => onDragUpdate(i, delta),
-                onDragEnd: () => onDragEnd(i),
-                onBookmark: () => onBookmark(i),
-                onLocalGraph: () => onLocalGraph(i),
-              ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Positioned node widget.
-// ---------------------------------------------------------------------------
-
-class _PositionedNode extends StatelessWidget {
-  const _PositionedNode({
-    required this.node,
-    required this.canvasCentre,
-    required this.palette,
-    required this.zoomScale,
-    required this.isSelected,
-    required this.onTap,
-    required this.onDragStart,
-    required this.onDragUpdate,
-    required this.onDragEnd,
-    required this.onBookmark,
-    required this.onLocalGraph,
-  });
-
-  final _GraphNode node;
-  final Offset canvasCentre;
-  final NoeticaPalette palette;
-  final double zoomScale;
-  final bool isSelected;
-  final VoidCallback onTap;
-  final VoidCallback onDragStart;
-  final ValueChanged<Offset> onDragUpdate;
-  final VoidCallback onDragEnd;
-  final VoidCallback onBookmark;
-  final VoidCallback onLocalGraph;
-
-  static const double _expandThreshold = 1.8;
-
-  @override
-  Widget build(BuildContext context) {
-    final screenPos = canvasCentre + node.pos;
-    final r = node.radius;
-    final color = node.color;
-
-    final expanded = zoomScale >= _expandThreshold && !node.isCentre;
-    final showLabel = node.isCentre || isSelected || expanded;
-
-    final cardW = expanded ? 160.0 : 0.0;
-    final cardH = expanded ? 36.0 : 0.0;
-    final hitSize = expanded
-        ? math.max(cardW, 44.0)
-        : math.max(r * 2 + 16, 44.0);
-    final hitHeight = expanded ? math.max(cardH + 8, 44.0) : hitSize;
-
-    if (expanded) {
-      return Positioned(
-        left: screenPos.dx - hitSize / 2,
-        top: screenPos.dy - hitHeight / 2,
-        width: hitSize,
-        height: hitHeight,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: onTap,
-          onLongPress: onBookmark,
-          onPanStart: (_) => onDragStart(),
-          onPanUpdate: (d) => onDragUpdate(d.delta),
-          onPanEnd: (_) => onDragEnd(),
-          child: Center(
-            child: Container(
-              constraints: BoxConstraints(maxWidth: cardW),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(
-                  color: color.withOpacity(isSelected ? 0.9 : 0.5),
-                  width: isSelected ? 1.5 : 1,
-                ),
-                boxShadow: isSelected
-                    ? [
-                        BoxShadow(
-                          color: color.withOpacity(0.3),
-                          blurRadius: 12,
-                          spreadRadius: 2,
-                        ),
-                      ]
-                    : null,
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (node.isBookmarked)
-                    const Padding(
-                      padding: EdgeInsets.only(right: 4),
-                      child: Icon(Icons.bookmark,
-                          size: 12, color: Color(0xFFF59E0B)),
-                    ),
-                  Flexible(
-                    child: Text(
-                      node.label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: color,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  if (node.linkCount > 0)
-                    Padding(
-                      padding: const EdgeInsets.only(left: 4),
-                      child: Text(
-                        '${node.linkCount}',
-                        style: TextStyle(
-                          color: color.withOpacity(0.6),
-                          fontSize: 9,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Positioned(
-      left: screenPos.dx - hitSize / 2,
-      top: screenPos.dy - hitSize / 2,
-      width: hitSize,
-      height: hitSize,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        onLongPress: onBookmark,
-        onDoubleTap: onLocalGraph,
-        onPanStart: (_) => onDragStart(),
-        onPanUpdate: (d) => onDragUpdate(d.delta),
-        onPanEnd: (_) => onDragEnd(),
-        child: Stack(
-          clipBehavior: Clip.none,
-          alignment: Alignment.center,
-          children: [
-            Container(
-              width: r * 2 + (isSelected ? 12 : 6),
-              height: r * 2 + (isSelected ? 12 : 6),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: color.withOpacity(isSelected ? 0.5 : 0.2),
-                    blurRadius: isSelected ? 20 : 10,
-                    spreadRadius: isSelected ? 4 : 1,
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              width: r * 2,
-              height: r * 2,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: node.isCentre
-                    ? color
-                    : color.withOpacity(isSelected ? 1.0 : 0.85),
-                border: Border.all(
-                  color: color.withOpacity(0.9),
-                  width: node.isCentre ? 2 : 1.5,
-                ),
-              ),
-              child: node.isBookmarked
-                  ? const Center(
-                      child: Icon(Icons.bookmark,
-                          size: 10, color: Colors.white),
-                    )
-                  : null,
-            ),
-            if (showLabel)
-              Positioned(
-                top: hitSize / 2 + r + 4,
-                child: Container(
-                  constraints: BoxConstraints(
-                    maxWidth: node.isCentre ? 120 : 100,
-                  ),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: palette.bg.withOpacity(0.8),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    node.isCentre ? 'я' : node.label,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: palette.fg,
-                      fontSize: node.isCentre ? 12 : 10,
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Edge painter.
-// ---------------------------------------------------------------------------
-
-class _ObsidianEdgePainter extends CustomPainter {
-  _ObsidianEdgePainter({
-    required this.nodes,
-    required this.edges,
-    required this.centre,
-    required this.palette,
-    required this.selectedNode,
-  });
-
-  final List<_GraphNode> nodes;
-  final List<_GraphEdge> edges;
-  final Offset centre;
-  final NoeticaPalette palette;
-  final int? selectedNode;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    for (final edge in edges) {
-      final a = nodes[edge.from];
-      final b = nodes[edge.to];
-      final posA = centre + a.pos;
-      final posB = centre + b.pos;
-
-      final isHighlighted = selectedNode != null &&
-          (edge.from == selectedNode || edge.to == selectedNode);
-
-      final color = b.color;
-
-      final paint = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = isHighlighted ? 2.5 : 1.2
-        ..color = color.withOpacity(isHighlighted ? 0.75 : 0.35);
-
-      canvas.drawLine(posA, posB, paint);
-    }
-
-    final rng = math.Random(7);
-    final dotPaint = Paint()..style = PaintingStyle.fill;
-    for (var i = 0; i < 60; i++) {
-      final x = rng.nextDouble() * size.width;
-      final y = rng.nextDouble() * size.height;
-      dotPaint.color =
-          palette.muted.withOpacity(0.04 + rng.nextDouble() * 0.04);
-      canvas.drawCircle(Offset(x, y), 1.0 + rng.nextDouble() * 1.0, dotPaint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _ObsidianEdgePainter old) => true;
-}
-
-// ---------------------------------------------------------------------------
-// Supporting types.
-// ---------------------------------------------------------------------------
-
-class _EditResult {
-  const _EditResult({required this.value});
-  final String value;
-}
-
-// ---------------------------------------------------------------------------
-// Simple list editor for PersonalKnowledge branch items.
-// ---------------------------------------------------------------------------
-
-class _EditListSheet extends StatefulWidget {
-  const _EditListSheet({
-    required this.title,
-    required this.hint,
-    required this.initial,
-    required this.scrollController,
-    this.maxItems = 12,
-  });
-  final String title;
-  final String hint;
-  final List<String> initial;
-  final int maxItems;
-  final ScrollController scrollController;
-
-  @override
-  State<_EditListSheet> createState() => _EditListSheetState();
-}
-
-class _EditListSheetState extends State<_EditListSheet> {
-  late final List<TextEditingController> _controllers;
-
-  @override
-  void initState() {
-    super.initState();
-    _controllers = [
-      for (final item in widget.initial) TextEditingController(text: item),
-    ];
-  }
-
-  @override
-  void dispose() {
-    for (final c in _controllers) {
-      c.dispose();
-    }
-    super.dispose();
-  }
-
-  void _add() {
-    if (_controllers.length >= widget.maxItems) return;
-    setState(() => _controllers.add(TextEditingController()));
-  }
-
-  void _remove(int i) {
-    setState(() {
-      _controllers[i].dispose();
-      _controllers.removeAt(i);
-    });
-  }
-
-  void _save() {
-    final items = _controllers
-        .map((c) => c.text.trim())
-        .where((t) => t.isNotEmpty)
-        .toList();
-    Navigator.of(context).pop(items);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = context.palette;
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Drag handle
-          Container(
-            margin: const EdgeInsets.only(top: 8, bottom: 4),
-            height: 4,
-            width: 40,
-            decoration: BoxDecoration(
-              color: palette.line,
-              borderRadius: BorderRadius.circular(4),
-            ),
-          ),
-          // Header row with title + save action
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    widget.title,
-                    style: TextStyle(
-                      color: palette.fg,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                if (_controllers.length < widget.maxItems)
-                  IconButton(
-                    tooltip: 'Добавить',
-                    icon: Icon(Icons.add, color: palette.fg),
-                    onPressed: _add,
-                  ),
-                TextButton.icon(
-                  onPressed: _save,
-                  icon: Icon(Icons.check, color: palette.fg, size: 18),
-                  label: Text(
-                    'Готово',
-                    style: TextStyle(color: palette.fg),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Divider(height: 1, color: palette.line),
-          Expanded(
-            child: _controllers.isEmpty
-                ? _EmptyListCta(palette: palette, onAdd: _add)
-                : ReorderableListView.builder(
-                    scrollController: widget.scrollController,
-                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
-                    itemCount: _controllers.length,
-                    onReorder: (old, nw) {
-                      setState(() {
-                        final c = _controllers.removeAt(old);
-                        _controllers.insert(nw > old ? nw - 1 : nw, c);
-                      });
-                    },
-                    itemBuilder: (_, i) {
-                      return Padding(
-                        key: ValueKey(_controllers[i]),
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Row(
-                          children: [
-                            Icon(Icons.drag_indicator,
-                                color: palette.muted, size: 18),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: TextField(
-                                controller: _controllers[i],
-                                style: TextStyle(
-                                    color: palette.fg, fontSize: 14),
-                                decoration: InputDecoration(
-                                  hintText: widget.hint,
-                                  hintStyle:
-                                      TextStyle(color: palette.muted),
-                                  filled: true,
-                                  fillColor: palette.surface,
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                  contentPadding:
-                                      const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 10,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            IconButton(
-                              icon: Icon(Icons.close,
-                                  color: palette.muted, size: 18),
-                              onPressed: () => _remove(i),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EmptyListCta extends StatelessWidget {
-  const _EmptyListCta({required this.palette, required this.onAdd});
-  final NoeticaPalette palette;
-  final VoidCallback onAdd;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: TextButton.icon(
-        onPressed: onAdd,
-        icon: Icon(Icons.add, color: palette.fg),
-        label: Text(
-          'Добавить первую запись',
-          style: TextStyle(color: palette.fg),
-        ),
-      ),
-    );
-  }
-}
-
-
-class _GraphEmptyState extends StatelessWidget {
-  const _GraphEmptyState({
-    required this.filter,
-    required this.palette,
-    required this.onCreateEntry,
-    required this.onResetFilter,
-  });
-
-  final _FilterMode filter;
-  final NoeticaPalette palette;
-  final VoidCallback onCreateEntry;
-  final VoidCallback onResetFilter;
-
-  @override
-  Widget build(BuildContext context) {
-    final (title, hint, primaryLabel, primaryAction, showReset) =
-        _copyForFilter();
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(filter.icon, size: 48, color: palette.muted),
-            const SizedBox(height: 16),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: palette.fg,
-                  ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              hint,
-              textAlign: TextAlign.center,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: palette.muted),
-            ),
-            const SizedBox(height: 20),
-            Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                if (primaryAction != null)
-                  FilledButton.icon(
-                    onPressed: primaryAction,
-                    icon: const Icon(Icons.add, size: 16),
-                    label: Text(primaryLabel),
-                  ),
-                if (showReset)
-                  OutlinedButton.icon(
-                    onPressed: onResetFilter,
-                    icon: const Icon(Icons.tune, size: 16),
-                    label: const Text('Сбросить фильтр'),
-                  ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  (String, String, String, VoidCallback?, bool) _copyForFilter() {
-    switch (filter) {
-      case _FilterMode.all:
-        return (
-          'База знаний пока пуста',
-          'Создайте первую заметку или задачу — они появятся здесь как узлы графа.',
-          'Создать запись',
-          onCreateEntry,
-          false,
-        );
-      case _FilterMode.notes:
-        return (
-          'Заметок пока нет',
-          'Заметки будут видны как отдельные узлы. Связи появляются автоматически, когда в теле есть [[ссылка]] на другую заметку.',
-          'Создать заметку',
-          onCreateEntry,
-          true,
-        );
-      case _FilterMode.tasks:
-        return (
-          'Задач в графе нет',
-          'Создайте задачу через «+» или сгенерируйте план задач из вашей цели.',
-          'Создать запись',
-          onCreateEntry,
-          true,
-        );
-      case _FilterMode.bookmarks:
-        return (
-          'Закладок пока нет',
-          'Долгое нажатие на узел графа добавит его в закладки.',
-          '',
-          null,
-          true,
-        );
-      case _FilterMode.daily:
-        return (
-          'Дневник пуст',
-          'Тапните иконку календаря в шапке, чтобы создать запись на сегодня.',
-          '',
-          null,
-          true,
-        );
-      case _FilterMode.knowledge:
-        return (
-          'Знания о себе пусты',
-          'Заполните цели, ограничения и достижения через тапы по веткам графа — это даст AI больше контекста для генерации планов.',
-          '',
-          null,
-          true,
-        );
-    }
   }
 }

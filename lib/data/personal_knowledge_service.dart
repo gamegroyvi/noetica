@@ -57,7 +57,7 @@ class PersonalKnowledgeService {
       outcome: outcome,
       difficulties: difficulties,
     );
-    final highlight = '${status.label}: $taskTitle';
+    final highlight = '${status.name}: $taskTitle';
 
     PersonalKnowledge next = current.copyWith(
       recentReflections: _prepend(
@@ -99,7 +99,7 @@ class PersonalKnowledgeService {
     required String outcome,
     required String difficulties,
   }) {
-    final parts = <String>['[${status.label}] $title'];
+    final parts = <String>['[${status.name}] $title'];
     if (outcome.isNotEmpty) parts.add('+ $outcome');
     if (difficulties.isNotEmpty) parts.add('- $difficulties');
     return parts.join(' / ');

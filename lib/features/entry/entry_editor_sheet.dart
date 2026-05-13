@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../l10n/generated/app_localizations.dart';
 import '../../data/models.dart';
 import '../../providers.dart';
 import '../../services/analytics_service.dart';
@@ -9,6 +10,7 @@ import '../../utils/body_utils.dart';
 import '../../utils/subtask_utils.dart';
 import '../../utils/time_utils.dart';
 import 'markdown_body_editor.dart';
+import 'widgets/editor_fields.dart';
 
 /// Sentinel popped from the bottom sheet when the user taps "expand".
 class _ExpandIntent {
@@ -314,7 +316,7 @@ class _EntryEditorFormState extends ConsumerState<_EntryEditorForm> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Не удалось сохранить запись: $e')),
+          SnackBar(content: Text(S.of(context)!.editorSaveError('$e'))),
         );
       }
     } finally {
@@ -336,9 +338,9 @@ class _EntryEditorFormState extends ConsumerState<_EntryEditorForm> {
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
-          content: Text('«${existing.title}» удалена'),
+          content: Text(S.of(context)!.editorDeletedMsg(existing.title)),
           action: SnackBarAction(
-            label: 'Отменить',
+            label: S.of(context)!.actionUndo,
             onPressed: () async {
               await repo.restoreEntry(existing.id);
             },
@@ -389,7 +391,7 @@ class _EntryEditorFormState extends ConsumerState<_EntryEditorForm> {
           : theme.textTheme.titleMedium,
       cursorColor: palette.fg,
       decoration: InputDecoration(
-        hintText: isTask ? 'Что нужно сделать?' : 'Заголовок',
+        hintText: isTask ? S.of(context)!.editorHintTask : S.of(context)!.editorTitle,
         // Document mode: borderless, no fill — the title reads like a
         // headline at the top of a Word page, not like another input.
         filled: large ? false : null,
@@ -411,7 +413,7 @@ class _EntryEditorFormState extends ConsumerState<_EntryEditorForm> {
   }
 
   Widget _buildSubtaskSection() {
-    return _SubtaskEditor(
+    return SubtaskEditor(
       body: _body.text,
       onChanged: (next) {
         setState(() {
@@ -424,7 +426,7 @@ class _EntryEditorFormState extends ConsumerState<_EntryEditorForm> {
   }
 
   Widget _buildTagsSection(NoeticaPalette palette) {
-    return _TagsField(
+    return TagsField(
       palette: palette,
       tags: _tags,
       controller: _tagInput,
@@ -435,7 +437,7 @@ class _EntryEditorFormState extends ConsumerState<_EntryEditorForm> {
 
   Widget _buildBacklinksSection(NoeticaPalette palette) {
     if (widget.existing == null) return const SizedBox.shrink();
-    return _BacklinksPanel(
+    return BacklinksPanel(
       palette: palette,
       entryId: widget.existing!.id,
       onTapEntry: (entry) => Navigator.of(context).pop(entry),
@@ -448,7 +450,7 @@ class _EntryEditorFormState extends ConsumerState<_EntryEditorForm> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Оси',
+          S.of(context)!.editorAxes,
           style: Theme.of(context)
               .textTheme
               .labelLarge
@@ -463,7 +465,7 @@ class _EntryEditorFormState extends ConsumerState<_EntryEditorForm> {
           data: (axes) {
             if (axes.isEmpty) {
               return Text(
-                'Сначала добавь оси в онбординге.',
+                S.of(context)!.editorAddAxesHint,
                 style: TextStyle(color: palette.muted),
               );
             }
@@ -472,7 +474,7 @@ class _EntryEditorFormState extends ConsumerState<_EntryEditorForm> {
               runSpacing: 8,
               children: [
                 for (final a in axes)
-                  _AxisToggleChip(
+                  AxisToggleChip(
                     axis: a,
                     selected: _selectedAxes.contains(a.id),
                     onTap: () => setState(() {
@@ -516,13 +518,13 @@ class _EntryEditorFormState extends ConsumerState<_EntryEditorForm> {
           Row(
             children: [
               Text(
-                widget.existing == null ? 'Новая запись' : 'Запись',
+                widget.existing == null ? S.of(context)!.editorNewEntry : S.of(context)!.editorEntry,
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const Spacer(),
               IconButton(
                 icon: Icon(Icons.open_in_full, color: palette.fg, size: 20),
-                tooltip: 'Развернуть',
+                tooltip: S.of(context)!.editorExpand,
                 onPressed: _expand,
               ),
               if (widget.existing != null)
@@ -557,7 +559,7 @@ class _EntryEditorFormState extends ConsumerState<_EntryEditorForm> {
             width: double.infinity,
             child: FilledButton(
               onPressed: _saving ? null : _save,
-              child: Text(_saving ? '...' : 'Сохранить'),
+              child: Text(_saving ? '...' : S.of(context)!.actionSave),
             ),
           ),
         ],
@@ -602,14 +604,14 @@ class _EntryEditorFormState extends ConsumerState<_EntryEditorForm> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Сделать задачей',
+                          S.of(context)!.editorMakeTask,
                           style: Theme.of(context).textTheme.bodyLarge,
                         ),
                         const SizedBox(height: 2),
                         Text(
                           isTask
-                              ? 'Дедлайн и XP при выполнении'
-                              : 'По умолчанию — заметка',
+                              ? S.of(context)!.editorTaskModeHint
+                              : S.of(context)!.editorNoteModeHint,
                           style: Theme.of(context)
                               .textTheme
                               .bodySmall
@@ -655,7 +657,7 @@ class _EntryEditorFormState extends ConsumerState<_EntryEditorForm> {
                                     size: 16),
                                 label: Text(
                                   _due == null
-                                      ? 'Без дедлайна'
+                                      ? S.of(context)!.editorNoDeadline
                                       : formatTimestamp(_due!),
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -675,7 +677,7 @@ class _EntryEditorFormState extends ConsumerState<_EntryEditorForm> {
                         Row(
                           children: [
                             Text(
-                              'XP при выполнении',
+                              S.of(context)!.editorXpOnComplete,
                               style: Theme.of(context)
                                   .textTheme
                                   .labelLarge
@@ -731,11 +733,11 @@ class _EntryEditorFormState extends ConsumerState<_EntryEditorForm> {
         scrolledUnderElevation: 0,
         leading: IconButton(
           icon: Icon(Icons.close, color: palette.fg),
-          tooltip: 'Закрыть',
+          tooltip: S.of(context)!.editorClose,
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
-          widget.existing == null ? 'Новая запись' : 'Запись',
+          widget.existing == null ? S.of(context)!.editorNewEntry : S.of(context)!.editorEntry,
           style: Theme.of(context)
               .textTheme
               .titleMedium
@@ -746,21 +748,21 @@ class _EntryEditorFormState extends ConsumerState<_EntryEditorForm> {
             Builder(
               builder: (ctx) => IconButton(
                 icon: Icon(Icons.tune, color: palette.fg),
-                tooltip: 'Параметры',
+                tooltip: S.of(context)!.editorParams,
                 onPressed: () => Scaffold.of(ctx).openEndDrawer(),
               ),
             ),
           if (widget.existing != null)
             IconButton(
               icon: Icon(Icons.delete_outline, color: palette.fg),
-              tooltip: 'Удалить',
+              tooltip: S.of(context)!.actionDelete,
               onPressed: _delete,
             ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             child: FilledButton(
               onPressed: _saving ? null : _save,
-              child: Text(_saving ? '...' : 'Сохранить'),
+              child: Text(_saving ? '...' : S.of(context)!.actionSave),
             ),
           ),
         ],
@@ -853,7 +855,7 @@ class _EntryEditorFormState extends ConsumerState<_EntryEditorForm> {
             child: Row(
               children: [
                 Text(
-                  'Параметры',
+                  S.of(context)!.editorParams,
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const Spacer(),
@@ -892,335 +894,3 @@ class _EntryEditorFormState extends ConsumerState<_EntryEditorForm> {
   }
 }
 
-// -------------------------------------------------------------------
-// Helper widgets
-// -------------------------------------------------------------------
-
-class _AxisToggleChip extends StatelessWidget {
-  const _AxisToggleChip({
-    required this.axis,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final LifeAxis axis;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = context.palette;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: selected ? palette.fg : palette.bg,
-          border: Border.all(color: selected ? palette.fg : palette.line),
-          borderRadius: BorderRadius.circular(999),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              axis.symbol,
-              style: TextStyle(
-                fontSize: 13,
-                color: selected ? palette.bg : palette.fg,
-              ),
-            ),
-            const SizedBox(width: 6),
-            Text(
-              axis.name,
-              style: TextStyle(
-                fontSize: 12,
-                color: selected ? palette.bg : palette.fg,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _TagsField extends StatelessWidget {
-  const _TagsField({
-    required this.palette,
-    required this.tags,
-    required this.controller,
-    required this.onCommit,
-    required this.onRemove,
-  });
-
-  final NoeticaPalette palette;
-  final List<String> tags;
-  final TextEditingController controller;
-  final VoidCallback onCommit;
-  final ValueChanged<String> onRemove;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Теги',
-          style: Theme.of(context)
-              .textTheme
-              .labelLarge
-              ?.copyWith(color: palette.muted, letterSpacing: 1.4),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
-          decoration: BoxDecoration(
-            border: Border.all(color: palette.line),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              for (final tag in tags)
-                InkWell(
-                  onTap: () => onRemove(tag),
-                  borderRadius: BorderRadius.circular(999),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: palette.surface,
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(color: palette.line),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('#',
-                            style: TextStyle(
-                                color: palette.muted, fontSize: 11)),
-                        Text(
-                          tag,
-                          style:
-                              TextStyle(color: palette.fg, fontSize: 12),
-                        ),
-                        const SizedBox(width: 4),
-                        Icon(Icons.close, size: 11, color: palette.muted),
-                      ],
-                    ),
-                  ),
-                ),
-              IntrinsicWidth(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(minWidth: 80),
-                  child: TextField(
-                    controller: controller,
-                    style: TextStyle(color: palette.fg, fontSize: 13),
-                    decoration: InputDecoration(
-                      hintText: tags.isEmpty ? 'добавить тег…' : '+',
-                      hintStyle:
-                          TextStyle(color: palette.muted, fontSize: 12),
-                      isDense: true,
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 4, vertical: 6),
-                    ),
-                    onSubmitted: (_) => onCommit(),
-                    onChanged: (v) {
-                      if (v.endsWith(' ') || v.endsWith(',')) onCommit();
-                    },
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _BacklinksPanel extends ConsumerWidget {
-  const _BacklinksPanel({
-    required this.palette,
-    required this.entryId,
-    required this.onTapEntry,
-  });
-
-  final NoeticaPalette palette;
-  final String entryId;
-  final ValueChanged<Entry> onTapEntry;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final repoAsync = ref.watch(repositoryProvider);
-    return repoAsync.when(
-      loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
-      data: (repo) => FutureBuilder<List<Entry>>(
-        future: repo.listBacklinks(entryId),
-        builder: (context, snap) {
-          final items = snap.data ?? const <Entry>[];
-          if (items.isEmpty) return const SizedBox.shrink();
-          return Container(
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-            decoration: BoxDecoration(
-              color: palette.surface,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: palette.line),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.subdirectory_arrow_left,
-                        size: 14, color: palette.muted),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Сюда ссылаются (${items.length})',
-                      style: TextStyle(
-                        color: palette.muted,
-                        fontSize: 11,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                for (final e in items)
-                  InkWell(
-                    onTap: () => onTapEntry(e),
-                    borderRadius: BorderRadius.circular(6),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 6),
-                      child: Row(
-                        children: [
-                          Icon(
-                            e.kind == EntryKind.task
-                                ? Icons.check_circle_outline
-                                : Icons.note_outlined,
-                            size: 14,
-                            color: palette.muted,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              e.title.isEmpty
-                                  ? '(без названия)'
-                                  : e.title,
-                              style: TextStyle(
-                                color: palette.fg,
-                                fontSize: 13,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _SubtaskEditor extends StatelessWidget {
-  const _SubtaskEditor({required this.body, required this.onChanged});
-
-  final String body;
-  final ValueChanged<String> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final subs = parseSubtasks(body);
-    if (subs.isEmpty) return const SizedBox.shrink();
-    final palette = context.palette;
-    final prog = subtaskProgress(body);
-    return Padding(
-      padding: const EdgeInsets.only(top: 12),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-        decoration: BoxDecoration(
-          color: palette.surface,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: palette.line),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Подзадачи — ${prog.done}/${prog.total}',
-              style: TextStyle(
-                color: palette.muted,
-                fontSize: 11,
-                letterSpacing: 1.2,
-              ),
-            ),
-            const SizedBox(height: 6),
-            for (var i = 0; i < subs.length; i++)
-              InkWell(
-                onTap: () => onChanged(toggleSubtask(body, i)),
-                borderRadius: BorderRadius.circular(6),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: 18,
-                        height: 18,
-                        margin: const EdgeInsets.only(top: 2, right: 10),
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                              color: palette.line, width: 1.3),
-                          borderRadius: BorderRadius.circular(4),
-                          color: subs[i].checked
-                              ? palette.fg
-                              : Colors.transparent,
-                        ),
-                        child: subs[i].checked
-                            ? Icon(Icons.check,
-                                size: 12, color: palette.bg)
-                            : null,
-                      ),
-                      Expanded(
-                        child: subs[i].text.isEmpty
-                            ? Text(
-                                '—',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: palette.muted,
-                                ),
-                              )
-                            : MarkdownPreview(
-                                body: subs[i].text,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: subs[i].checked
-                                      ? palette.muted
-                                      : palette.fg,
-                                  decoration: subs[i].checked
-                                      ? TextDecoration.lineThrough
-                                      : null,
-                                ),
-                              ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}

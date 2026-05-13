@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
+import '../l10n/generated/app_localizations.dart';
 import 'api_config.dart';
 
 /// A single named backend deployment the app can talk to.
@@ -105,6 +106,9 @@ class BackendUrlsService {
   SharedPreferences? _prefs;
   final Uuid _uuid;
 
+  S? _tr;
+  void updateLocale(S tr) => _tr = tr;
+
   final _changes = StreamController<BackendUrlsState>.broadcast();
   BackendUrlsState? _cached;
   bool _loaded = false;
@@ -156,7 +160,7 @@ class BackendUrlsService {
     if (endpoints.isEmpty) {
       final seeded = BackendEndpoint(
         id: _uuid.v4(),
-        name: 'По умолчанию',
+        name: _tr?.backendDefault ?? 'Default',
         url: kDefaultBackendUrl,
       );
       endpoints.add(seeded);
@@ -180,7 +184,7 @@ class BackendUrlsService {
     final state = await load();
     final cleanUrl = _normalize(url);
     if (cleanUrl.isEmpty) {
-      throw const FormatException('URL не должен быть пустым.');
+      throw FormatException(_tr?.backendUrlEmpty ?? 'URL must not be empty.');
     }
     final ep = BackendEndpoint(
       id: _uuid.v4(),
@@ -220,7 +224,7 @@ class BackendUrlsService {
       // default, which is exactly the kind of "ghost backend" we're
       // trying to make explicit with this feature.
       throw StateError(
-        'Нельзя удалить единственный бэкенд. Сначала добавь другой.',
+        _tr?.backendCantDeleteLast ?? 'Cannot delete the only backend',
       );
     }
     final next = state.endpoints.where((e) => e.id != id).toList();

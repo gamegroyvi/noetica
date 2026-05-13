@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../l10n/generated/app_localizations.dart';
 import '../../data/models.dart';
 import '../../data/personal_knowledge_service.dart';
 import '../../providers.dart';
@@ -15,12 +16,12 @@ class _AxisDraft {
   String description;
 }
 
-const _fallbackPresets = <Map<String, String>>[
-  {'name': 'Тело', 'symbol': '◐'},
-  {'name': 'Ум', 'symbol': '◇'},
-  {'name': 'Дело', 'symbol': '■'},
-  {'name': 'Связи', 'symbol': '◯'},
-  {'name': 'Душа', 'symbol': '✦'},
+List<Map<String, String>> _fallbackPresets(S tr) => [
+  {'name': tr.onboardAxisBody, 'symbol': '◐'},
+  {'name': tr.onboardAxisMind, 'symbol': '◇'},
+  {'name': tr.onboardAxisWork, 'symbol': '■'},
+  {'name': tr.onboardAxisRelations, 'symbol': '◯'},
+  {'name': tr.onboardAxisSoul, 'symbol': '✦'},
 ];
 
 class OnboardingScreen extends ConsumerStatefulWidget {
@@ -46,11 +47,16 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   String? _generationError;
   String _model = '';
 
+  bool _seeded = false;
+
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_seeded) return;
+    _seeded = true;
     if (widget.seedInterests.isEmpty) {
-      _drafts.addAll(_fallbackPresets
+      final presets = _fallbackPresets(S.of(context)!);
+      _drafts.addAll(presets
           .map((p) => _AxisDraft(name: p['name']!, symbol: p['symbol']!)));
     } else {
       WidgetsBinding.instance.addPostFrameCallback((_) => _generateAxes());
@@ -81,7 +87,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 description: a.description,
               )));
         if (_drafts.length < 3) {
-          for (final p in _fallbackPresets) {
+          final presets = _fallbackPresets(S.of(context)!);
+          for (final p in presets) {
             if (_drafts.length >= 3) break;
             if (_drafts.any(
                 (d) => d.name.toLowerCase() == p['name']!.toLowerCase())) {
@@ -97,7 +104,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       setState(() {
         _generationError = e.toString();
         if (_drafts.isEmpty) {
-          _drafts.addAll(_fallbackPresets
+          final presets = _fallbackPresets(S.of(context)!);
+          _drafts.addAll(presets
               .map((p) => _AxisDraft(name: p['name']!, symbol: p['symbol']!)));
         }
       });
@@ -121,20 +129,17 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           side: BorderSide(color: palette.line),
         ),
         title: Text(
-          'Сразу набросать план?',
+          S.of(context)!.onboardPlanTitle,
           style: TextStyle(color: palette.fg),
         ),
         content: Text(
-          'AI разложит «$aspiration» на 4–10 конкретных задач, '
-          'привязанных к осям, которые ты только что собрала. '
-          'Промпт уже заполнен — можно отредактировать, прежде чем '
-          'запускать генерацию.',
+          S.of(context)!.onboardPlanBody(aspiration),
           style: TextStyle(color: palette.muted, height: 1.4),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text('Позже', style: TextStyle(color: palette.muted)),
+            child: Text(S.of(context)!.actionLater, style: TextStyle(color: palette.muted)),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
@@ -142,7 +147,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               foregroundColor: palette.bg,
             ),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Сгенерировать'),
+            child: Text(S.of(context)!.dashboardGenerate),
           ),
         ],
       ),
@@ -167,17 +172,17 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final clean = _drafts.where((d) => d.name.trim().isNotEmpty).toList();
     if (clean.length < 3) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Заполни хотя бы 3 оси, чтобы пентаграмма имела смысл'),
+        SnackBar(
+          content: Text(S.of(context)!.onboardFillAxes),
         ),
       );
       return;
     }
     if (clean.length > 8) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content:
-              Text('Слишком много осей: оставь не больше 8, иначе будет хаос'),
+              Text(S.of(context)!.onboardTooManyAxes),
         ),
       );
       return;
@@ -212,8 +217,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         SnackBar(
           content: Text(
             migrated > 0
-                ? 'Оси обновлены, перенесено $migrated связей с задачами'
-                : 'Оси обновлены',
+                ? S.of(context)!.onboardAxesMigrated(migrated)
+                : S.of(context)!.onboardAxesUpdated,
           ),
         ),
       );
@@ -230,7 +235,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Не удалось сохранить оси: $e')),
+          SnackBar(content: Text(S.of(context)!.onboardSaveAxesError('$e'))),
         );
       }
     } finally {
@@ -250,7 +255,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       // like the button was broken.
       appBar: canPop
           ? AppBar(
-              title: const Text('Перегенерация осей'),
+              title: Text(S.of(context)!.onboardRegenTitle),
               elevation: 0,
             )
           : null,
@@ -271,19 +276,19 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               const SizedBox(height: 24),
               Text(
                 widget.seedInterests.isEmpty
-                    ? 'Опиши свои оси роста'
-                    : (_generating ? 'AI придумывает оси…' : 'Твои личные оси'),
+                    ? S.of(context)!.onboardDescribeAxes
+                    : (_generating ? S.of(context)!.onboardAiGenerating : S.of(context)!.onboardYourAxes),
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 8),
               Text(
                 widget.seedInterests.isEmpty
-                    ? 'От 3 до 8 направлений, по которым ты хочешь расти. К ним будут привязываться задачи и заметки. Их можно изменить позже.'
+                    ? S.of(context)!.onboardAxesHint
                     : (_generationError != null
-                        ? 'Не удалось связаться с AI: $_generationError. Ниже — запасные оси, отредактируй как хочешь.'
+                        ? S.of(context)!.onboardAiError(_generationError!)
                         : (_generating
-                            ? 'Из ${widget.seedInterests.length} твоих направлений AI рисует персональную пентаграмму…'
-                            : 'Сгенерировано на ${_model.isEmpty ? "AI" : _model}. Переименуй, убери лишние, добавь свои. От 3 до 8.')),
+                            ? S.of(context)!.onboardAiDrawingAxes(widget.seedInterests.length)
+                            : S.of(context)!.onboardAiGenerated(_model.isEmpty ? 'AI' : _model))),
                 style: Theme.of(context)
                     .textTheme
                     .bodyMedium
@@ -297,8 +302,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     onPressed: _generating ? null : _generateAxes,
                     icon: const Icon(Icons.refresh, size: 16),
                     label: Text(_generating
-                        ? 'Генерирую…'
-                        : 'Перегенерировать оси'),
+                        ? S.of(context)!.roadmapGenerating
+                        : S.of(context)!.onboardRegenBtn),
                   ),
                 ),
               ],
@@ -312,7 +317,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                             CircularProgressIndicator(color: palette.fg),
                             const SizedBox(height: 16),
                             Text(
-                              'Это занимает 5–25 секунд',
+                              S.of(context)!.onboardWaitSeconds,
                               style: TextStyle(color: palette.muted),
                             ),
                           ],
@@ -338,7 +343,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   child: OutlinedButton.icon(
                     onPressed: _addAxis,
                     icon: const Icon(Icons.add, size: 18),
-                    label: const Text('Добавить ось'),
+                    label: Text(S.of(context)!.onboardAddAxis),
                   ),
                 ),
               const SizedBox(height: 16),
@@ -349,7 +354,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   child: Text(
                     _saving
                         ? '…'
-                        : (canPop ? 'Сохранить' : 'Создать пентаграмму'),
+                        : (canPop ? S.of(context)!.actionSave : S.of(context)!.onboardCreatePentagram),
                   ),
                 ),
               ),
@@ -412,7 +417,7 @@ class _AxisRow extends StatelessWidget {
                 child: TextFormField(
                   initialValue: draft.name,
                   decoration: InputDecoration(
-                    hintText: 'Название оси (#${index + 1})',
+                    hintText: S.of(context)!.onboardAxisHint(index + 1),
                     isDense: true,
                     contentPadding: const EdgeInsets.symmetric(
                         horizontal: 12, vertical: 14),
@@ -427,7 +432,7 @@ class _AxisRow extends StatelessWidget {
                 IconButton(
                   icon: const Icon(Icons.close, size: 20),
                   onPressed: onRemove,
-                  tooltip: 'Удалить',
+                  tooltip: S.of(context)!.actionDelete,
                 ),
             ],
           ),

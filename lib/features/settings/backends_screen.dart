@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 
+import '../../l10n/generated/app_localizations.dart';
 import '../../providers.dart';
 import '../../services/backend_urls_service.dart';
 import '../../theme/app_theme.dart';
@@ -24,25 +25,23 @@ class BackendsScreen extends ConsumerWidget {
     final stateAsync = ref.watch(backendUrlsStateProvider);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Бэкенды'),
+        title: Text(S.of(context)!.backendsTitle),
       ),
       floatingActionButton: FloatingActionButton.extended(
         icon: const Icon(Icons.add),
-        label: const Text('Добавить'),
+        label: Text(S.of(context)!.backendsAdd),
         onPressed: () => _editBackend(context, ref, existing: null),
       ),
       body: stateAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Ошибка: $e')),
+        error: (e, _) => Center(child: Text(S.of(context)!.backendsError('$e'))),
         data: (state) => ListView(
           padding: const EdgeInsets.fromLTRB(0, 8, 0, 96),
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
               child: Text(
-                'Активный бэкенд используется для AI, синхронизации и '
-                'входа. Можно держать несколько (например, прод и личный '
-                'сервер) и переключаться без перезапуска.',
+                S.of(context)!.backendsHint,
                 style: TextStyle(color: palette.muted, height: 1.4),
               ),
             ),
@@ -83,17 +82,17 @@ class BackendsScreen extends ConsumerWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Удалить бэкенд?'),
+        title: Text(S.of(context)!.backendsDeleteTitle),
         content: Text('${ep.name}\n${ep.url}'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Отмена'),
+            child: Text(S.of(context)!.actionCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Удалить'),
+            child: Text(S.of(context)!.actionDelete),
           ),
         ],
       ),
@@ -128,7 +127,7 @@ class BackendsScreen extends ConsumerWidget {
     } catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Не удалось сохранить: $e')),
+        SnackBar(content: Text(S.of(context)!.backendsSaveError('$e'))),
       );
     }
   }
@@ -233,7 +232,7 @@ class _BackendRowState extends State<_BackendRow> {
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
-                    'Активный',
+                    S.of(context)!.backendsActive,
                     style: TextStyle(
                       color: palette.bg,
                       fontSize: 11,
@@ -261,10 +260,10 @@ class _BackendRowState extends State<_BackendRow> {
                   Expanded(
                     child: Text(
                       _pinging
-                          ? 'Пингую…'
+                          ? S.of(context)!.backendsPinging
                           : _pingOk == true
-                              ? 'Бэкенд отвечает'
-                              : 'Не отвечает: ${_pingError ?? '?'}',
+                              ? S.of(context)!.backendsOnline
+                              : S.of(context)!.backendsOffline(_pingError ?? '?'),
                       style: TextStyle(
                         fontSize: 12,
                         color: _pingOk == false ? Colors.red : palette.muted,
@@ -279,19 +278,19 @@ class _BackendRowState extends State<_BackendRow> {
             children: [
               TextButton.icon(
                 icon: const Icon(Icons.network_check, size: 16),
-                label: const Text('Пинг'),
+                label: Text(S.of(context)!.backendsPing),
                 onPressed: _pinging ? null : _ping,
               ),
               if (!widget.isActive)
                 TextButton.icon(
                   icon: const Icon(Icons.check_circle_outline, size: 16),
-                  label: const Text('Сделать активным'),
+                  label: Text(S.of(context)!.backendsMakeActive),
                   onPressed: widget.onMakeActive,
                 ),
               const Spacer(),
               IconButton(
                 icon: const Icon(Icons.edit_outlined),
-                tooltip: 'Изменить',
+                tooltip: S.of(context)!.backendsEdit,
                 onPressed: widget.onEdit,
               ),
               IconButton(
@@ -300,8 +299,8 @@ class _BackendRowState extends State<_BackendRow> {
                   color: widget.canDelete ? null : palette.muted,
                 ),
                 tooltip: widget.canDelete
-                    ? 'Удалить'
-                    : 'Должен остаться хотя бы один бэкенд',
+                    ? S.of(context)!.actionDelete
+                    : S.of(context)!.backendsLastOne,
                 onPressed: widget.canDelete ? widget.onDelete : null,
               ),
             ],
@@ -370,7 +369,7 @@ class _BackendEditDialogState extends State<_BackendEditDialog> {
     final url = _url.text.trim();
     if (!_isValidUrl(url)) {
       setState(() {
-        _validationError = 'Введите валидный URL начинающийся с http(s)://';
+        _validationError = S.of(context)!.backendsUrlError;
       });
       return;
     }
@@ -384,16 +383,16 @@ class _BackendEditDialogState extends State<_BackendEditDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(widget.existing == null ? 'Новый бэкенд' : 'Изменить бэкенд'),
+      title: Text(widget.existing == null ? S.of(context)!.backendsNewTitle : S.of(context)!.backendsEditTitle),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           TextField(
             controller: _name,
-            decoration: const InputDecoration(
-              labelText: 'Имя',
-              hintText: 'Прод · Локалка · Запасной',
+            decoration: InputDecoration(
+              labelText: S.of(context)!.backendsName,
+              hintText: S.of(context)!.backendsNameHint,
             ),
           ),
           const SizedBox(height: 12),
@@ -419,7 +418,7 @@ class _BackendEditDialogState extends State<_BackendEditDialog> {
           CheckboxListTile(
             value: _makeActive,
             onChanged: (v) => setState(() => _makeActive = v ?? false),
-            title: const Text('Сделать активным'),
+            title: Text(S.of(context)!.backendsMakeActive),
             controlAffinity: ListTileControlAffinity.leading,
             contentPadding: EdgeInsets.zero,
           ),
@@ -428,11 +427,11 @@ class _BackendEditDialogState extends State<_BackendEditDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Отмена'),
+          child: Text(S.of(context)!.actionCancel),
         ),
         FilledButton(
           onPressed: _submit,
-          child: Text(widget.existing == null ? 'Добавить' : 'Сохранить'),
+          child: Text(widget.existing == null ? S.of(context)!.backendsAdd : S.of(context)!.actionSave),
         ),
       ],
     );
