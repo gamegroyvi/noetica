@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../l10n/generated/app_localizations.dart';
 import '../../data/models.dart';
 import '../../data/personal_knowledge_service.dart';
 import '../../providers.dart';
@@ -524,7 +525,7 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
         ];
         _editList(
           title: 'Предпочтения',
-          hint: 'ключ: значение',
+          hint: S.of(context)!.knowledgePrefHint,
           items: flat,
           apply: (n) {
             final m = <String, String>{};
@@ -624,7 +625,7 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen>
   Future<void> _editSummary(String current) async {
     final next = await _editSheet(
       title: 'О тебе',
-      hint: 'Кратко: кто ты, чем занят, что важно',
+      hint: S.of(context)!.knowledgeContextHint,
       initial: current,
       maxLines: 4,
     );

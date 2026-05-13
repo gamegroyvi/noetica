@@ -153,7 +153,7 @@ class SRu extends S {
   String get taskXp => 'XP';
 
   @override
-  String get editorTitle => 'Заголовок';
+  String get editorTitle => 'Название';
 
   @override
   String get editorBody => 'Текст';
@@ -180,7 +180,9 @@ class SRu extends S {
   String get selfSettings => 'Настройки';
 
   @override
-  String get selfEpoch => 'Эпоха';
+  String selfEpoch(int n) {
+    return 'Эпоха $n';
+  }
 
   @override
   String get selfLevel => 'Уровень';
@@ -828,4 +830,157 @@ class SRu extends S {
 
   @override
   String get dashboardWeekPassed => 'Прошла неделя';
+
+  @override
+  String get pomodoroFocusDone => 'Фокус завершён';
+
+  @override
+  String get pomodoroBreakDone => 'Отдых завершён';
+
+  @override
+  String pomodoroLongBreakBody(int min) {
+    return 'Время длинного отдыха $min мин — нажми «Поехали», когда готов.';
+  }
+
+  @override
+  String pomodoroShortBreakBody(int min) {
+    return 'Короткий отдых $min мин — нажми «Поехали», когда готов.';
+  }
+
+  @override
+  String pomodoroNextFocusBody(int min) {
+    return 'Следующий фокус $min мин — нажми «Поехали», когда готов.';
+  }
+
+  @override
+  String selfEpochNoData(int n) {
+    return 'Эпоха $n · нет данных';
+  }
+
+  @override
+  String selfToNextLevel(int level, int xp) {
+    return 'до L$level: $xp xp';
+  }
+
+  @override
+  String get selfTreeHint => 'Древо вырастает от 3 ветвей. Добавь хотя бы 3 ветви, чтобы увидеть древо.';
+
+  @override
+  String axesSaveError(String error) {
+    return 'Не удалось сохранить: $error';
+  }
+
+  @override
+  String get axesAiDrawing => 'AI рисует новые ветви…';
+
+  @override
+  String axesRegenError(String error) {
+    return 'Не удалось перегенерировать: $error';
+  }
+
+  @override
+  String get axesProfileUpdated => 'Профиль обновлён. Хочешь сразу перегенерировать ветви?';
+
+  @override
+  String get axesAiRedrawHint => 'AI перерисует набор с новыми вводными';
+
+  @override
+  String axesDragHint(int min, int max) {
+    return 'Перетаскивай, переименовывай, добавляй или удаляй (от $min до $max). Чтобы AI перерисовал ветви с нуля — Меню → «Перегенерировать».';
+  }
+
+  @override
+  String axesMaxBranches(int max) {
+    return 'Максимум $max ветвей';
+  }
+
+  @override
+  String get axesRemoveTooltip => 'Удалить';
+
+  @override
+  String get axesMinBranches => 'Минимум 3 ветви';
+
+  @override
+  String get axesNameHint => 'Например: Тело';
+
+  @override
+  String get axesAiNewSet => 'AI составит новый набор. Опиши, что хочешь изменить';
+
+  @override
+  String get axesAiExample => 'например: больше про здоровье и творчество';
+
+  @override
+  String get axisXpTotal => 'XP ВСЕГО';
+
+  @override
+  String axisToEpoch(int n) {
+    return 'ДО Э$n';
+  }
+
+  @override
+  String axisLevelHint(int level, int epoch) {
+    return 'Уровень L$level — от всех закрытых задач. Эпоха Э$epoch — от XP именно этой оси, растёт и после того как древо заполнено на 100 %.';
+  }
+
+  @override
+  String pomodoroCompleted(int n) {
+    return '✦ $n';
+  }
+
+  @override
+  String get pomodoroLongBreakEvery => 'Длинный отдых каждые N фокусов';
+
+  @override
+  String get knowledgeContextHint => 'Кратко: кто ты, чем занят, что важно';
+
+  @override
+  String get knowledgePrefHint => 'ключ: значение';
+
+  @override
+  String get navBranches => 'Ветви';
+
+  @override
+  String get settingsMore => 'Ещё';
+
+  @override
+  String get settingsOnboardAgain => 'Пройти онбординг заново';
+
+  @override
+  String get settingsOnboardAgainHint => 'Обновить интересы, боли, цели и пересобрать ветви';
+
+  @override
+  String get settingsAddBranch => 'Добавить ветвь';
+
+  @override
+  String get editorSymbol => 'Символ';
+
+  @override
+  String get roadmapMinAxes => 'Нужно минимум 3 оси, чтобы построить план.';
+
+  @override
+  String roadmapImported(int n) {
+    return 'Импортировано задач: $n';
+  }
+
+  @override
+  String roadmapImportError(String error) {
+    return 'Не удалось импортировать: $error';
+  }
+
+  @override
+  String get roadmapGoalHint => 'Чем конкретнее — тем точнее план. Например: «Хочу пробежать полумарафон через 3 месяца, текущая форма средняя».';
+
+  @override
+  String get roadmapInputHint => 'Чего хочешь достичь?';
+
+  @override
+  String get roadmapNeedAxes => 'Нужно хотя бы 3 оси. Добавь их на вкладке «Я».';
+
+  @override
+  String get roadmapGenerating => 'Это занимает 5–15 секунд';
+
+  @override
+  String roadmapImportBtn(int n) {
+    return 'Импортировать ($n)';
+  }
 }

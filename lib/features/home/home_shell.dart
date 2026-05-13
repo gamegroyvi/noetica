@@ -77,15 +77,13 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     final svc = PomodoroService.instance;
     final justDone = svc.justCompleted;
     final wasFocus = justDone == PomodoroPhase.focus;
-    final title = wasFocus ? 'Фокус завершён' : 'Отдых завершён';
+    final tr = S.of(context)!;
+    final title = wasFocus ? tr.pomodoroFocusDone : tr.pomodoroBreakDone;
     final body = wasFocus
         ? (svc.phase == PomodoroPhase.longBreak
-            ? 'Время длинного отдыха ${svc.longBreakMinutes} мин — '
-                'нажми «Поехали», когда готов.'
-            : 'Короткий отдых ${svc.breakMinutes} мин — '
-                'нажми «Поехали», когда готов.')
-        : 'Следующий фокус ${svc.focusMinutes} мин — '
-            'нажми «Поехали», когда готов.';
+            ? tr.pomodoroLongBreakBody(svc.longBreakMinutes)
+            : tr.pomodoroShortBreakBody(svc.breakMinutes))
+        : tr.pomodoroNextFocusBody(svc.focusMinutes);
     await showDialog<void>(
       context: context,
       barrierDismissible: false,

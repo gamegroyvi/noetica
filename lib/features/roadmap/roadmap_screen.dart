@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../l10n/generated/app_localizations.dart';
 import '../../data/models.dart';
 import '../../data/personal_knowledge_service.dart';
 import '../../providers.dart';
@@ -80,7 +81,7 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
     if (axes.length < 3) {
       setState(() {
         _stage = _Stage.error;
-        _error = 'Нужно минимум 3 оси, чтобы построить план.';
+        _error = S.of(context)!.roadmapMinAxes;
       });
       return;
     }
@@ -151,14 +152,14 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
       HapticFeedback.mediumImpact();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Импортировано задач: $imported')),
+        SnackBar(content: Text(S.of(context)!.roadmapImported(imported))),
       );
       Navigator.of(context).pop();
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _stage = _Stage.error;
-        _error = 'Не удалось импортировать: $e';
+        _error = S.of(context)!.roadmapImportError('$e');
       });
     } finally {
       if (mounted) setState(() => _importing = false);
@@ -204,7 +205,7 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
         ),
         const SizedBox(height: 6),
         Text(
-          'Чем конкретнее — тем точнее план. Например: «Хочу пробежать полумарафон через 3 месяца, текущая форма средняя».',
+          S.of(context)!.roadmapGoalHint,
           style: Theme.of(context)
               .textTheme
               .bodyMedium
@@ -216,8 +217,8 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
           maxLines: 5,
           minLines: 3,
           textInputAction: TextInputAction.newline,
-          decoration: const InputDecoration(
-            hintText: 'Чего хочешь достичь?',
+          decoration: InputDecoration(
+            hintText: S.of(context)!.roadmapInputHint,
           ),
           onChanged: (_) => setState(() {}),
         ),
@@ -285,15 +286,15 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
         FilledButton(
           onPressed:
               hasAxes && _goalCtrl.text.trim().length >= 3 ? _generate : null,
-          child: const Padding(
-            padding: EdgeInsets.symmetric(vertical: 14),
-            child: Text('Сгенерировать'),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            child: Text(S.of(context)!.dashboardGenerate),
           ),
         ),
         if (!hasAxes) ...[
           const SizedBox(height: 12),
           Text(
-            'Нужно хотя бы 3 оси. Добавь их на вкладке «Я».',
+            S.of(context)!.roadmapNeedAxes,
             style: Theme.of(context)
                 .textTheme
                 .bodySmall
@@ -324,7 +325,7 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Это занимает 5–15 секунд',
+            S.of(context)!.roadmapGenerating,
             style: Theme.of(context)
                 .textTheme
                 .bodySmall
@@ -413,8 +414,8 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           child: Text(
                             _importing
-                                ? 'Импортирую…'
-                                : 'Импортировать ($pickedCount)',
+                                ? '...'
+                                : S.of(context)!.roadmapImportBtn(pickedCount),
                           ),
                         ),
                       ),

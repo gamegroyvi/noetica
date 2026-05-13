@@ -547,8 +547,8 @@ class _EpochChip extends StatelessWidget {
             ],
             Text(
               isCurrent
-                  ? 'Эпоха $epoch · сейчас'
-                  : (hasData ? 'Эпоха $epoch' : 'Эпоха $epoch · нет данных'),
+                  ? '${S.of(context)!.selfEpoch(epoch)} · now'
+                  : (hasData ? S.of(context)!.selfEpoch(epoch) : S.of(context)!.selfEpochNoData(epoch)),
               style: TextStyle(
                 color: fg,
                 fontSize: 12,
@@ -629,7 +629,7 @@ class _ProfileHeader extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              'до L${l.level + 1}: ${l.xpForLevel - l.xpIntoLevel} xp',
+              S.of(context)!.selfToNextLevel(l.level + 1, l.xpForLevel - l.xpIntoLevel),
               style: TextStyle(color: palette.muted, fontSize: 12),
             ),
           ],
@@ -774,8 +774,7 @@ class _EmptyAxes extends StatelessWidget {
           Icon(Icons.workspaces_outline, size: 32, color: palette.muted),
           const SizedBox(height: 12),
           Text(
-            'Древо вырастает от 3 ветвей. Добавь хотя бы 3 ветви, чтобы '
-            'увидеть его.',
+            S.of(context)!.selfTreeHint,
             textAlign: TextAlign.center,
             style: TextStyle(color: palette.muted),
           ),

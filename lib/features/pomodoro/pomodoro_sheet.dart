@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../l10n/generated/app_localizations.dart';
 import '../../services/pomodoro_service.dart';
 import '../../theme/app_theme.dart';
 
@@ -319,7 +320,7 @@ class _SettingsPanel extends StatelessWidget {
             palette: palette,
           ),
           _Stepper(
-            label: 'Длинный отдых каждые N фокусов',
+            label: S.of(context)!.pomodoroLongBreakEvery,
             value: longBreakEvery,
             onChanged: (v) => onChange(longEvery: v),
             min: 2,

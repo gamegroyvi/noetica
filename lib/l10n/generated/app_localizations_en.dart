@@ -180,7 +180,9 @@ class SEn extends S {
   String get selfSettings => 'Settings';
 
   @override
-  String get selfEpoch => 'Epoch';
+  String selfEpoch(int n) {
+    return 'Epoch $n';
+  }
 
   @override
   String get selfLevel => 'Level';
@@ -826,4 +828,157 @@ class SEn extends S {
 
   @override
   String get dashboardWeekPassed => 'A week has passed';
+
+  @override
+  String get pomodoroFocusDone => 'Focus complete';
+
+  @override
+  String get pomodoroBreakDone => 'Break complete';
+
+  @override
+  String pomodoroLongBreakBody(int min) {
+    return 'Long break $min min — press «Go» when ready.';
+  }
+
+  @override
+  String pomodoroShortBreakBody(int min) {
+    return 'Short break $min min — press «Go» when ready.';
+  }
+
+  @override
+  String pomodoroNextFocusBody(int min) {
+    return 'Next focus $min min — press «Go» when ready.';
+  }
+
+  @override
+  String selfEpochNoData(int n) {
+    return 'Epoch $n · no data';
+  }
+
+  @override
+  String selfToNextLevel(int level, int xp) {
+    return 'to L$level: $xp xp';
+  }
+
+  @override
+  String get selfTreeHint => 'The tree grows from 3 branches. Add at least 3 branches to see the tree.';
+
+  @override
+  String axesSaveError(String error) {
+    return 'Failed to save: $error';
+  }
+
+  @override
+  String get axesAiDrawing => 'AI is drawing new branches…';
+
+  @override
+  String axesRegenError(String error) {
+    return 'Failed to regenerate: $error';
+  }
+
+  @override
+  String get axesProfileUpdated => 'Profile updated. Regenerate branches now?';
+
+  @override
+  String get axesAiRedrawHint => 'AI will redraw the set with new inputs';
+
+  @override
+  String axesDragHint(int min, int max) {
+    return 'Drag, rename, add or remove ($min to $max). To have AI redraw branches from scratch — Menu → «Regenerate».';
+  }
+
+  @override
+  String axesMaxBranches(int max) {
+    return 'Maximum $max branches';
+  }
+
+  @override
+  String get axesRemoveTooltip => 'Remove';
+
+  @override
+  String get axesMinBranches => 'Minimum 3 branches';
+
+  @override
+  String get axesNameHint => 'e.g. Body';
+
+  @override
+  String get axesAiNewSet => 'AI will create a new set. Describe what to change';
+
+  @override
+  String get axesAiExample => 'e.g. more about health and creativity';
+
+  @override
+  String get axisXpTotal => 'TOTAL XP';
+
+  @override
+  String axisToEpoch(int n) {
+    return 'TO E$n';
+  }
+
+  @override
+  String axisLevelHint(int level, int epoch) {
+    return 'Level L$level — from all completed tasks. Epoch E$epoch — from XP of this axis only, grows even after the tree is 100% full.';
+  }
+
+  @override
+  String pomodoroCompleted(int n) {
+    return '✦ $n';
+  }
+
+  @override
+  String get pomodoroLongBreakEvery => 'Long break every N focuses';
+
+  @override
+  String get knowledgeContextHint => 'Briefly: who you are, what you do, what matters';
+
+  @override
+  String get knowledgePrefHint => 'key: value';
+
+  @override
+  String get navBranches => 'Branches';
+
+  @override
+  String get settingsMore => 'More';
+
+  @override
+  String get settingsOnboardAgain => 'Re-run onboarding';
+
+  @override
+  String get settingsOnboardAgainHint => 'Update interests, goals, and regenerate branches';
+
+  @override
+  String get settingsAddBranch => 'Add branch';
+
+  @override
+  String get editorSymbol => 'Symbol';
+
+  @override
+  String get roadmapMinAxes => 'Need at least 3 axes to build a plan.';
+
+  @override
+  String roadmapImported(int n) {
+    return 'Imported tasks: $n';
+  }
+
+  @override
+  String roadmapImportError(String error) {
+    return 'Failed to import: $error';
+  }
+
+  @override
+  String get roadmapGoalHint => 'The more specific, the better the plan. Example: «I want to run a half marathon in 3 months, current fitness is average».';
+
+  @override
+  String get roadmapInputHint => 'What do you want to achieve?';
+
+  @override
+  String get roadmapNeedAxes => 'Need at least 3 axes. Add them in the «Self» tab.';
+
+  @override
+  String get roadmapGenerating => 'This takes 5–15 seconds';
+
+  @override
+  String roadmapImportBtn(int n) {
+    return 'Import ($n)';
+  }
 }

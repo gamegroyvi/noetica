@@ -386,7 +386,7 @@ abstract class S {
   /// No description provided for @editorTitle.
   ///
   /// In ru, this message translates to:
-  /// **'Заголовок'**
+  /// **'Название'**
   String get editorTitle;
 
   /// No description provided for @editorBody.
@@ -440,8 +440,8 @@ abstract class S {
   /// No description provided for @selfEpoch.
   ///
   /// In ru, this message translates to:
-  /// **'Эпоха'**
-  String get selfEpoch;
+  /// **'Эпоха {n}'**
+  String selfEpoch(int n);
 
   /// No description provided for @selfLevel.
   ///
@@ -1618,6 +1618,252 @@ abstract class S {
   /// In ru, this message translates to:
   /// **'Прошла неделя'**
   String get dashboardWeekPassed;
+
+  /// No description provided for @pomodoroFocusDone.
+  ///
+  /// In ru, this message translates to:
+  /// **'Фокус завершён'**
+  String get pomodoroFocusDone;
+
+  /// No description provided for @pomodoroBreakDone.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отдых завершён'**
+  String get pomodoroBreakDone;
+
+  /// No description provided for @pomodoroLongBreakBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Время длинного отдыха {min} мин — нажми «Поехали», когда готов.'**
+  String pomodoroLongBreakBody(int min);
+
+  /// No description provided for @pomodoroShortBreakBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Короткий отдых {min} мин — нажми «Поехали», когда готов.'**
+  String pomodoroShortBreakBody(int min);
+
+  /// No description provided for @pomodoroNextFocusBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Следующий фокус {min} мин — нажми «Поехали», когда готов.'**
+  String pomodoroNextFocusBody(int min);
+
+  /// No description provided for @selfEpochNoData.
+  ///
+  /// In ru, this message translates to:
+  /// **'Эпоха {n} · нет данных'**
+  String selfEpochNoData(int n);
+
+  /// No description provided for @selfToNextLevel.
+  ///
+  /// In ru, this message translates to:
+  /// **'до L{level}: {xp} xp'**
+  String selfToNextLevel(int level, int xp);
+
+  /// No description provided for @selfTreeHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Древо вырастает от 3 ветвей. Добавь хотя бы 3 ветви, чтобы увидеть древо.'**
+  String get selfTreeHint;
+
+  /// No description provided for @axesSaveError.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось сохранить: {error}'**
+  String axesSaveError(String error);
+
+  /// No description provided for @axesAiDrawing.
+  ///
+  /// In ru, this message translates to:
+  /// **'AI рисует новые ветви…'**
+  String get axesAiDrawing;
+
+  /// No description provided for @axesRegenError.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось перегенерировать: {error}'**
+  String axesRegenError(String error);
+
+  /// No description provided for @axesProfileUpdated.
+  ///
+  /// In ru, this message translates to:
+  /// **'Профиль обновлён. Хочешь сразу перегенерировать ветви?'**
+  String get axesProfileUpdated;
+
+  /// No description provided for @axesAiRedrawHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'AI перерисует набор с новыми вводными'**
+  String get axesAiRedrawHint;
+
+  /// No description provided for @axesDragHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Перетаскивай, переименовывай, добавляй или удаляй (от {min} до {max}). Чтобы AI перерисовал ветви с нуля — Меню → «Перегенерировать».'**
+  String axesDragHint(int min, int max);
+
+  /// No description provided for @axesMaxBranches.
+  ///
+  /// In ru, this message translates to:
+  /// **'Максимум {max} ветвей'**
+  String axesMaxBranches(int max);
+
+  /// No description provided for @axesRemoveTooltip.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удалить'**
+  String get axesRemoveTooltip;
+
+  /// No description provided for @axesMinBranches.
+  ///
+  /// In ru, this message translates to:
+  /// **'Минимум 3 ветви'**
+  String get axesMinBranches;
+
+  /// No description provided for @axesNameHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Например: Тело'**
+  String get axesNameHint;
+
+  /// No description provided for @axesAiNewSet.
+  ///
+  /// In ru, this message translates to:
+  /// **'AI составит новый набор. Опиши, что хочешь изменить'**
+  String get axesAiNewSet;
+
+  /// No description provided for @axesAiExample.
+  ///
+  /// In ru, this message translates to:
+  /// **'например: больше про здоровье и творчество'**
+  String get axesAiExample;
+
+  /// No description provided for @axisXpTotal.
+  ///
+  /// In ru, this message translates to:
+  /// **'XP ВСЕГО'**
+  String get axisXpTotal;
+
+  /// No description provided for @axisToEpoch.
+  ///
+  /// In ru, this message translates to:
+  /// **'ДО Э{n}'**
+  String axisToEpoch(int n);
+
+  /// No description provided for @axisLevelHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Уровень L{level} — от всех закрытых задач. Эпоха Э{epoch} — от XP именно этой оси, растёт и после того как древо заполнено на 100 %.'**
+  String axisLevelHint(int level, int epoch);
+
+  /// No description provided for @pomodoroCompleted.
+  ///
+  /// In ru, this message translates to:
+  /// **'✦ {n}'**
+  String pomodoroCompleted(int n);
+
+  /// No description provided for @pomodoroLongBreakEvery.
+  ///
+  /// In ru, this message translates to:
+  /// **'Длинный отдых каждые N фокусов'**
+  String get pomodoroLongBreakEvery;
+
+  /// No description provided for @knowledgeContextHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Кратко: кто ты, чем занят, что важно'**
+  String get knowledgeContextHint;
+
+  /// No description provided for @knowledgePrefHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'ключ: значение'**
+  String get knowledgePrefHint;
+
+  /// No description provided for @navBranches.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ветви'**
+  String get navBranches;
+
+  /// No description provided for @settingsMore.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ещё'**
+  String get settingsMore;
+
+  /// No description provided for @settingsOnboardAgain.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пройти онбординг заново'**
+  String get settingsOnboardAgain;
+
+  /// No description provided for @settingsOnboardAgainHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обновить интересы, боли, цели и пересобрать ветви'**
+  String get settingsOnboardAgainHint;
+
+  /// No description provided for @settingsAddBranch.
+  ///
+  /// In ru, this message translates to:
+  /// **'Добавить ветвь'**
+  String get settingsAddBranch;
+
+  /// No description provided for @editorSymbol.
+  ///
+  /// In ru, this message translates to:
+  /// **'Символ'**
+  String get editorSymbol;
+
+  /// No description provided for @roadmapMinAxes.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нужно минимум 3 оси, чтобы построить план.'**
+  String get roadmapMinAxes;
+
+  /// No description provided for @roadmapImported.
+  ///
+  /// In ru, this message translates to:
+  /// **'Импортировано задач: {n}'**
+  String roadmapImported(int n);
+
+  /// No description provided for @roadmapImportError.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось импортировать: {error}'**
+  String roadmapImportError(String error);
+
+  /// No description provided for @roadmapGoalHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Чем конкретнее — тем точнее план. Например: «Хочу пробежать полумарафон через 3 месяца, текущая форма средняя».'**
+  String get roadmapGoalHint;
+
+  /// No description provided for @roadmapInputHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Чего хочешь достичь?'**
+  String get roadmapInputHint;
+
+  /// No description provided for @roadmapNeedAxes.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нужно хотя бы 3 оси. Добавь их на вкладке «Я».'**
+  String get roadmapNeedAxes;
+
+  /// No description provided for @roadmapGenerating.
+  ///
+  /// In ru, this message translates to:
+  /// **'Это занимает 5–15 секунд'**
+  String get roadmapGenerating;
+
+  /// No description provided for @roadmapImportBtn.
+  ///
+  /// In ru, this message translates to:
+  /// **'Импортировать ({n})'**
+  String roadmapImportBtn(int n);
 }
 
 class _SDelegate extends LocalizationsDelegate<S> {
