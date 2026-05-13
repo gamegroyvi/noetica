@@ -2662,6 +2662,372 @@ abstract class S {
   /// In ru, this message translates to:
   /// **'Добавить {n} задач'**
   String habitsAddTasks(int n);
+
+  /// No description provided for @coachMorningTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Утренний план'**
+  String get coachMorningTitle;
+
+  /// No description provided for @coachEveningTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Вечерний разбор'**
+  String get coachEveningTitle;
+
+  /// No description provided for @coachRefresh.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обновить'**
+  String get coachRefresh;
+
+  /// No description provided for @coachError.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось получить совет'**
+  String get coachError;
+
+  /// No description provided for @coachRetry.
+  ///
+  /// In ru, this message translates to:
+  /// **'Повторить'**
+  String get coachRetry;
+
+  /// No description provided for @coachFocus.
+  ///
+  /// In ru, this message translates to:
+  /// **'Фокус дня'**
+  String get coachFocus;
+
+  /// No description provided for @coachPlanToday.
+  ///
+  /// In ru, this message translates to:
+  /// **'План на сегодня'**
+  String get coachPlanToday;
+
+  /// No description provided for @coachMotivation.
+  ///
+  /// In ru, this message translates to:
+  /// **'Мотивация'**
+  String get coachMotivation;
+
+  /// No description provided for @coachDayResults.
+  ///
+  /// In ru, this message translates to:
+  /// **'Итоги дня'**
+  String get coachDayResults;
+
+  /// No description provided for @coachSummary.
+  ///
+  /// In ru, this message translates to:
+  /// **'Резюме'**
+  String get coachSummary;
+
+  /// No description provided for @coachWins.
+  ///
+  /// In ru, this message translates to:
+  /// **'Что получилось'**
+  String get coachWins;
+
+  /// No description provided for @coachImprove.
+  ///
+  /// In ru, this message translates to:
+  /// **'Что улучшить'**
+  String get coachImprove;
+
+  /// No description provided for @coachTomorrow.
+  ///
+  /// In ru, this message translates to:
+  /// **'На завтра'**
+  String get coachTomorrow;
+
+  /// No description provided for @reflectionResult.
+  ///
+  /// In ru, this message translates to:
+  /// **'Что получилось / результат'**
+  String get reflectionResult;
+
+  /// No description provided for @reflectionDifficulties.
+  ///
+  /// In ru, this message translates to:
+  /// **'Что мешало / сложности'**
+  String get reflectionDifficulties;
+
+  /// No description provided for @reflectionMinutes.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сколько потратил, мин'**
+  String get reflectionMinutes;
+
+  /// No description provided for @reflectionCanSkip.
+  ///
+  /// In ru, this message translates to:
+  /// **'Можно пропустить'**
+  String get reflectionCanSkip;
+
+  /// No description provided for @toolsTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ассистент'**
+  String get toolsTitle;
+
+  /// No description provided for @toolsAvailable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Доступно'**
+  String get toolsAvailable;
+
+  /// No description provided for @toolsSoon.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скоро'**
+  String get toolsSoon;
+
+  /// No description provided for @toolsDescriptionFull.
+  ///
+  /// In ru, this message translates to:
+  /// **'AI собирает готовые планы и раскладывает их по твоим дням, осям и тегам. Меню на неделю, программа тренировок, учебный курс — всё попадает в Календарь и Задачи как обычные записи.'**
+  String get toolsDescriptionFull;
+
+  /// No description provided for @toolsOpening.
+  ///
+  /// In ru, this message translates to:
+  /// **'Открываю «{title}»…'**
+  String toolsOpening(String title);
+
+  /// No description provided for @toolsComingSoon.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скоро: «{title}»'**
+  String toolsComingSoon(String title);
+
+  /// No description provided for @authLoginError.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось войти: {error}'**
+  String authLoginError(String error);
+
+  /// No description provided for @authWait.
+  ///
+  /// In ru, this message translates to:
+  /// **'Подождите…'**
+  String get authWait;
+
+  /// No description provided for @authLoginGoogle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Войти через Google'**
+  String get authLoginGoogle;
+
+  /// No description provided for @authSyncHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ваши данные синхронизируются между устройствами под одним Google-аккаунтом. Без входа приложение не работает.'**
+  String get authSyncHint;
+
+  /// No description provided for @dayCalendar.
+  ///
+  /// In ru, this message translates to:
+  /// **'Календарь'**
+  String get dayCalendar;
+
+  /// No description provided for @dayPlanTask.
+  ///
+  /// In ru, this message translates to:
+  /// **'Запланировать задачу'**
+  String get dayPlanTask;
+
+  /// No description provided for @dayEmpty.
+  ///
+  /// In ru, this message translates to:
+  /// **'В этот день ничего не закрыто и не запланировано.'**
+  String get dayEmpty;
+
+  /// No description provided for @dayNoEntries.
+  ///
+  /// In ru, this message translates to:
+  /// **'Без записей.'**
+  String get dayNoEntries;
+
+  /// No description provided for @dayToday.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сегодня'**
+  String get dayToday;
+
+  /// No description provided for @dayYesterday.
+  ///
+  /// In ru, this message translates to:
+  /// **'Вчера'**
+  String get dayYesterday;
+
+  /// No description provided for @dayTomorrow.
+  ///
+  /// In ru, this message translates to:
+  /// **'Завтра'**
+  String get dayTomorrow;
+
+  /// No description provided for @dayMonths.
+  ///
+  /// In ru, this message translates to:
+  /// **'янв,фев,мар,апр,мая,июн,июл,авг,сен,окт,ноя,дек'**
+  String get dayMonths;
+
+  /// No description provided for @dayWeekdays.
+  ///
+  /// In ru, this message translates to:
+  /// **'пн,вт,ср,чт,пт,сб,вс'**
+  String get dayWeekdays;
+
+  /// No description provided for @dayDone.
+  ///
+  /// In ru, this message translates to:
+  /// **'✓ Выполнено ({n})'**
+  String dayDone(int n);
+
+  /// No description provided for @dayDeadlines.
+  ///
+  /// In ru, this message translates to:
+  /// **'⏳ Дедлайны ({n})'**
+  String dayDeadlines(int n);
+
+  /// No description provided for @daySummaryClosed.
+  ///
+  /// In ru, this message translates to:
+  /// **'{n} закрыто · +{xp} XP'**
+  String daySummaryClosed(int n, int xp);
+
+  /// No description provided for @daySummaryDeadline.
+  ///
+  /// In ru, this message translates to:
+  /// **'{n} дедлайн'**
+  String daySummaryDeadline(int n);
+
+  /// No description provided for @untitled.
+  ///
+  /// In ru, this message translates to:
+  /// **'(без названия)'**
+  String get untitled;
+
+  /// No description provided for @weeklyTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Недельный обзор'**
+  String get weeklyTitle;
+
+  /// No description provided for @weeklyAxis.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ось'**
+  String get weeklyAxis;
+
+  /// No description provided for @weeklyCompleted.
+  ///
+  /// In ru, this message translates to:
+  /// **'Завершено'**
+  String get weeklyCompleted;
+
+  /// No description provided for @weeklyXP.
+  ///
+  /// In ru, this message translates to:
+  /// **'Опыт'**
+  String get weeklyXP;
+
+  /// No description provided for @weeklyTasks.
+  ///
+  /// In ru, this message translates to:
+  /// **'Задач'**
+  String get weeklyTasks;
+
+  /// No description provided for @weeklyNotes.
+  ///
+  /// In ru, this message translates to:
+  /// **'Заметок'**
+  String get weeklyNotes;
+
+  /// No description provided for @weeklyStreak.
+  ///
+  /// In ru, this message translates to:
+  /// **'Стрик'**
+  String get weeklyStreak;
+
+  /// No description provided for @weeklyBestDay.
+  ///
+  /// In ru, this message translates to:
+  /// **'Лучший день'**
+  String get weeklyBestDay;
+
+  /// No description provided for @weeklyWorstDay.
+  ///
+  /// In ru, this message translates to:
+  /// **'Слабый день'**
+  String get weeklyWorstDay;
+
+  /// No description provided for @weeklyHighlights.
+  ///
+  /// In ru, this message translates to:
+  /// **'Главное за неделю'**
+  String get weeklyHighlights;
+
+  /// No description provided for @weeklyAdvice.
+  ///
+  /// In ru, this message translates to:
+  /// **'Совет на следующую'**
+  String get weeklyAdvice;
+
+  /// No description provided for @weeklyNoData.
+  ///
+  /// In ru, this message translates to:
+  /// **'Недостаточно данных'**
+  String get weeklyNoData;
+
+  /// No description provided for @weeklyDays.
+  ///
+  /// In ru, this message translates to:
+  /// **'пн,вт,ср,чт,пт,сб,вс'**
+  String get weeklyDays;
+
+  /// No description provided for @weeklyMonths.
+  ///
+  /// In ru, this message translates to:
+  /// **'янв,фев,мар,апр,мая,июн,июл,авг,сен,окт,ноя,дек'**
+  String get weeklyMonths;
+
+  /// No description provided for @weeklyDone.
+  ///
+  /// In ru, this message translates to:
+  /// **'выполнено'**
+  String get weeklyDone;
+
+  /// No description provided for @weeklyCreated.
+  ///
+  /// In ru, this message translates to:
+  /// **'создано'**
+  String get weeklyCreated;
+
+  /// No description provided for @weeklyGenerating.
+  ///
+  /// In ru, this message translates to:
+  /// **'AI анализирует неделю…'**
+  String get weeklyGenerating;
+
+  /// No description provided for @weeklyShare.
+  ///
+  /// In ru, this message translates to:
+  /// **'Поделиться'**
+  String get weeklyShare;
+
+  /// No description provided for @weeklyClose.
+  ///
+  /// In ru, this message translates to:
+  /// **'Закрыть'**
+  String get weeklyClose;
+
+  /// No description provided for @weeklyTotal.
+  ///
+  /// In ru, this message translates to:
+  /// **'итого'**
+  String get weeklyTotal;
 }
 
 class _SDelegate extends LocalizationsDelegate<S> {

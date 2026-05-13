@@ -1470,4 +1470,201 @@ class SRu extends S {
   String habitsAddTasks(int n) {
     return 'Добавить $n задач';
   }
+
+  @override
+  String get coachMorningTitle => 'Утренний план';
+
+  @override
+  String get coachEveningTitle => 'Вечерний разбор';
+
+  @override
+  String get coachRefresh => 'Обновить';
+
+  @override
+  String get coachError => 'Не удалось получить совет';
+
+  @override
+  String get coachRetry => 'Повторить';
+
+  @override
+  String get coachFocus => 'Фокус дня';
+
+  @override
+  String get coachPlanToday => 'План на сегодня';
+
+  @override
+  String get coachMotivation => 'Мотивация';
+
+  @override
+  String get coachDayResults => 'Итоги дня';
+
+  @override
+  String get coachSummary => 'Резюме';
+
+  @override
+  String get coachWins => 'Что получилось';
+
+  @override
+  String get coachImprove => 'Что улучшить';
+
+  @override
+  String get coachTomorrow => 'На завтра';
+
+  @override
+  String get reflectionResult => 'Что получилось / результат';
+
+  @override
+  String get reflectionDifficulties => 'Что мешало / сложности';
+
+  @override
+  String get reflectionMinutes => 'Сколько потратил, мин';
+
+  @override
+  String get reflectionCanSkip => 'Можно пропустить';
+
+  @override
+  String get toolsTitle => 'Ассистент';
+
+  @override
+  String get toolsAvailable => 'Доступно';
+
+  @override
+  String get toolsSoon => 'Скоро';
+
+  @override
+  String get toolsDescriptionFull => 'AI собирает готовые планы и раскладывает их по твоим дням, осям и тегам. Меню на неделю, программа тренировок, учебный курс — всё попадает в Календарь и Задачи как обычные записи.';
+
+  @override
+  String toolsOpening(String title) {
+    return 'Открываю «$title»…';
+  }
+
+  @override
+  String toolsComingSoon(String title) {
+    return 'Скоро: «$title»';
+  }
+
+  @override
+  String authLoginError(String error) {
+    return 'Не удалось войти: $error';
+  }
+
+  @override
+  String get authWait => 'Подождите…';
+
+  @override
+  String get authLoginGoogle => 'Войти через Google';
+
+  @override
+  String get authSyncHint => 'Ваши данные синхронизируются между устройствами под одним Google-аккаунтом. Без входа приложение не работает.';
+
+  @override
+  String get dayCalendar => 'Календарь';
+
+  @override
+  String get dayPlanTask => 'Запланировать задачу';
+
+  @override
+  String get dayEmpty => 'В этот день ничего не закрыто и не запланировано.';
+
+  @override
+  String get dayNoEntries => 'Без записей.';
+
+  @override
+  String get dayToday => 'Сегодня';
+
+  @override
+  String get dayYesterday => 'Вчера';
+
+  @override
+  String get dayTomorrow => 'Завтра';
+
+  @override
+  String get dayMonths => 'янв,фев,мар,апр,мая,июн,июл,авг,сен,окт,ноя,дек';
+
+  @override
+  String get dayWeekdays => 'пн,вт,ср,чт,пт,сб,вс';
+
+  @override
+  String dayDone(int n) {
+    return '✓ Выполнено ($n)';
+  }
+
+  @override
+  String dayDeadlines(int n) {
+    return '⏳ Дедлайны ($n)';
+  }
+
+  @override
+  String daySummaryClosed(int n, int xp) {
+    return '$n закрыто · +$xp XP';
+  }
+
+  @override
+  String daySummaryDeadline(int n) {
+    return '$n дедлайн';
+  }
+
+  @override
+  String get untitled => '(без названия)';
+
+  @override
+  String get weeklyTitle => 'Недельный обзор';
+
+  @override
+  String get weeklyAxis => 'Ось';
+
+  @override
+  String get weeklyCompleted => 'Завершено';
+
+  @override
+  String get weeklyXP => 'Опыт';
+
+  @override
+  String get weeklyTasks => 'Задач';
+
+  @override
+  String get weeklyNotes => 'Заметок';
+
+  @override
+  String get weeklyStreak => 'Стрик';
+
+  @override
+  String get weeklyBestDay => 'Лучший день';
+
+  @override
+  String get weeklyWorstDay => 'Слабый день';
+
+  @override
+  String get weeklyHighlights => 'Главное за неделю';
+
+  @override
+  String get weeklyAdvice => 'Совет на следующую';
+
+  @override
+  String get weeklyNoData => 'Недостаточно данных';
+
+  @override
+  String get weeklyDays => 'пн,вт,ср,чт,пт,сб,вс';
+
+  @override
+  String get weeklyMonths => 'янв,фев,мар,апр,мая,июн,июл,авг,сен,окт,ноя,дек';
+
+  @override
+  String get weeklyDone => 'выполнено';
+
+  @override
+  String get weeklyCreated => 'создано';
+
+  @override
+  String get weeklyGenerating => 'AI анализирует неделю…';
+
+  @override
+  String get weeklyShare => 'Поделиться';
+
+  @override
+  String get weeklyClose => 'Закрыть';
+
+  @override
+  String get weeklyTotal => 'итого';
 }

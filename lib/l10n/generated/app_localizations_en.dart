@@ -1468,4 +1468,201 @@ class SEn extends S {
   String habitsAddTasks(int n) {
     return 'Add $n tasks';
   }
+
+  @override
+  String get coachMorningTitle => 'Morning plan';
+
+  @override
+  String get coachEveningTitle => 'Evening review';
+
+  @override
+  String get coachRefresh => 'Refresh';
+
+  @override
+  String get coachError => 'Could not get advice';
+
+  @override
+  String get coachRetry => 'Retry';
+
+  @override
+  String get coachFocus => 'Focus of the day';
+
+  @override
+  String get coachPlanToday => 'Plan for today';
+
+  @override
+  String get coachMotivation => 'Motivation';
+
+  @override
+  String get coachDayResults => 'Day results';
+
+  @override
+  String get coachSummary => 'Summary';
+
+  @override
+  String get coachWins => 'What went well';
+
+  @override
+  String get coachImprove => 'What to improve';
+
+  @override
+  String get coachTomorrow => 'For tomorrow';
+
+  @override
+  String get reflectionResult => 'What went well / result';
+
+  @override
+  String get reflectionDifficulties => 'What was difficult / obstacles';
+
+  @override
+  String get reflectionMinutes => 'Time spent, min';
+
+  @override
+  String get reflectionCanSkip => 'Can skip';
+
+  @override
+  String get toolsTitle => 'Assistant';
+
+  @override
+  String get toolsAvailable => 'Available';
+
+  @override
+  String get toolsSoon => 'Coming soon';
+
+  @override
+  String get toolsDescriptionFull => 'AI compiles ready-made plans and distributes them across your days, axes and tags. Weekly menu, workout program, study course — everything goes to Calendar and Tasks as regular entries.';
+
+  @override
+  String toolsOpening(String title) {
+    return 'Opening «$title»…';
+  }
+
+  @override
+  String toolsComingSoon(String title) {
+    return 'Coming soon: «$title»';
+  }
+
+  @override
+  String authLoginError(String error) {
+    return 'Login failed: $error';
+  }
+
+  @override
+  String get authWait => 'Please wait…';
+
+  @override
+  String get authLoginGoogle => 'Sign in with Google';
+
+  @override
+  String get authSyncHint => 'Your data syncs between devices under one Google account. The app doesn\'t work without signing in.';
+
+  @override
+  String get dayCalendar => 'Calendar';
+
+  @override
+  String get dayPlanTask => 'Plan a task';
+
+  @override
+  String get dayEmpty => 'Nothing closed or planned for this day.';
+
+  @override
+  String get dayNoEntries => 'No entries.';
+
+  @override
+  String get dayToday => 'Today';
+
+  @override
+  String get dayYesterday => 'Yesterday';
+
+  @override
+  String get dayTomorrow => 'Tomorrow';
+
+  @override
+  String get dayMonths => 'Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec';
+
+  @override
+  String get dayWeekdays => 'Mon,Tue,Wed,Thu,Fri,Sat,Sun';
+
+  @override
+  String dayDone(int n) {
+    return '✓ Completed ($n)';
+  }
+
+  @override
+  String dayDeadlines(int n) {
+    return '⏳ Deadlines ($n)';
+  }
+
+  @override
+  String daySummaryClosed(int n, int xp) {
+    return '$n closed · +$xp XP';
+  }
+
+  @override
+  String daySummaryDeadline(int n) {
+    return '$n deadline';
+  }
+
+  @override
+  String get untitled => '(untitled)';
+
+  @override
+  String get weeklyTitle => 'Weekly review';
+
+  @override
+  String get weeklyAxis => 'Axis';
+
+  @override
+  String get weeklyCompleted => 'Completed';
+
+  @override
+  String get weeklyXP => 'XP';
+
+  @override
+  String get weeklyTasks => 'Tasks';
+
+  @override
+  String get weeklyNotes => 'Notes';
+
+  @override
+  String get weeklyStreak => 'Streak';
+
+  @override
+  String get weeklyBestDay => 'Best day';
+
+  @override
+  String get weeklyWorstDay => 'Weakest day';
+
+  @override
+  String get weeklyHighlights => 'Week highlights';
+
+  @override
+  String get weeklyAdvice => 'Advice for next week';
+
+  @override
+  String get weeklyNoData => 'Not enough data';
+
+  @override
+  String get weeklyDays => 'Mon,Tue,Wed,Thu,Fri,Sat,Sun';
+
+  @override
+  String get weeklyMonths => 'Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec';
+
+  @override
+  String get weeklyDone => 'completed';
+
+  @override
+  String get weeklyCreated => 'created';
+
+  @override
+  String get weeklyGenerating => 'AI is analyzing your week…';
+
+  @override
+  String get weeklyShare => 'Share';
+
+  @override
+  String get weeklyClose => 'Close';
+
+  @override
+  String get weeklyTotal => 'total';
 }

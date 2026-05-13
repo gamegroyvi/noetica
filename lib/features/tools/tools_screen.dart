@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../l10n/generated/app_localizations.dart';
 import '../../providers.dart';
 import '../../services/generator_manifest.dart';
 import '../../theme/app_theme.dart';
@@ -42,7 +43,7 @@ class ToolsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Ассистент'),
+        title: Text(S.of(context)!.toolsTitle),
       ),
       body: SafeArea(
         bottom: false,
@@ -68,7 +69,7 @@ class ToolsScreen extends ConsumerWidget {
                         if (available.isNotEmpty) ...[
                           const SizedBox(height: 28),
                           _SectionLabel(
-                            'Доступно',
+                            S.of(context)!.toolsAvailable,
                             theme: theme,
                             palette: palette,
                           ),
@@ -82,7 +83,7 @@ class ToolsScreen extends ConsumerWidget {
                         if (soon.isNotEmpty) ...[
                           const SizedBox(height: 28),
                           _SectionLabel(
-                            'Скоро',
+                            S.of(context)!.toolsSoon,
                             theme: theme,
                             palette: palette,
                           ),
@@ -143,7 +144,7 @@ class _Header extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Ассистент',
+                  S.of(context)!.toolsTitle,
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w800,
                   ),
@@ -153,9 +154,7 @@ class _Header extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'AI собирает готовые планы и раскладывает их по твоим дням, '
-            'осям и тегам. Меню на неделю, программа тренировок, учебный '
-            'курс — всё попадает в Календарь и Задачи как обычные записи.',
+            S.of(context)!.toolsDescriptionFull,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: palette.muted,
               height: 1.45,
@@ -402,8 +401,8 @@ class _ToolCard extends StatelessWidget {
         duration: const Duration(seconds: 2),
         content: Text(
           interactable
-              ? 'Открываю «${tool.title}»…'
-              : 'Скоро: «${tool.title}»',
+              ? S.of(context)!.toolsOpening(tool.title)
+              : S.of(context)!.toolsComingSoon(tool.title),
         ),
       ),
     );
@@ -420,7 +419,7 @@ class _StatusPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final (label, fg, bg) = switch (status) {
       GeneratorStatus.available => (
-        'Доступно',
+        S.of(context)!.toolsAvailable,
         palette.bg,
         palette.fg,
       ),
@@ -430,7 +429,7 @@ class _StatusPill extends StatelessWidget {
         palette.surface,
       ),
       GeneratorStatus.soon => (
-        'Скоро',
+        S.of(context)!.toolsSoon,
         palette.muted,
         palette.bg,
       ),

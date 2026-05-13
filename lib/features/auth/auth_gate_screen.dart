@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../l10n/generated/app_localizations.dart';
 import '../../providers.dart';
 import '../../services/auth_service.dart';
 
@@ -25,7 +26,7 @@ class _AuthGateScreenState extends ConsumerState<AuthGateScreen> {
     } on AuthException catch (e) {
       setState(() => _error = e.message);
     } catch (e) {
-      setState(() => _error = 'Не удалось войти: $e');
+      setState(() => _error = S.of(context)!.authLoginError('$e'));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -73,7 +74,7 @@ class _AuthGateScreenState extends ConsumerState<AuthGateScreen> {
                   label: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     child: Text(
-                      _busy ? 'Подождите…' : 'Войти через Google',
+                      _busy ? S.of(context)!.authWait : S.of(context)!.authLoginGoogle,
                       style: const TextStyle(letterSpacing: 1),
                     ),
                   ),
@@ -90,7 +91,7 @@ class _AuthGateScreenState extends ConsumerState<AuthGateScreen> {
                 ],
                 const SizedBox(height: 48),
                 Text(
-                  'Ваши данные синхронизируются между устройствами под одним Google-аккаунтом. Без входа приложение не работает.',
+                  S.of(context)!.authSyncHint,
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurface.withOpacity(0.5),

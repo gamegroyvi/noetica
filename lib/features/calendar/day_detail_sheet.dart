@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../l10n/generated/app_localizations.dart';
 import '../../data/models.dart';
 import '../../providers.dart';
 import '../../theme/app_theme.dart';
@@ -89,7 +90,7 @@ class _DayDetailSheet extends ConsumerWidget {
                     if (onOpenCalendar != null)
                       TextButton.icon(
                         icon: const Icon(Icons.calendar_month, size: 18),
-                        label: const Text('Календарь'),
+                        label: Text(S.of(context)!.dayCalendar),
                         onPressed: () {
                           Navigator.of(context).pop();
                           onOpenCalendar!();
@@ -130,7 +131,7 @@ class _DayDetailSheet extends ConsumerWidget {
                       );
                     },
                     icon: const Icon(Icons.add, size: 18),
-                    label: const Text('Запланировать задачу'),
+                    label: Text(S.of(context)!.dayPlanTask),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: palette.fg,
                       side: BorderSide(color: palette.line),
@@ -143,7 +144,7 @@ class _DayDetailSheet extends ConsumerWidget {
                     padding: const EdgeInsets.symmetric(vertical: 24),
                     child: Center(
                       child: Text(
-                        'В этот день ничего не закрыто и не запланировано.',
+                        S.of(context)!.dayEmpty,
                         style: TextStyle(color: palette.muted, fontSize: 13),
                       ),
                     ),
@@ -151,7 +152,7 @@ class _DayDetailSheet extends ConsumerWidget {
                 else ...[
                   if (completed.isNotEmpty) ...[
                     _Heading(
-                      '✓ Выполнено (${completed.length})',
+                      S.of(context)!.dayDone(completed.length),
                       palette: palette,
                     ),
                     for (final e in completed)
@@ -165,7 +166,7 @@ class _DayDetailSheet extends ConsumerWidget {
                   ],
                   if (dueOpen.isNotEmpty) ...[
                     _Heading(
-                      '⏳ Дедлайны (${dueOpen.length})',
+                      S.of(context)!.dayDeadlines(dueOpen.length),
                       palette: palette,
                     ),
                     for (final e in dueOpen)
@@ -188,11 +189,11 @@ class _DayDetailSheet extends ConsumerWidget {
 
   String _summaryLine(int done, int xp, int due) {
     final parts = <String>[];
-    if (done > 0) parts.add('$done закрыто · +$xp XP');
+    if (done > 0) parts.add(S.of(context)!.daySummaryClosed(done, xp));
     if (due > 0) {
-      parts.add('$due ${_plural(due, "дедлайн", "дедлайна", "дедлайнов")}');
+      parts.add(S.of(context)!.daySummaryDeadline(due));
     }
-    if (parts.isEmpty) return 'Без записей.';
+    if (parts.isEmpty) return S.of(context)!.dayNoEntries;
     return parts.join(' · ');
   }
 
@@ -205,18 +206,15 @@ class _DayDetailSheet extends ConsumerWidget {
   }
 
   String _formatHeadline(DateTime d) {
-    const months = [
-      'янв', 'фев', 'мар', 'апр', 'мая', 'июн',
-      'июл', 'авг', 'сен', 'окт', 'ноя', 'дек',
-    ];
-    const days = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'];
+    final months = S.of(context)!.dayMonths.split(',');
+    final days = S.of(context)!.dayWeekdays.split(',');
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final diff = DateTime(d.year, d.month, d.day).difference(today).inDays;
     final label = '${d.day} ${months[d.month - 1]} · ${days[d.weekday - 1]}';
-    if (diff == 0) return 'Сегодня · $label';
-    if (diff == -1) return 'Вчера · $label';
-    if (diff == 1) return 'Завтра · $label';
+    if (diff == 0) return '${S.of(context)!.dayToday} · $label';
+    if (diff == -1) return '${S.of(context)!.dayYesterday} · $label';
+    if (diff == 1) return '${S.of(context)!.dayTomorrow} · $label';
     return label;
   }
 
@@ -296,7 +294,7 @@ class _EntryTile extends ConsumerWidget {
             ],
             Expanded(
               child: Text(
-                entry.title.isEmpty ? '(без названия)' : entry.title,
+                entry.title.isEmpty ? S.of(context)!.untitled : entry.title,
                 style: TextStyle(
                   color: palette.fg,
                   fontSize: 14,
